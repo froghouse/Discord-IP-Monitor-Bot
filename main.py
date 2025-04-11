@@ -93,7 +93,7 @@ except ValueError as e:
 
 # Thread-safe rate limiter class
 class RateLimiter:
-    def __init__(self, period: int, max_calls: int):
+    def __init__(self, period: int, max_calls: int) -> None:
         """
         Initialize a thread-safe rate limiter.
 
@@ -128,7 +128,7 @@ class RateLimiter:
 
             return False, 0
 
-    def record_call(self):
+    def record_call(self) -> None:
         """Record a timestamp for a call."""
         with self.lock:
             self.calls.append(time.time())
@@ -203,7 +203,15 @@ def atomic_write_json(file_path: str, data: Any) -> bool:
 
 
 def is_valid_ip(ip: str) -> bool:
-    """Validate if the given string is a valid IPv4 or IPv6 address."""
+    """
+    Validate if the given string is a valid IPv4 or IPv6 address.
+
+    Args:
+        ip: The IP address to validate
+
+    Returns:
+        bool: True if the IP is valid, False otherwise
+    """
     try:
         ipaddress.ip_address(ip)
         return True
@@ -252,7 +260,12 @@ async def fetch_ip_from_api(client: httpx.AsyncClient, api: str) -> Optional[str
 
 
 async def get_public_ip() -> Optional[str]:
-    """Get the current public IP address with fallback APIs and retry logic using async httpx."""
+    """
+    Get the current public IP address with fallback APIs and retry logic using async httpx.
+
+    Returns:
+        IP address string or None if unsuccessful
+    """
     apis = [
         "https://api.ipify.org?format=json",
         "https://ifconfig.me/ip",
@@ -313,7 +326,12 @@ async def get_public_ip() -> Optional[str]:
 
 
 def load_ip_history() -> List[Dict[str, Any]]:
-    """Load the IP address history from file."""
+    """
+    Load the IP address history from file.
+
+    Returns:
+        List of dictionaries containing IP addresses and timestamps
+    """
     if os.path.exists(IP_HISTORY_FILE):
         try:
             with open(IP_HISTORY_FILE, "r") as f:
@@ -327,7 +345,15 @@ def load_ip_history() -> List[Dict[str, Any]]:
 
 
 def save_ip_history(history: List[Dict[str, Any]]) -> bool:
-    """Save the IP address history to file."""
+    """
+    Save the IP address history to file.
+
+    Args:
+        history: List of dictionaries containing IP addresses and timestamps
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
     try:
         # Limit the history size
         if len(history) > IP_HISTORY_SIZE:
@@ -340,7 +366,12 @@ def save_ip_history(history: List[Dict[str, Any]]) -> bool:
 
 
 def load_last_ip() -> Optional[str]:
-    """Load the last known IP from file."""
+    """
+    Load the last known IP from file.
+
+    Returns:
+        IP address string or None if unsuccessful
+    """
     if os.path.exists(IP_FILE):
         try:
             with open(IP_FILE, "r") as f:
@@ -355,7 +386,15 @@ def load_last_ip() -> Optional[str]:
 
 
 def save_current_ip(ip: str) -> bool:
-    """Save the current IP to file and update history."""
+    """
+    Save the current IP to file and update history.
+
+    Args:
+        ip: The IP address to save
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
     timestamp = datetime.now().isoformat()
     success = True
 
@@ -377,7 +416,17 @@ def save_current_ip(ip: str) -> bool:
 
 
 async def send_message_with_retry(channel, content: str, max_retries: int = 3) -> bool:
-    """Send a message to a Discord channel with retry logic."""
+    """
+    Send a message to a Discord channel with retry logic.
+
+    Args:
+        channel: The Discord channel to send the message to
+        content: The message content to send
+        max_retries: The maximum number of retries (default is 3)
+
+    Returns:
+        bool: True if message was sent successfully, False otherwise
+    """
     for attempt in range(max_retries):
         try:
             await channel.send(content)
@@ -394,8 +443,13 @@ async def send_message_with_retry(channel, content: str, max_retries: int = 3) -
 
 
 @client.event
-async def on_ready():
-    """Called when the bot is ready and connected to Discord."""
+async def on_ready() -> None:
+    """
+    Called when the bot is ready and connected to Discord.
+
+    Returns:
+        None
+    """
     try:
         logger.info(f"Logged in as {client.user} (ID: {client.user.id})")
 
@@ -495,8 +549,16 @@ async def check_ip_once() -> bool:
 
 
 @client.event
-async def on_message(message):
-    """Handle incoming messages for bot commands."""
+async def on_message(message: discord.Message) -> None:
+    """
+    Handle incoming messages for bot commands.
+
+    Args:
+        message: The message object from Discord
+
+    Returns:
+        None
+    """
     try:
         # Skip messages from the bot itself
         if message.author == client.user:
@@ -659,8 +721,13 @@ async def on_message(message):
 
 
 @tasks.loop(minutes=CHECK_INTERVAL)
-async def check_ip_changes():
-    """Periodic task to check for IP changes."""
+async def check_ip_changes() -> None:
+    """
+    Periodic task to check for IP changes.
+
+    Returns:
+        None
+    """
     try:
         await check_ip_once()
     except discord.DiscordException as e:
@@ -670,8 +737,13 @@ async def check_ip_changes():
 
 
 @check_ip_changes.before_loop
-async def before_check_ip():
-    """Wait until the bot is ready before starting the loop."""
+async def before_check_ip() -> None:
+    """
+    Wait until the bot is ready before starting the loop.
+
+    Returns:
+        None
+    """
     try:
         await client.wait_until_ready()
     except Exception as e:
@@ -684,8 +756,16 @@ async def before_check_ip():
 
 
 @check_ip_changes.error
-async def on_check_ip_error(error):
-    """Handle errors in the scheduled task."""
+async def on_check_ip_error(error: Exception) -> None:
+    """
+    Handle errors in the scheduled task.
+
+    Args:
+        error: The error that occurred
+
+    Returns:
+        None
+    """
     logger.error(f"Error in scheduled IP check task: {error}", exc_info=True)
 
     # Try to send a notification if possible
