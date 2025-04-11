@@ -46,7 +46,7 @@ MAX_CHECKS_PER_PERIOD = int(
 )  # number of checks allowed per period
 
 # Initialize IP check lock
-ip_check_lock = threading.Lock()
+ip_check_lock = asyncio.Lock()
 
 # Set log level from environment variable
 try:
@@ -104,7 +104,7 @@ class RateLimiter:
         self.period = period
         self.max_calls = max_calls
         self.calls = []  # List of timestamps
-        self.lock = threading.RLock()  # Reentrant lock for thread safety
+        self.lock = threading.Lock()  # Reentrant lock for thread safety
 
     def is_limited(self) -> Tuple[bool, int]:
         """
