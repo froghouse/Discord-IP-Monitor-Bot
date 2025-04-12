@@ -238,9 +238,15 @@ class IPCommands:
         await self.send_message_with_retry(message.channel, history_text)
         return True
 
-    async def handle_ip_command(self, message: discord.Message) -> bool:
+    async def handle_ip_command(
+        self, message: discord.Message, client: discord.Client
+    ) -> bool:
         """
         Handle the !ip command to manually check the current IP address.
+
+        Args:
+            message: The Discord message containing the command
+            client: The Discord client instance
         """
         logger.info(f"IP check requested by {message.author}")
 
@@ -256,4 +262,4 @@ class IPCommands:
 
         # Use the check_ip_once method with user_requested=True
         # This will send a message regardless of whether the IP has changed
-        return await self.check_ip_once(message._client, user_requested=True)
+        return await self.check_ip_once(client, user_requested=True)

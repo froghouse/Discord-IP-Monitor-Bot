@@ -227,7 +227,7 @@ class IPMonitorBot:
 
             # Process commands
             if message.content.startswith("!ip"):
-                await self.ip_commands.handle_ip_command(message)
+                await self.ip_commands.handle_ip_command(message, self.client)
             elif message.content.startswith("!history"):
                 await self.ip_commands.handle_history_command(message)
             elif message.content.startswith("!status"):
