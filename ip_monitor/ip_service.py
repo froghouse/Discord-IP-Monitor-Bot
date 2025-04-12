@@ -47,6 +47,7 @@ class IPService:
         self.retry_delay = retry_delay
         self.use_concurrent_checks = use_concurrent_checks
         self.apis = apis or self.DEFAULT_IP_APIS
+        self.client = None  # Will be initialized when needed
 
     @staticmethod
     def is_valid_ip(ip: str) -> bool:
@@ -113,13 +114,18 @@ class IPService:
         Returns:
             IP address string or None if unsuccessful
         """
-        # Use an async client for all requests
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        # Initialize the client if it doesn't exist
+        if self.client is None:
+            self.client = httpx.AsyncClient(timeout=10.0)
+
+        try:
             for attempt in range(self.max_retries):
                 # If we should check APIs concurrently
                 if self.use_concurrent_checks:
                     # Create tasks for all APIs
-                    tasks = [self.fetch_ip_from_api(client, api) for api in self.apis]
+                    tasks = [
+                        self.fetch_ip_from_api(self.client, api) for api in self.apis
+                    ]
                     # Wait for first successful result
                     results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -138,7 +144,7 @@ class IPService:
 
                 # Sequential API checking (fallback approach)
                 for api in self.apis:
-                    ip = await self.fetch_ip_from_api(client, api)
+                    ip = await self.fetch_ip_from_api(self.client, api)
                     if ip:
                         return ip
 
@@ -149,5 +155,18 @@ class IPService:
                     )
                     await asyncio.sleep(self.retry_delay)
 
-        logger.error("All IP APIs failed after maximum retry attempts")
-        return None
+            logger.error("All IP APIs failed after maximum retry attempts")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error in get_public_ip: {e}")
+            return None
+
+    async def close(self) -> None:
+        """
+        Close any pending HTTP connections.
+        This should be called when shutting down the bot.
+        """
+        logger.info("Closing IP service connections")
+        if self.client is not None:
+            await self.client.aclose()
+            self.client = None

@@ -99,14 +99,36 @@ class IPMonitorBot:
             logger.error("Invalid Discord token. Please check your bot token.")
             return 1
         finally:
-            # Ensure all tasks are cancelled
-            if self.check_ip_task and self.check_ip_task.is_running():
-                logger.info("Stopping scheduled IP check task")
-                self.check_ip_task.cancel()
+            # Ensure all resources are properly closed
+            await self.cleanup()
 
-            # Close the client connection if it's still open
-            if not self.client.is_closed():
-                await self.client.close()
+    async def cleanup(self) -> None:
+        """
+        Clean up all resources used by the bot.
+        This should be called when the bot is stopped.
+        """
+        logger.info("Cleaning up bot resources")
+
+        # Cancel the background task properly
+        if self.check_ip_task and self.check_ip_task.is_running():
+            logger.info("Stopping scheduled IP check task")
+            self.check_ip_task.cancel()
+            logger.info("IP check task cancelled")
+
+        # Close any pending HTTP connections in the IP service
+        logger.info("Closing HTTP connections")
+        if hasattr(self.ip_service, "close"):
+            await self.ip_service.close()
+
+        # Close the client connection
+        logger.info("Closing client connection")
+
+        # Properly close the discord.py client's HTTP session
+        if hasattr(self.client, "http") and hasattr(self.client.http, "session"):
+            logger.info("Closing discord.py HTTP session")
+            await self.client.http.session.close()
+
+        await self.client.close()
 
     async def on_ready(self) -> None:
         """
@@ -264,11 +286,5 @@ class IPMonitorBot:
         """
         Stop the bot gracefully.
         """
-        # Cancel the background task properly
-        if self.check_ip_task and self.check_ip_task.is_running():
-            logger.info("Stopping scheduled IP check task")
-            self.check_ip_task.cancel()
-
-        # Close the client connection
-        logger.info("Closing client connection")
-        await self.client.close()
+        # Use the cleanup method to ensure all resources are properly closed
+        await self.cleanup()
