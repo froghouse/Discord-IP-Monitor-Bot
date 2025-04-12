@@ -258,6 +258,8 @@ class IPMonitorBot:
                 await self.ip_commands.handle_help_command(message)
             elif message.content.startswith("!stop"):
                 await self.admin_commands.handle_stop_command(message)
+            elif message.content.startswith("!dnd"):
+                await self.ip_commands.handle_dnd_command(message)
 
         except discord.DiscordException as e:
             # Handle Discord-specific exceptions

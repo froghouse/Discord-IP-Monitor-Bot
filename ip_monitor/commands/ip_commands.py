@@ -263,3 +263,28 @@ class IPCommands:
         # Use the check_ip_once method with user_requested=True
         # This will send a message regardless of whether the IP has changed
         return await self.check_ip_once(client, user_requested=True)
+
+    async def handle_dnd_command(self, message: discord.Message) -> bool:
+        """
+        Handle the !dnd command to send a message with the URL to the Dungeons and Dragons Foundry VTT server.
+        """
+        logger.info(f"DnD command requested by {message.author}")
+
+        # Get the current IP
+        current_ip = await self.ip_service.get_public_ip()
+        if not current_ip:
+            logger.error("Failed to get current IP address")
+            await self.send_message_with_retry(
+                message.channel,
+                "❌ Failed to retrieve the current IP address. Please try again later.",
+            )
+            return True
+
+        # Send a message with the URL to the Dungeons and Dragons Foundry VTT server
+        dnd_url = f"https://{current_ip}:30000/game"
+        await self.send_message_with_retry(
+            message.channel,
+            f"🎲 **Dungeons and Dragons Foundry VTT Server**\n\n"
+            f"Access the server at: {dnd_url}\n\n",
+        )
+        return True
