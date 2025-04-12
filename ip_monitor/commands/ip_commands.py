@@ -70,12 +70,15 @@ class IPCommands:
         logger.error(f"Failed to send message after {max_retries} attempts")
         return False
 
-    async def check_ip_once(self, client: discord.Client) -> bool:
+    async def check_ip_once(
+        self, client: discord.Client, user_requested: bool = False
+    ) -> bool:
         """
         Check the IP once (used at startup and for manual checks).
 
         Args:
             client: Discord client instance for channel access
+            user_requested: Whether this check was requested by a user (default: False)
 
         Returns:
             bool: True if check was successful, False otherwise
@@ -118,21 +121,28 @@ class IPCommands:
                 )
                 return False
 
-            # Format the message
+            # Only send a message if the IP has changed or if a user requested the check
             if last_ip and last_ip != current_ip:
+                # IP has changed, always send a message
                 message = "🔄 IP address has changed!\n\n"
                 message += f"**Previous IP:** `{last_ip}`\n"
                 message += f"**Current IP:** `{current_ip}`\n"
                 message += f"**Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            else:
+                await self.send_message_with_retry(channel, message)
+            elif user_requested:
+                # User requested a check, send the result even if IP hasn't changed
                 message = "✅ IP address check complete.\n\n"
                 message += f"**Current IP:** `{current_ip}`\n"
                 message += f"**Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                 if last_ip:
                     message += f"\n\nNo change from previous IP: `{last_ip}`"
+                await self.send_message_with_retry(channel, message)
+            else:
+                # Scheduled check with no change, don't send a message
+                logger.info(
+                    f"Scheduled IP check: No change detected. Current IP: {current_ip}"
+                )
 
-            # Send the message
-            await self.send_message_with_retry(channel, message)
             return True
         except Exception as e:
             logger.error(f"Error checking IP: {e}")
@@ -244,40 +254,6 @@ class IPCommands:
             )
             return True
 
-        # Get the current IP
-        current_ip = await self.ip_service.get_public_ip()
-        if not current_ip:
-            logger.error("Failed to get current IP address")
-            await self.send_message_with_retry(
-                message.channel,
-                "❌ Failed to retrieve the current IP address. Please try again later.",
-            )
-            return True
-
-        last_ip = self.storage.load_last_ip()
-
-        # Save the current IP
-        if not self.storage.save_current_ip(current_ip):
-            logger.error("Failed to save current IP address")
-            await self.send_message_with_retry(
-                message.channel,
-                "❌ Failed to save the current IP address. Please try again later.",
-            )
-            return True
-        
-        response = ""
-
-        if last_ip and last_ip != current_ip:
-            # Format the message
-            response = "🔄 IP address has changed!\n\n"
-            response += f"**Previous IP:** `{last_ip}`\n"
-            response += f"**Current IP:** `{current_ip}`\n"
-            response += f"**Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        else:
-            response = f"✅ IP address check complete. No change from previous IP: `{last_ip}`\n\n"
-            response += f"**Current IP:** `{current_ip}`\n"
-            response += f"**Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-
-        # Send the message
-        await self.send_message_with_retry(message.channel, response)
-        return True
+        # Use the check_ip_once method with user_requested=True
+        # This will send a message regardless of whether the IP has changed
+        return await self.check_ip_once(message._client, user_requested=True)

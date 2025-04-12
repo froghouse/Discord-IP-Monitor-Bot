@@ -158,7 +158,7 @@ class IPMonitorBot:
             Periodic task to check for IP changes.
             """
             try:
-                await self.ip_commands.check_ip_once(self.client)
+                await self.ip_commands.check_ip_once(self.client, user_requested=False)
             except discord.DiscordException as e:
                 logger.error(f"Discord error in scheduled IP check: {e}")
             except Exception as e:
