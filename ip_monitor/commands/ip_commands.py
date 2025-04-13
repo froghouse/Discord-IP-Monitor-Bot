@@ -271,7 +271,7 @@ class IPCommands:
         logger.info(f"DnD command requested by {message.author}")
 
         # Get the current IP
-        current_ip = await self.ip_service.get_public_ip()
+        current_ip = await self.ip_service.get_ip_from_last_ip()
         if not current_ip:
             logger.error("Failed to get current IP address")
             await self.send_message_with_retry(

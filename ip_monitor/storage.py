@@ -138,6 +138,25 @@ class IPStorage:
                 logger.error(f"Error loading last IP: {e}")
         return None
 
+    def load_last_ip_timestamp(self) -> Optional[str]:
+        """
+        Load the timestamp of the last known IP from file.
+
+        Returns:
+            Timestamp string or None if unsuccessful
+        """
+        if os.path.exists(self.ip_file):
+            try:
+                with open(self.ip_file, "r") as f:
+                    data = json.load(f)
+                    timestamp = data.get("timestamp")
+                    if timestamp:
+                        return timestamp
+                    logger.warning("Invalid or missing timestamp in last_ip.json")
+            except (json.JSONDecodeError, IOError) as e:
+                logger.error(f"Error loading last IP timestamp: {e}")
+        return None
+
     def save_current_ip(self, ip: str) -> bool:
         """
         Save the current IP to file and update history.

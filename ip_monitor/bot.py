@@ -2,6 +2,7 @@
 Core bot implementation for the IP Monitor Bot.
 """
 
+import asyncio
 import logging
 
 import discord
@@ -40,6 +41,7 @@ class IPMonitorBot:
         self.ip_service = IPService(
             max_retries=config.max_retries,
             retry_delay=config.retry_delay,
+            check_interval=config.check_interval,
             use_concurrent_checks=config.concurrent_api_checks,
         )
 
@@ -200,6 +202,10 @@ class IPMonitorBot:
                 # If this fails, we might need to restart the bot
                 try:
                     await self.client.close()
+
+                    # Wait for 10 seconds before trying again
+                    await asyncio.sleep(10)
+                    await self.client.start(self.config.discord_token)
                 except Exception as close_error:
                     logger.error(f"Error while trying to close client: {close_error}")
 
