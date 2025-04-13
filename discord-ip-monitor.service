@@ -1,0 +1,19 @@
+[Unit]
+Description=Discord IP Monitor Bot
+After=network.target
+Wants=network-online.target
+Ater=network-online.target
+
+[Service]
+Type=simple
+User=youruser
+WorkingDirectory=/path/to/Discord-IP-Monitor-Bot
+ExecStart=/path/to/Discord-IP-Monitor-Bot/.venv/bin/python /path/to/python/Discord-IP-Monitor-Bot/main.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
