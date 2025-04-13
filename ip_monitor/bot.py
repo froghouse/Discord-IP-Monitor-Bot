@@ -253,6 +253,8 @@ class IPMonitorBot:
                 "!history": self.ip_commands.handle_history_command,
                 "!status": self.ip_commands.handle_status_command,
                 "!help": self.ip_commands.handle_help_command,
+                "!stop": self.admin_commands.handle_stop_command,
+                "!dnd": self.ip_commands.handle_dnd_command,
             }
 
             # Process commands
