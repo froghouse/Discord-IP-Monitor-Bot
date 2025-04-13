@@ -6,7 +6,6 @@ import asyncio
 import ipaddress
 import json
 import logging
-from datetime import datetime, timedelta
 from typing import List, Optional
 
 import httpx
@@ -49,6 +48,7 @@ class IPService:
         self.retry_delay = retry_delay
         self.use_concurrent_checks = use_concurrent_checks
         self.apis = apis or self.DEFAULT_IP_APIS
+        self.check_interval = check_interval
         self.client = None  # Will be initialized when needed
 
     @staticmethod
@@ -162,33 +162,6 @@ class IPService:
         except Exception as e:
             logger.error(f"Unexpected error in get_public_ip: {e}")
             return None
-
-    # Return the IP address from the last_ip file if it exists and is newer than CHECK_INTERVAL
-    async def get_ip_from_last_ip(self) -> Optional[str]:
-        """
-        Get IP from last_ip file if it exists, is valid, and is newer than CHECK_INTERVAL
-
-        Returns:
-            IP address string or None if unsuccessful
-        """
-        last_ip = self.storage.load_last_ip()
-
-        if last_ip and self.is_valid_ip(last_ip):
-            last_ip_timestamp = self.storage.load_last_ip_timestamp()
-            last_ip_time = datetime.fromtimestamp(last_ip_timestamp)
-            current_time = datetime.now()
-
-            # Check if the cached IP is still fresh (within check_interval)
-            if current_time - last_ip_time < timedelta(minutes=self.check_interval):
-                return last_ip
-
-        # If the IP is not valid or too old, fetch a new one
-        new_ip = await self.get_public_ip()
-
-        if new_ip and self.is_valid_ip(new_ip):
-            self.storage.save_last_ip(new_ip)
-
-        return new_ip
 
     async def close(self) -> None:
         """
