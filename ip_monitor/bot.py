@@ -247,19 +247,22 @@ class IPMonitorBot:
             ):
                 return
 
+            # Define command handlers dictionary
+            command_handlers = {
+                "!ip": self.ip_commands.handle_ip_command,
+                "!history": self.ip_commands.handle_history_command,
+                "!status": self.ip_commands.handle_status_command,
+                "!help": self.ip_commands.handle_help_command,
+            }
+
             # Process commands
-            if message.content.startswith("!ip"):
-                await self.ip_commands.handle_ip_command(message, self.client)
-            elif message.content.startswith("!history"):
-                await self.ip_commands.handle_history_command(message)
-            elif message.content.startswith("!status"):
-                await self.ip_commands.handle_status_command(message)
-            elif message.content.startswith("!help"):
-                await self.ip_commands.handle_help_command(message)
-            elif message.content.startswith("!stop"):
-                await self.admin_commands.handle_stop_command(message)
-            elif message.content.startswith("!dnd"):
-                await self.ip_commands.handle_dnd_command(message)
+            for prefix, handler in command_handlers.items():
+                if message.content.startswith(prefix):
+                    if prefix == "!ip":
+                        await handler(message, self.client)
+                    else:
+                        await handler(message)
+                    break
 
         except discord.DiscordException as e:
             # Handle Discord-specific exceptions
