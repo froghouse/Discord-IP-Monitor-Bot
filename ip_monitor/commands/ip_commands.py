@@ -281,10 +281,11 @@ class IPCommands:
             return True
 
         # Send a message with the URL to the Dungeons and Dragons Foundry VTT server
-        dnd_url = f"https://{current_ip}:30000/game"
+        dnd_url = f"http://{current_ip}:30000/game"
         await self.send_message_with_retry(
             message.channel,
             f"🎲 **Dungeons and Dragons Foundry VTT Server**\n\n"
-            f"Access the server at: {dnd_url}\n\n",
+            "Access the server at http://froghouse.asuscomm.com:30000/game\n"
+            f"Or at {dnd_url} if the primary URL doesn't work\n\n",
         )
         return True
