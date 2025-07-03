@@ -48,6 +48,10 @@ class IPMonitorBot:
             circuit_breaker_failure_threshold=config.circuit_breaker_failure_threshold,
             circuit_breaker_recovery_timeout=config.circuit_breaker_recovery_timeout,
             use_custom_apis=config.custom_apis_enabled,
+            connection_pool_size=config.connection_pool_size,
+            connection_pool_max_keepalive=config.connection_pool_max_keepalive,
+            connection_timeout=config.connection_timeout,
+            read_timeout=config.read_timeout,
         )
 
         self.storage = SQLiteIPStorage(

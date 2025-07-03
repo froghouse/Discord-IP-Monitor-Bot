@@ -58,6 +58,12 @@ class AppConfig:
     message_queue_batch_size: int
     message_queue_process_interval: float
 
+    # HTTP connection pooling settings
+    connection_pool_size: int
+    connection_pool_max_keepalive: int
+    connection_timeout: float
+    read_timeout: float
+
     # Class constants
     DEFAULT_MAX_RETRIES: ClassVar[int] = 3
     DEFAULT_RETRY_DELAY: ClassVar[int] = 5
@@ -71,6 +77,10 @@ class AppConfig:
     DEFAULT_MESSAGE_QUEUE_MAX_AGE_HOURS: ClassVar[int] = 24
     DEFAULT_MESSAGE_QUEUE_BATCH_SIZE: ClassVar[int] = 5
     DEFAULT_MESSAGE_QUEUE_PROCESS_INTERVAL: ClassVar[float] = 1.0
+    DEFAULT_CONNECTION_POOL_SIZE: ClassVar[int] = 10
+    DEFAULT_CONNECTION_POOL_MAX_KEEPALIVE: ClassVar[int] = 5
+    DEFAULT_CONNECTION_TIMEOUT: ClassVar[float] = 10.0
+    DEFAULT_READ_TIMEOUT: ClassVar[float] = 30.0
 
     @classmethod
     def load_from_env(cls) -> "AppConfig":
@@ -176,6 +186,30 @@ class AppConfig:
                 os.getenv(
                     "MESSAGE_QUEUE_PROCESS_INTERVAL",
                     str(cls.DEFAULT_MESSAGE_QUEUE_PROCESS_INTERVAL),
+                )
+            ),
+            connection_pool_size=int(
+                os.getenv(
+                    "CONNECTION_POOL_SIZE",
+                    str(cls.DEFAULT_CONNECTION_POOL_SIZE),
+                )
+            ),
+            connection_pool_max_keepalive=int(
+                os.getenv(
+                    "CONNECTION_POOL_MAX_KEEPALIVE",
+                    str(cls.DEFAULT_CONNECTION_POOL_MAX_KEEPALIVE),
+                )
+            ),
+            connection_timeout=float(
+                os.getenv(
+                    "CONNECTION_TIMEOUT",
+                    str(cls.DEFAULT_CONNECTION_TIMEOUT),
+                )
+            ),
+            read_timeout=float(
+                os.getenv(
+                    "READ_TIMEOUT",
+                    str(cls.DEFAULT_READ_TIMEOUT),
                 )
             ),
         )
@@ -308,6 +342,36 @@ class AppConfig:
                 "min_value": 0.1,
                 "max_value": 60.0,
                 "description": "Interval between processing batches",
+                "unit": "seconds",
+                "restart_required": False,
+            },
+            "connection_pool_size": {
+                "type": "int",
+                "min_value": 1,
+                "max_value": 100,
+                "description": "Maximum number of HTTP connections in pool",
+                "restart_required": False,
+            },
+            "connection_pool_max_keepalive": {
+                "type": "int",
+                "min_value": 1,
+                "max_value": 50,
+                "description": "Maximum number of keep-alive connections",
+                "restart_required": False,
+            },
+            "connection_timeout": {
+                "type": "float",
+                "min_value": 1.0,
+                "max_value": 60.0,
+                "description": "HTTP connection timeout",
+                "unit": "seconds",
+                "restart_required": False,
+            },
+            "read_timeout": {
+                "type": "float",
+                "min_value": 1.0,
+                "max_value": 300.0,
+                "description": "HTTP read timeout",
                 "unit": "seconds",
                 "restart_required": False,
             },

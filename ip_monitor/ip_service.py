@@ -42,6 +42,10 @@ class IPService:
         circuit_breaker_failure_threshold: int = 3,
         circuit_breaker_recovery_timeout: float = 120.0,
         use_custom_apis: bool = True,
+        connection_pool_size: int = 10,
+        connection_pool_max_keepalive: int = 5,
+        connection_timeout: float = 10.0,
+        read_timeout: float = 30.0,
     ) -> None:
         """
         Initialize the IP service.
@@ -55,13 +59,26 @@ class IPService:
             circuit_breaker_failure_threshold: Number of failures before opening circuit
             circuit_breaker_recovery_timeout: Time to wait before testing recovery
             use_custom_apis: Whether to use custom configured APIs
+            connection_pool_size: Maximum number of connections in the pool
+            connection_pool_max_keepalive: Maximum number of keep-alive connections
+            connection_timeout: Timeout for establishing connections
+            read_timeout: Timeout for reading responses
         """
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.use_concurrent_checks = use_concurrent_checks
         self.use_custom_apis = use_custom_apis
         self.legacy_apis = apis or self.DEFAULT_IP_APIS
+
+        # Connection pooling configuration
+        self.connection_pool_size = connection_pool_size
+        self.connection_pool_max_keepalive = connection_pool_max_keepalive
+        self.connection_timeout = connection_timeout
+        self.read_timeout = read_timeout
+
+        # HTTP client with connection pooling
         self.client = None  # Will be initialized when needed
+        self._client_initialized = False
 
         # Circuit breaker setup
         self.circuit_breaker_enabled = circuit_breaker_enabled
@@ -75,6 +92,13 @@ class IPService:
 
         # Track last successful IP for fallback
         self._last_known_ip: Optional[str] = None
+
+        logger.debug(
+            f"IP service initialized with connection pool size: {self.connection_pool_size}, "
+            f"max keepalive: {self.connection_pool_max_keepalive}, "
+            f"connection timeout: {self.connection_timeout}s, "
+            f"read timeout: {self.read_timeout}s"
+        )
 
     def get_apis_to_use(self) -> List[str]:
         """
@@ -113,14 +137,11 @@ class IPService:
         except ValueError:
             return False
 
-    async def fetch_ip_from_custom_api(
-        self, client: httpx.AsyncClient, api_config
-    ) -> Optional[str]:
+    async def fetch_ip_from_custom_api(self, api_config) -> Optional[str]:
         """
         Fetch IP from a custom API endpoint with specific configuration.
 
         Args:
-            client: httpx AsyncClient to use for the request
             api_config: IPAPIEndpoint configuration object
 
         Returns:
@@ -129,11 +150,21 @@ class IPService:
         start_time = time.time()
 
         try:
+            client = await self.get_client()
+
+            # Merge custom headers with defaults
             headers = api_config.headers or {}
-            headers.setdefault("User-Agent", "IP-Monitor-Bot/1.0")
+
+            # Create timeout for this specific request
+            request_timeout = httpx.Timeout(
+                connect=self.connection_timeout,
+                read=api_config.timeout,
+                write=30.0,
+                pool=60.0,
+            )
 
             response = await client.get(
-                api_config.url, headers=headers, timeout=api_config.timeout
+                api_config.url, headers=headers, timeout=request_timeout
             )
             response.raise_for_status()
 
@@ -184,14 +215,11 @@ class IPService:
             logger.debug(f"Error fetching IP from {api_config.name}: {e}")
             return None
 
-    async def fetch_ip_from_api(
-        self, client: httpx.AsyncClient, api: str
-    ) -> Optional[str]:
+    async def fetch_ip_from_api(self, api: str) -> Optional[str]:
         """
         Fetch IP from a single API endpoint.
 
         Args:
-            client: httpx AsyncClient to use for the request
             api: URL of the API to query
 
         Returns:
@@ -199,6 +227,7 @@ class IPService:
         """
         try:
             logger.debug(f"Trying to get IP from {api}")
+            client = await self.get_client()
             response = await client.get(api)
             response.raise_for_status()
 
@@ -247,7 +276,7 @@ class IPService:
         """
         # Initialize the client if it doesn't exist
         if self.client is None:
-            self.client = httpx.AsyncClient(timeout=10.0)
+            await self._initialize_client()
 
         try:
             for attempt in range(self.max_retries):
@@ -265,13 +294,13 @@ class IPService:
                     if api_configs:
                         # Use custom API configurations
                         tasks = [
-                            self.fetch_ip_from_custom_api(self.client, api_config)
+                            self.fetch_ip_from_custom_api(api_config)
                             for api_config in api_configs
                         ]
                     else:
                         # Use legacy API URLs
                         tasks = [
-                            self.fetch_ip_from_api(self.client, api)
+                            self.fetch_ip_from_api(api)
                             for api in self.get_apis_to_use()
                         ]
 
@@ -298,9 +327,7 @@ class IPService:
                 if api_configs:
                     # Use custom API configurations
                     for api_config in api_configs:
-                        ip = await self.fetch_ip_from_custom_api(
-                            self.client, api_config
-                        )
+                        ip = await self.fetch_ip_from_custom_api(api_config)
                         if ip:
                             # Save API configuration changes
                             ip_api_manager.save_apis()
@@ -308,7 +335,7 @@ class IPService:
                 else:
                     # Use legacy API URLs
                     for api in self.get_apis_to_use():
-                        ip = await self.fetch_ip_from_api(self.client, api)
+                        ip = await self.fetch_ip_from_api(api)
                         if ip:
                             return ip
 
@@ -408,6 +435,77 @@ class IPService:
             return True
         return False
 
+    async def _initialize_client(self) -> None:
+        """
+        Initialize the HTTP client with connection pooling configuration.
+        """
+        if self._client_initialized:
+            return
+
+        logger.info("Initializing HTTP client with connection pooling")
+
+        # Configure connection limits and timeouts
+        limits = httpx.Limits(
+            max_connections=self.connection_pool_size,
+            max_keepalive_connections=self.connection_pool_max_keepalive,
+            keepalive_expiry=300.0,  # 5 minutes keepalive
+        )
+
+        timeout = httpx.Timeout(
+            connect=self.connection_timeout,
+            read=self.read_timeout,
+            write=30.0,
+            pool=60.0,
+        )
+
+        # Create client with connection pooling
+        # Try to enable HTTP/2 if available, fall back to HTTP/1.1 if not
+        try:
+            self.client = httpx.AsyncClient(
+                limits=limits,
+                timeout=timeout,
+                headers={
+                    "User-Agent": "IP-Monitor-Bot/1.0",
+                    "Accept": "application/json, text/plain, */*",
+                    "Accept-Encoding": "gzip, deflate",
+                    "Connection": "keep-alive",
+                },
+                http2=True,  # Enable HTTP/2 support for better performance
+                follow_redirects=True,
+            )
+            logger.debug("HTTP/2 support enabled")
+        except ImportError:
+            # Fall back to HTTP/1.1 if h2 package is not installed
+            logger.info("HTTP/2 not available, using HTTP/1.1")
+            self.client = httpx.AsyncClient(
+                limits=limits,
+                timeout=timeout,
+                headers={
+                    "User-Agent": "IP-Monitor-Bot/1.0",
+                    "Accept": "application/json, text/plain, */*",
+                    "Accept-Encoding": "gzip, deflate",
+                    "Connection": "keep-alive",
+                },
+                follow_redirects=True,
+            )
+
+        self._client_initialized = True
+        logger.info(
+            f"HTTP client initialized with pool size: {self.connection_pool_size}, "
+            f"keepalive connections: {self.connection_pool_max_keepalive}"
+        )
+
+    async def get_client(self) -> httpx.AsyncClient:
+        """
+        Get the HTTP client, initializing it if necessary.
+
+        Returns:
+            Configured httpx.AsyncClient instance
+        """
+        if self.client is None or not self._client_initialized:
+            await self._initialize_client()
+        return self.client
+
     async def close(self) -> None:
         """
         Close any pending HTTP connections.
@@ -415,5 +513,19 @@ class IPService:
         """
         logger.info("Closing IP service connections")
         if self.client is not None:
-            await self.client.aclose()
-            self.client = None
+            try:
+                # Get connection pool statistics before closing
+                if hasattr(self.client, "_pool"):
+                    pool = self.client._pool
+                    logger.info(
+                        f"Closing connection pool - Active connections: {len(pool._pool)}, "
+                        f"Keepalive connections: {len(pool._keepalive_connections)}"
+                    )
+
+                await self.client.aclose()
+                logger.info("HTTP client closed successfully")
+            except Exception as e:
+                logger.warning(f"Error closing HTTP client: {e}")
+            finally:
+                self.client = None
+                self._client_initialized = False
