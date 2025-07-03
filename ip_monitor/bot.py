@@ -78,6 +78,7 @@ class IPMonitorBot:
             ip_service=self.ip_service,
             storage=self.storage,
             stop_callback=self._stop_bot,
+            config=config,
         )
 
         # Configure client event handlers
@@ -356,6 +357,8 @@ class IPMonitorBot:
                 await self.ip_commands.handle_help_command(message)
             elif message.content.startswith("!queue"):
                 await self.admin_commands.handle_queue_command(message)
+            elif message.content.startswith("!config"):
+                await self.admin_commands.handle_config_command(message)
             elif message.content.startswith("!stop"):
                 await self.admin_commands.handle_stop_command(message)
 

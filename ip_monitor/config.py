@@ -2,10 +2,11 @@
 Configuration management for the IP Monitor Bot.
 """
 
+import json
 import logging
 import os
-from dataclasses import dataclass
-from typing import ClassVar
+from dataclasses import asdict, dataclass
+from typing import Any, ClassVar, Dict, Union
 
 from dotenv import load_dotenv
 
@@ -179,3 +180,267 @@ class AppConfig:
                 logger.warning(f"Directory does not exist: {directory}")
 
         return config
+
+    def get_runtime_configurable_fields(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get fields that can be modified at runtime.
+
+        Returns:
+            Dict mapping field names to their metadata
+        """
+        configurable_fields = {
+            "check_interval": {
+                "type": "int",
+                "min_value": 1,
+                "max_value": 1440,  # 24 hours
+                "description": "IP check interval in minutes",
+                "unit": "minutes",
+                "restart_required": True,
+            },
+            "max_retries": {
+                "type": "int",
+                "min_value": 1,
+                "max_value": 10,
+                "description": "Maximum retry attempts for IP checks",
+                "restart_required": False,
+            },
+            "retry_delay": {
+                "type": "int",
+                "min_value": 1,
+                "max_value": 300,
+                "description": "Delay between retries in seconds",
+                "unit": "seconds",
+                "restart_required": False,
+            },
+            "concurrent_api_checks": {
+                "type": "bool",
+                "description": "Enable concurrent API checks",
+                "restart_required": False,
+            },
+            "circuit_breaker_enabled": {
+                "type": "bool",
+                "description": "Enable circuit breaker pattern",
+                "restart_required": False,
+            },
+            "circuit_breaker_failure_threshold": {
+                "type": "int",
+                "min_value": 1,
+                "max_value": 20,
+                "description": "Failures before circuit breaker opens",
+                "restart_required": False,
+            },
+            "circuit_breaker_recovery_timeout": {
+                "type": "float",
+                "min_value": 10.0,
+                "max_value": 3600.0,
+                "description": "Circuit breaker recovery timeout in seconds",
+                "unit": "seconds",
+                "restart_required": False,
+            },
+            "rate_limit_period": {
+                "type": "int",
+                "min_value": 60,
+                "max_value": 3600,
+                "description": "Rate limit period in seconds",
+                "unit": "seconds",
+                "restart_required": False,
+            },
+            "max_checks_per_period": {
+                "type": "int",
+                "min_value": 1,
+                "max_value": 100,
+                "description": "Maximum checks per rate limit period",
+                "restart_required": False,
+            },
+            "ip_history_size": {
+                "type": "int",
+                "min_value": 1,
+                "max_value": 100,
+                "description": "Maximum IP history entries to store",
+                "restart_required": False,
+            },
+            "startup_message_enabled": {
+                "type": "bool",
+                "description": "Enable startup notification message",
+                "restart_required": False,
+            },
+            "message_queue_enabled": {
+                "type": "bool",
+                "description": "Enable async message queue",
+                "restart_required": False,
+            },
+            "message_queue_max_size": {
+                "type": "int",
+                "min_value": 10,
+                "max_value": 10000,
+                "description": "Maximum messages in queue",
+                "restart_required": False,
+            },
+            "message_queue_max_age_hours": {
+                "type": "int",
+                "min_value": 1,
+                "max_value": 168,  # 1 week
+                "description": "Maximum message age in hours",
+                "unit": "hours",
+                "restart_required": False,
+            },
+            "message_queue_batch_size": {
+                "type": "int",
+                "min_value": 1,
+                "max_value": 50,
+                "description": "Messages processed per batch",
+                "restart_required": False,
+            },
+            "message_queue_process_interval": {
+                "type": "float",
+                "min_value": 0.1,
+                "max_value": 60.0,
+                "description": "Interval between processing batches",
+                "unit": "seconds",
+                "restart_required": False,
+            },
+        }
+        return configurable_fields
+
+    def validate_config_value(
+        self, field_name: str, value: str
+    ) -> tuple[bool, Union[Any, str]]:
+        """
+        Validate a configuration value.
+
+        Args:
+            field_name: Name of the configuration field
+            value: String value to validate and convert
+
+        Returns:
+            Tuple of (is_valid, converted_value_or_error_message)
+        """
+        configurable_fields = self.get_runtime_configurable_fields()
+
+        if field_name not in configurable_fields:
+            return False, f"Field '{field_name}' is not configurable at runtime"
+
+        field_info = configurable_fields[field_name]
+        field_type = field_info["type"]
+
+        try:
+            # Convert value to appropriate type
+            if field_type == "int":
+                converted_value = int(value)
+            elif field_type == "float":
+                converted_value = float(value)
+            elif field_type == "bool":
+                if value.lower() in ["true", "yes", "1", "on", "enabled"]:
+                    converted_value = True
+                elif value.lower() in ["false", "no", "0", "off", "disabled"]:
+                    converted_value = False
+                else:
+                    return (
+                        False,
+                        f"Invalid boolean value: '{value}'. Use true/false, yes/no, 1/0, on/off, or enabled/disabled",
+                    )
+            else:
+                return False, f"Unsupported field type: {field_type}"
+
+            # Validate ranges for numeric values
+            if field_type in ["int", "float"]:
+                if (
+                    "min_value" in field_info
+                    and converted_value < field_info["min_value"]
+                ):
+                    return (
+                        False,
+                        f"Value {converted_value} is below minimum {field_info['min_value']}",
+                    )
+                if (
+                    "max_value" in field_info
+                    and converted_value > field_info["max_value"]
+                ):
+                    return (
+                        False,
+                        f"Value {converted_value} is above maximum {field_info['max_value']}",
+                    )
+
+            return True, converted_value
+
+        except ValueError as e:
+            return False, f"Invalid {field_type} value: '{value}' ({str(e)})"
+
+    def update_field(self, field_name: str, value: Any) -> bool:
+        """
+        Update a configuration field value.
+
+        Args:
+            field_name: Name of the field to update
+            value: New value for the field
+
+        Returns:
+            bool: True if update was successful
+        """
+        if hasattr(self, field_name):
+            setattr(self, field_name, value)
+            return True
+        return False
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert configuration to dictionary.
+
+        Returns:
+            Dict representation of configuration
+        """
+        return asdict(self)
+
+    def save_to_file(self, file_path: str) -> bool:
+        """
+        Save configuration to JSON file.
+
+        Args:
+            file_path: Path to save configuration file
+
+        Returns:
+            bool: True if save was successful
+        """
+        try:
+            config_dict = self.to_dict()
+            # Remove sensitive data
+            config_dict.pop("discord_token", None)
+
+            with open(file_path, "w") as f:
+                json.dump(config_dict, f, indent=2)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save config to {file_path}: {e}")
+            return False
+
+    @classmethod
+    def load_from_file(cls, file_path: str, base_config: "AppConfig") -> "AppConfig":
+        """
+        Load configuration overrides from JSON file.
+
+        Args:
+            file_path: Path to configuration file
+            base_config: Base configuration to override
+
+        Returns:
+            AppConfig with overrides applied
+        """
+        if not os.path.exists(file_path):
+            return base_config
+
+        try:
+            with open(file_path, "r") as f:
+                overrides = json.load(f)
+
+            # Apply overrides to base config
+            config_dict = asdict(base_config)
+            config_dict.update(overrides)
+
+            # Create new config instance
+            # We need to handle this manually since we can't use dataclass constructor directly
+            new_config = cls(**config_dict)
+            return new_config
+
+        except Exception as e:
+            logger.error(f"Failed to load config from {file_path}: {e}")
+            return base_config

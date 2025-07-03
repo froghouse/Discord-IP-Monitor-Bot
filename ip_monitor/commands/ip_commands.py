@@ -344,7 +344,10 @@ class IPCommands:
             "- `!history` - View IP address history\n"
             "- `!status` - View bot status and configuration\n"
             "- `!help` - Show this help message\n"
-            "- `!stop` - Stop the bot (admin only)\n"
+            "\n**Admin Commands:**\n"
+            "- `!config` - Manage bot configuration\n"
+            "- `!queue` - Manage message queue\n"
+            "- `!stop` - Stop the bot\n"
         )
         await self.send_message_with_retry(message.channel, help_text)
         return True

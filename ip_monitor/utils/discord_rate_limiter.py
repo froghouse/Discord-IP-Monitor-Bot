@@ -6,7 +6,7 @@ import asyncio
 import logging
 import random
 import time
-from typing import Optional, Dict, Any, Callable, TypeVar, Awaitable
+from typing import Any, Awaitable, Callable, Dict, Optional, TypeVar
 
 import discord
 

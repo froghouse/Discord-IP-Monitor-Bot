@@ -22,8 +22,13 @@ async def main() -> int:
     logger = logging.getLogger(__name__)
 
     try:
-        # Load configuration
-        config = AppConfig.load_from_env()
+        # Load base configuration from environment
+        base_config = AppConfig.load_from_env()
+
+        # Load any saved configuration overrides
+        config = AppConfig.load_from_file("bot_config.json", base_config)
+
+        logger.info("Configuration loaded successfully")
 
         # Initialize and run the bot
         bot = IPMonitorBot(config)
