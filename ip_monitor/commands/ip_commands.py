@@ -12,6 +12,7 @@ from ip_monitor.ip_service import IPService
 from ip_monitor.storage import IPStorage
 from ip_monitor.utils.rate_limiter import RateLimiter
 from ip_monitor.utils.discord_rate_limiter import DiscordRateLimiter
+from ip_monitor.utils.service_health import service_health
 
 logger = logging.getLogger(__name__)
 
@@ -59,12 +60,27 @@ class IPCommands:
             bool: True if message was sent successfully, False otherwise
         """
         try:
+            # Check if notifications are enabled in current degradation mode
+            if not service_health.should_enable_feature("notifications"):
+                logger.debug("Notifications disabled in current degradation mode")
+                return True  # Pretend success to not break logic
+
             message = await self.discord_rate_limiter.send_message_with_backoff(
                 channel, content
             )
-            return message is not None
+            if message is not None:
+                service_health.record_success("discord_api", "send_message")
+                return True
+            else:
+                service_health.record_failure(
+                    "discord_api", "Failed to send message", "send_message"
+                )
+                return False
         except Exception as e:
             logger.error(f"Failed to send message with rate limiting: {e}")
+            service_health.record_failure(
+                "discord_api", f"Send message error: {e}", "send_message"
+            )
             return False
 
     async def check_ip_once(
@@ -109,14 +125,17 @@ class IPCommands:
             # Get the last known IP
             last_ip = self.storage.load_last_ip()
 
-            # Save the current IP
-            if not self.storage.save_current_ip(current_ip):
-                logger.error("Failed to save current IP address")
-                await self.send_message_with_retry(
-                    channel,
-                    "❌ Failed to save the current IP address. Please try again later.",
-                )
-                return False
+            # Save the current IP (skip if in read-only mode)
+            if not service_health.is_fallback_active("read_only_mode"):
+                if not self.storage.save_current_ip(current_ip):
+                    logger.error("Failed to save current IP address")
+                    await self.send_message_with_retry(
+                        channel,
+                        "❌ Failed to save the current IP address. Please try again later.",
+                    )
+                    return False
+            else:
+                logger.debug("Skipping IP save due to read-only mode")
 
             # Only send a message if the IP has changed or if a user requested the check
             if last_ip and last_ip != current_ip:
@@ -195,6 +214,43 @@ class IPCommands:
         current_ip = self.storage.load_last_ip()
         if current_ip:
             status_text += f"🌐 Current IP: `{current_ip}`\n"
+
+        # Add service health information
+        system_health = service_health.get_system_health()
+        degradation_level = system_health["degradation_level"]
+
+        if degradation_level == "normal":
+            status_text += "✅ System Health: NORMAL\n"
+        elif degradation_level == "minor":
+            status_text += "🟡 System Health: MINOR ISSUES\n"
+        elif degradation_level == "moderate":
+            status_text += "🟠 System Health: DEGRADED\n"
+        elif degradation_level == "severe":
+            status_text += "🔴 System Health: SEVERE DEGRADATION\n"
+        elif degradation_level == "critical":
+            status_text += "💀 System Health: CRITICAL\n"
+
+        # Show failed/degraded services
+        failed_services = [
+            name
+            for name, info in system_health["services"].items()
+            if info["status"] == "failed"
+        ]
+        degraded_services = [
+            name
+            for name, info in system_health["services"].items()
+            if info["status"] == "degraded"
+        ]
+
+        if failed_services:
+            status_text += f"❌ Failed: {', '.join(failed_services)}\n"
+        if degraded_services:
+            status_text += f"⚠️ Degraded: {', '.join(degraded_services)}\n"
+
+        # Show active fallbacks
+        active_fallbacks = system_health["system_capabilities"]["active_fallbacks"]
+        if active_fallbacks:
+            status_text += f"🔄 Active Fallbacks: {', '.join(active_fallbacks)}\n"
 
         await self.send_message_with_retry(message.channel, status_text)
         return True

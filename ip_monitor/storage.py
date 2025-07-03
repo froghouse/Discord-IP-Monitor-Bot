@@ -10,6 +10,8 @@ import tempfile
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from ip_monitor.utils.service_health import service_health
+
 logger = logging.getLogger(__name__)
 
 
@@ -68,9 +70,13 @@ class IPStorage:
             # Rename the temporary file to the target file (atomic operation)
             shutil.move(temp_path, file_path)
 
+            service_health.record_success("storage", "write_file")
             return True
         except Exception as e:
             logger.error(f"Error writing to {file_path}: {e}")
+            service_health.record_failure(
+                "storage", f"Write error to {file_path}: {e}", "write_file"
+            )
             # Clean up the temporary file if it exists
             if "temp_path" in locals() and os.path.exists(temp_path):
                 try:
@@ -93,10 +99,17 @@ class IPStorage:
                 with open(self.history_file, "r") as f:
                     data = json.load(f)
                     if isinstance(data, list):
+                        service_health.record_success("storage", "read_file")
                         return data
                     logger.warning("Invalid format in IP history file")
+                    service_health.record_failure(
+                        "storage", "Invalid format in IP history file", "read_file"
+                    )
             except (json.JSONDecodeError, IOError) as e:
                 logger.error(f"Error loading IP history: {e}")
+                service_health.record_failure(
+                    "storage", f"Error loading IP history: {e}", "read_file"
+                )
         return []
 
     def save_ip_history(self, history: List[Dict[str, Any]]) -> bool:
@@ -132,10 +145,17 @@ class IPStorage:
                     data = json.load(f)
                     ip = data.get("ip")
                     if ip and self.is_valid_ip(ip):
+                        service_health.record_success("storage", "read_file")
                         return ip
                     logger.warning("Invalid or missing IP in last_ip.json")
+                    service_health.record_failure(
+                        "storage", "Invalid or missing IP in last_ip.json", "read_file"
+                    )
             except (json.JSONDecodeError, IOError) as e:
                 logger.error(f"Error loading last IP: {e}")
+                service_health.record_failure(
+                    "storage", f"Error loading last IP: {e}", "read_file"
+                )
         return None
 
     def save_current_ip(self, ip: str) -> bool:

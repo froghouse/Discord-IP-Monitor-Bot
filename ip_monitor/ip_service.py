@@ -11,6 +11,7 @@ from typing import List, Optional
 import httpx
 
 from ip_monitor.utils.circuit_breaker import IPServiceCircuitBreaker
+from ip_monitor.utils.service_health import service_health
 
 logger = logging.getLogger(__name__)
 
@@ -110,22 +111,35 @@ class IPService:
                     ip = response.json()["ip"]
                 except (json.JSONDecodeError, KeyError) as e:
                     logger.warning(f"Failed to parse JSON from {api}: {e}")
+                    service_health.record_failure(
+                        "ip_service", f"JSON parse error from {api}: {e}", "fetch_ip"
+                    )
                     return None
             else:
                 ip = response.text.strip()
 
             if self.is_valid_ip(ip):
                 logger.debug(f"Successfully got IP {ip} from {api}")
+                service_health.record_success("ip_service", "fetch_ip")
                 return ip
             else:
                 logger.warning(f"Invalid IP address returned by {api}: {ip}")
+                service_health.record_failure(
+                    "ip_service", f"Invalid IP from {api}: {ip}", "fetch_ip"
+                )
                 return None
 
         except httpx.HTTPError as e:
             logger.warning(f"Failed to get IP from {api}: {e}")
+            service_health.record_failure(
+                "ip_service", f"HTTP error from {api}: {e}", "fetch_ip"
+            )
             return None
         except Exception as e:
             logger.warning(f"Unexpected error while fetching from {api}: {e}")
+            service_health.record_failure(
+                "ip_service", f"Unexpected error from {api}: {e}", "fetch_ip"
+            )
             return None
 
     async def _get_ip_without_circuit_breaker(self) -> Optional[str]:

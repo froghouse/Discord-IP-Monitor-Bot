@@ -14,6 +14,7 @@ from ip_monitor.ip_service import IPService
 from ip_monitor.storage import IPStorage
 from ip_monitor.utils.rate_limiter import RateLimiter
 from ip_monitor.utils.discord_rate_limiter import DiscordRateLimiter
+from ip_monitor.utils.service_health import service_health
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,9 @@ class IPMonitorBot:
 
         # IP check task reference
         self.check_ip_task = None
+
+        # Store original check interval for degradation adjustments
+        self.base_check_interval = config.check_interval
 
     async def run(self) -> int:
         """
@@ -189,18 +193,51 @@ class IPMonitorBot:
             The discord.ext.tasks.Loop instance
         """
 
-        @tasks.loop(minutes=self.config.check_interval)
+        # Calculate adjusted interval based on service health
+        adjusted_interval = service_health.get_adjusted_interval(
+            self.base_check_interval
+        )
+        logger.info(
+            f"Creating IP check task with {adjusted_interval:.1f} minute interval"
+        )
+
+        @tasks.loop(minutes=adjusted_interval)
         async def check_ip_changes() -> None:
             """
-            Periodic task to check for IP changes.
+            Periodic task to check for IP changes with graceful degradation.
             """
             try:
+                # Check if we should perform the operation in current degradation mode
+                if service_health.is_fallback_active("silent_monitoring"):
+                    logger.debug(
+                        "Silent monitoring mode - skipping IP check notification"
+                    )
+                    # Still check IP but don't send notifications
+                    current_ip = await self.ip_service.get_public_ip()
+                    if current_ip:
+                        # Save IP silently if storage is working
+                        if not service_health.is_fallback_active("read_only_mode"):
+                            self.storage.save_current_ip(current_ip)
+                    return
+
                 await self.ip_commands.check_ip_once(self.client, user_requested=False)
+                service_health.record_success("discord_api", "scheduled_task")
+
             except discord.DiscordException as e:
                 logger.error(f"Discord error in scheduled IP check: {e}")
+                service_health.record_failure(
+                    "discord_api",
+                    f"Discord error in scheduled task: {e}",
+                    "scheduled_task",
+                )
             except Exception as e:
                 logger.error(
                     f"Unexpected error in scheduled IP check: {e}", exc_info=True
+                )
+                service_health.record_failure(
+                    "discord_api",
+                    f"Unexpected error in scheduled task: {e}",
+                    "scheduled_task",
                 )
 
         @check_ip_changes.before_loop
@@ -243,6 +280,24 @@ class IPMonitorBot:
                 check_ip_changes.start()
 
         return check_ip_changes
+
+    def _adjust_check_interval_for_degradation(self) -> None:
+        """Adjust the IP check interval based on current service health."""
+        if self.check_ip_task and self.check_ip_task.is_running():
+            current_interval = self.check_ip_task.minutes
+            adjusted_interval = service_health.get_adjusted_interval(
+                self.base_check_interval
+            )
+
+            if abs(current_interval - adjusted_interval) > 0.1:  # Significant change
+                logger.info(
+                    f"Adjusting IP check interval: {current_interval:.1f} → {adjusted_interval:.1f} minutes"
+                )
+
+                # Restart the task with new interval
+                self.check_ip_task.cancel()
+                self.check_ip_task = self._create_check_ip_task()
+                self.check_ip_task.start()
 
     async def on_message(self, message: discord.Message) -> None:
         """
