@@ -26,6 +26,11 @@ class AppConfig:
     retry_delay: int  # seconds
     concurrent_api_checks: bool
 
+    # Circuit breaker settings
+    circuit_breaker_enabled: bool
+    circuit_breaker_failure_threshold: int
+    circuit_breaker_recovery_timeout: float
+
     # Rate limiting
     rate_limit_period: int  # seconds
     max_checks_per_period: int
@@ -47,6 +52,8 @@ class AppConfig:
     DEFAULT_IP_HISTORY_SIZE: ClassVar[int] = 10
     DEFAULT_RATE_LIMIT_PERIOD: ClassVar[int] = 300
     DEFAULT_MAX_CHECKS: ClassVar[int] = 10
+    DEFAULT_CIRCUIT_BREAKER_FAILURE_THRESHOLD: ClassVar[int] = 3
+    DEFAULT_CIRCUIT_BREAKER_RECOVERY_TIMEOUT: ClassVar[float] = 120.0
 
     @classmethod
     def load_from_env(cls) -> "AppConfig":
@@ -96,6 +103,20 @@ class AppConfig:
             retry_delay=int(os.getenv("RETRY_DELAY", str(cls.DEFAULT_RETRY_DELAY))),
             concurrent_api_checks=os.getenv("CONCURRENT_API_CHECKS", "true").lower()
             == "true",
+            circuit_breaker_enabled=os.getenv("CIRCUIT_BREAKER_ENABLED", "true").lower()
+            == "true",
+            circuit_breaker_failure_threshold=int(
+                os.getenv(
+                    "CIRCUIT_BREAKER_FAILURE_THRESHOLD",
+                    str(cls.DEFAULT_CIRCUIT_BREAKER_FAILURE_THRESHOLD),
+                )
+            ),
+            circuit_breaker_recovery_timeout=float(
+                os.getenv(
+                    "CIRCUIT_BREAKER_RECOVERY_TIMEOUT",
+                    str(cls.DEFAULT_CIRCUIT_BREAKER_RECOVERY_TIMEOUT),
+                )
+            ),
             rate_limit_period=int(
                 os.getenv("RATE_LIMIT_PERIOD", str(cls.DEFAULT_RATE_LIMIT_PERIOD))
             ),

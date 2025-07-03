@@ -172,6 +172,25 @@ class IPCommands:
         status_text += f"⏳ Rate limit status: {'Limited (wait ' + str(wait_time) + ' seconds)' if is_limited else 'Not limited'}\n"
         status_text += f"📝 Checks remaining in current period: {remaining_calls}/{self.rate_limiter.max_calls}\n"
 
+        # Add circuit breaker info
+        cb_info = self.ip_service.get_circuit_breaker_info()
+        if cb_info["enabled"]:
+            cb_state = cb_info["state"]
+            if cb_state == "closed":
+                status_text += "🟢 Circuit breaker: CLOSED (normal operation)\n"
+            elif cb_state == "open":
+                time_until_half_open = cb_info.get("time_until_half_open", 0)
+                status_text += (
+                    f"🔴 Circuit breaker: OPEN (retry in {time_until_half_open:.0f}s)\n"
+                )
+            elif cb_state == "half_open":
+                status_text += "🟡 Circuit breaker: HALF-OPEN (testing recovery)\n"
+
+            if cb_info.get("last_known_ip"):
+                status_text += f"💾 Cached IP: `{cb_info['last_known_ip']}`\n"
+        else:
+            status_text += "⚪ Circuit breaker: Disabled\n"
+
         # Add current IP info
         current_ip = self.storage.load_last_ip()
         if current_ip:

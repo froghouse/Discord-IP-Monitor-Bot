@@ -42,6 +42,9 @@ class IPMonitorBot:
             max_retries=config.max_retries,
             retry_delay=config.retry_delay,
             use_concurrent_checks=config.concurrent_api_checks,
+            circuit_breaker_enabled=config.circuit_breaker_enabled,
+            circuit_breaker_failure_threshold=config.circuit_breaker_failure_threshold,
+            circuit_breaker_recovery_timeout=config.circuit_breaker_recovery_timeout,
         )
 
         self.storage = IPStorage(
@@ -147,6 +150,14 @@ class IPMonitorBot:
                 )
                 await self.client.close()
                 return
+
+            # Initialize circuit breaker with last known IP if available
+            last_ip = self.storage.load_last_ip()
+            if last_ip:
+                self.ip_service.set_last_known_ip(last_ip)
+                logger.info(
+                    f"Initialized circuit breaker with last known IP: {last_ip}"
+                )
 
             if self.config.startup_message_enabled:
                 try:

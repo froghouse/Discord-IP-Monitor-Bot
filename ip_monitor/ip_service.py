@@ -10,6 +10,8 @@ from typing import List, Optional
 
 import httpx
 
+from ip_monitor.utils.circuit_breaker import IPServiceCircuitBreaker
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,6 +35,9 @@ class IPService:
         retry_delay: int = 5,
         use_concurrent_checks: bool = True,
         apis: Optional[List[str]] = None,
+        circuit_breaker_enabled: bool = True,
+        circuit_breaker_failure_threshold: int = 3,
+        circuit_breaker_recovery_timeout: float = 120.0,
     ) -> None:
         """
         Initialize the IP service.
@@ -42,12 +47,28 @@ class IPService:
             retry_delay: Delay between retries in seconds
             use_concurrent_checks: Whether to check APIs concurrently
             apis: List of IP API endpoints to use (optional)
+            circuit_breaker_enabled: Whether to use circuit breaker pattern
+            circuit_breaker_failure_threshold: Number of failures before opening circuit
+            circuit_breaker_recovery_timeout: Time to wait before testing recovery
         """
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.use_concurrent_checks = use_concurrent_checks
         self.apis = apis or self.DEFAULT_IP_APIS
         self.client = None  # Will be initialized when needed
+
+        # Circuit breaker setup
+        self.circuit_breaker_enabled = circuit_breaker_enabled
+        if self.circuit_breaker_enabled:
+            self.circuit_breaker = IPServiceCircuitBreaker(
+                failure_threshold=circuit_breaker_failure_threshold,
+                recovery_timeout=circuit_breaker_recovery_timeout,
+            )
+        else:
+            self.circuit_breaker = None
+
+        # Track last successful IP for fallback
+        self._last_known_ip: Optional[str] = None
 
     @staticmethod
     def is_valid_ip(ip: str) -> bool:
@@ -107,9 +128,9 @@ class IPService:
             logger.warning(f"Unexpected error while fetching from {api}: {e}")
             return None
 
-    async def get_public_ip(self) -> Optional[str]:
+    async def _get_ip_without_circuit_breaker(self) -> Optional[str]:
         """
-        Get the current public IP address with fallback APIs and retry logic.
+        Get IP address without circuit breaker (original implementation).
 
         Returns:
             IP address string or None if unsuccessful
@@ -158,8 +179,91 @@ class IPService:
             logger.error("All IP APIs failed after maximum retry attempts")
             return None
         except Exception as e:
-            logger.error(f"Unexpected error in get_public_ip: {e}")
+            logger.error(f"Unexpected error in IP fetch: {e}")
             return None
+
+    async def get_public_ip(self) -> Optional[str]:
+        """
+        Get the current public IP address with circuit breaker protection.
+
+        Returns:
+            IP address string or None if unsuccessful
+        """
+        if not self.circuit_breaker_enabled or self.circuit_breaker is None:
+            # Use original implementation without circuit breaker
+            result = await self._get_ip_without_circuit_breaker()
+            if result:
+                self._last_known_ip = result
+            return result
+
+        # Use circuit breaker
+        try:
+            result = await self.circuit_breaker.get_ip_with_fallback_cache(
+                self._get_ip_without_circuit_breaker, self._last_known_ip
+            )
+
+            # Update last known IP if we got a fresh result
+            if result and result != self._last_known_ip:
+                logger.debug(
+                    f"Updating last known IP from {self._last_known_ip} to {result}"
+                )
+                self._last_known_ip = result
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Unexpected error in get_public_ip with circuit breaker: {e}")
+            # Fallback to cached IP if available
+            if self._last_known_ip:
+                logger.info(
+                    f"Using last known IP as final fallback: {self._last_known_ip}"
+                )
+                return self._last_known_ip
+            return None
+
+    def get_circuit_breaker_info(self) -> dict:
+        """
+        Get information about the circuit breaker state.
+
+        Returns:
+            Dictionary with circuit breaker information
+        """
+        if not self.circuit_breaker_enabled or self.circuit_breaker is None:
+            return {"enabled": False, "state": "disabled"}
+
+        info = self.circuit_breaker.get_state()
+        info["enabled"] = True
+        info["last_known_ip"] = self._last_known_ip
+        return info
+
+    def reset_circuit_breaker(self) -> bool:
+        """
+        Reset the circuit breaker to initial state.
+
+        Returns:
+            True if reset was successful, False if circuit breaker is disabled
+        """
+        if not self.circuit_breaker_enabled or self.circuit_breaker is None:
+            return False
+
+        self.circuit_breaker.reset()
+        return True
+
+    def set_last_known_ip(self, ip: str) -> bool:
+        """
+        Manually set the last known IP (useful for initialization).
+
+        Args:
+            ip: IP address to set as last known
+
+        Returns:
+            True if IP was valid and set, False otherwise
+        """
+        if self.is_valid_ip(ip):
+            self._last_known_ip = ip
+            logger.info(f"Last known IP set to: {ip}")
+            return True
+        return False
 
     async def close(self) -> None:
         """
