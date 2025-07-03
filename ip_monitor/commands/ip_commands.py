@@ -5,15 +5,16 @@ IP-related commands for the IP Monitor Bot.
 import asyncio
 import logging
 from datetime import datetime
+from typing import Union
 
 import discord
 
 from ip_monitor.ip_service import IPService
-from ip_monitor.storage import IPStorage
-from ip_monitor.utils.rate_limiter import RateLimiter
+from ip_monitor.storage import IPStorage, SQLiteIPStorage
 from ip_monitor.utils.discord_rate_limiter import DiscordRateLimiter
+from ip_monitor.utils.message_queue import MessagePriority, message_queue
+from ip_monitor.utils.rate_limiter import RateLimiter
 from ip_monitor.utils.service_health import service_health
-from ip_monitor.utils.message_queue import message_queue, MessagePriority
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class IPCommands:
         self,
         channel_id: int,
         ip_service: IPService,
-        storage: IPStorage,
+        storage: Union[IPStorage, SQLiteIPStorage],
         rate_limiter: RateLimiter,
     ) -> None:
         """

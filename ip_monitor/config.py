@@ -36,8 +36,9 @@ class AppConfig:
     max_checks_per_period: int
 
     # Storage settings
-    ip_file: str
-    ip_history_file: str
+    db_file: str
+    ip_file: str  # Keep for migration
+    ip_history_file: str  # Keep for migration
     ip_history_size: int
 
     # Application behavior
@@ -134,6 +135,7 @@ class AppConfig:
             max_checks_per_period=int(
                 os.getenv("MAX_CHECKS_PER_PERIOD", str(cls.DEFAULT_MAX_CHECKS))
             ),
+            db_file=os.getenv("DB_FILE", "ip_monitor.db"),
             ip_file=os.getenv("IP_FILE", "last_ip.json"),
             ip_history_file=os.getenv("IP_HISTORY_FILE", "ip_history.json"),
             ip_history_size=int(

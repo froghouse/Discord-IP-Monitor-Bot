@@ -3,12 +3,12 @@ Administrative commands for the IP Monitor Bot.
 """
 
 import logging
-from typing import Any, Callable, Coroutine
+from typing import Any, Callable, Coroutine, Union
 
 import discord
 
 from ip_monitor.ip_service import IPService
-from ip_monitor.storage import IPStorage
+from ip_monitor.storage import IPStorage, SQLiteIPStorage
 from ip_monitor.utils.discord_rate_limiter import DiscordRateLimiter
 from ip_monitor.utils.message_queue import message_queue
 
@@ -24,7 +24,7 @@ class AdminCommands:
         self,
         client: discord.Client,
         ip_service: IPService,
-        storage: IPStorage,
+        storage: Union[IPStorage, SQLiteIPStorage],
         stop_callback: Callable[[], Coroutine[Any, Any, None]],
     ) -> None:
         """

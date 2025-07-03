@@ -11,11 +11,11 @@ from ip_monitor.commands.admin_commands import AdminCommands
 from ip_monitor.commands.ip_commands import IPCommands
 from ip_monitor.config import AppConfig
 from ip_monitor.ip_service import IPService
-from ip_monitor.storage import IPStorage
-from ip_monitor.utils.rate_limiter import RateLimiter
+from ip_monitor.storage import SQLiteIPStorage
 from ip_monitor.utils.discord_rate_limiter import DiscordRateLimiter
-from ip_monitor.utils.service_health import service_health
 from ip_monitor.utils.message_queue import message_queue
+from ip_monitor.utils.rate_limiter import RateLimiter
+from ip_monitor.utils.service_health import service_health
 
 logger = logging.getLogger(__name__)
 
@@ -49,11 +49,15 @@ class IPMonitorBot:
             circuit_breaker_recovery_timeout=config.circuit_breaker_recovery_timeout,
         )
 
-        self.storage = IPStorage(
-            ip_file=config.ip_file,
-            history_file=config.ip_history_file,
+        self.storage = SQLiteIPStorage(
+            db_file=config.db_file,
             history_size=config.ip_history_size,
         )
+
+        # Migrate existing JSON data if it exists
+        if not hasattr(self, "_migration_done"):
+            self.storage.migrate_from_json(config.ip_file, config.ip_history_file)
+            self._migration_done = True
 
         self.rate_limiter = RateLimiter(
             period=config.rate_limit_period, max_calls=config.max_checks_per_period
