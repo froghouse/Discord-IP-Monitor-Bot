@@ -11,6 +11,7 @@ import discord
 from ip_monitor.ip_service import IPService
 from ip_monitor.storage import IPStorage
 from ip_monitor.utils.rate_limiter import RateLimiter
+from ip_monitor.utils.discord_rate_limiter import DiscordRateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -41,12 +42,13 @@ class IPCommands:
         self.storage = storage
         self.rate_limiter = rate_limiter
         self.ip_check_lock = asyncio.Lock()
+        self.discord_rate_limiter = DiscordRateLimiter()
 
     async def send_message_with_retry(
         self, channel: discord.TextChannel, content: str, max_retries: int = 3
     ) -> bool:
         """
-        Send a message to a Discord channel with retry logic.
+        Send a message to a Discord channel with retry logic and rate limiting.
 
         Args:
             channel: The Discord channel to send the message to
@@ -56,19 +58,14 @@ class IPCommands:
         Returns:
             bool: True if message was sent successfully, False otherwise
         """
-        for attempt in range(max_retries):
-            try:
-                await channel.send(content)
-                return True
-            except discord.DiscordException as e:
-                logger.warning(
-                    f"Failed to send message, attempt {attempt + 1}/{max_retries}: {e}"
-                )
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(2)  # Wait before retrying
-
-        logger.error(f"Failed to send message after {max_retries} attempts")
-        return False
+        try:
+            message = await self.discord_rate_limiter.send_message_with_backoff(
+                channel, content
+            )
+            return message is not None
+        except Exception as e:
+            logger.error(f"Failed to send message with rate limiting: {e}")
+            return False
 
     async def check_ip_once(
         self, client: discord.Client, user_requested: bool = False

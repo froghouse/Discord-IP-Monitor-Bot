@@ -9,6 +9,7 @@ import discord
 
 from ip_monitor.ip_service import IPService
 from ip_monitor.storage import IPStorage
+from ip_monitor.utils.discord_rate_limiter import DiscordRateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ class AdminCommands:
         self.ip_service = ip_service
         self.storage = storage
         self.stop_callback = stop_callback
+        self.discord_rate_limiter = DiscordRateLimiter()
 
     async def handle_stop_command(self, message: discord.Message) -> bool:
         """
@@ -63,7 +65,9 @@ class AdminCommands:
                 self.storage.save_current_ip(current_ip)
 
             # Send the goodbye message
-            await message.channel.send("🛑 Stopping bot. Goodbye!")
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, "🛑 Stopping bot. Goodbye!"
+            )
 
             # Execute the stop callback
             await self.stop_callback()
@@ -71,8 +75,9 @@ class AdminCommands:
             return True
         except Exception as e:
             logger.error(f"Error during shutdown: {e}", exc_info=True)
-            await message.channel.send(
-                "⚠️ Error during shutdown. The bot may not stop cleanly."
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel,
+                "⚠️ Error during shutdown. The bot may not stop cleanly.",
             )
             # Try to force close even if there was an error
             await self.client.close()

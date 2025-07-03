@@ -13,6 +13,7 @@ from ip_monitor.config import AppConfig
 from ip_monitor.ip_service import IPService
 from ip_monitor.storage import IPStorage
 from ip_monitor.utils.rate_limiter import RateLimiter
+from ip_monitor.utils.discord_rate_limiter import DiscordRateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,8 @@ class IPMonitorBot:
         self.rate_limiter = RateLimiter(
             period=config.rate_limit_period, max_calls=config.max_checks_per_period
         )
+
+        self.discord_rate_limiter = DiscordRateLimiter()
 
         # Set up command handlers
         self.ip_commands = IPCommands(
@@ -147,10 +150,11 @@ class IPMonitorBot:
 
             if self.config.startup_message_enabled:
                 try:
-                    await channel.send(
-                        f"🟢 IP Monitor Bot started! Will check IP every {self.config.check_interval} minutes."
+                    await self.discord_rate_limiter.send_message_with_backoff(
+                        channel,
+                        f"🟢 IP Monitor Bot started! Will check IP every {self.config.check_interval} minutes.",
                     )
-                except discord.DiscordException as e:
+                except Exception as e:
                     logger.error(f"Failed to send startup message: {e}")
                     # Continue running even if startup message fails
 
@@ -214,8 +218,9 @@ class IPMonitorBot:
             try:
                 channel = self.client.get_channel(self.config.channel_id)
                 if channel:
-                    await channel.send(
-                        "⚠️ An error occurred during scheduled IP check. Check logs for details."
+                    await self.discord_rate_limiter.send_message_with_backoff(
+                        channel,
+                        "⚠️ An error occurred during scheduled IP check. Check logs for details.",
                     )
             except Exception as e:
                 logger.error(f"Failed to send error notification: {e}")
@@ -264,8 +269,9 @@ class IPMonitorBot:
             logger.error(f"Discord error in on_message handler: {e}")
             try:
                 # Attempt to notify about the error
-                await message.channel.send(
-                    f"❌ An error occurred while processing your command: {type(e).__name__}"
+                await self.discord_rate_limiter.send_message_with_backoff(
+                    message.channel,
+                    f"❌ An error occurred while processing your command: {type(e).__name__}",
                 )
             except Exception as notification_error:
                 # If we can't even send an error message, just log it
@@ -275,8 +281,9 @@ class IPMonitorBot:
             logger.error(f"Unexpected error in on_message handler: {e}", exc_info=True)
             try:
                 # Attempt to notify about the error
-                await message.channel.send(
-                    "❌ An unexpected error occurred while processing your command"
+                await self.discord_rate_limiter.send_message_with_backoff(
+                    message.channel,
+                    "❌ An unexpected error occurred while processing your command",
                 )
             except Exception as notification_error:
                 # If we can't even send an error message, just log it
