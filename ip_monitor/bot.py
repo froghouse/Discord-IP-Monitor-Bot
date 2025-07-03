@@ -14,7 +14,7 @@ from ip_monitor.ip_service import IPService
 from ip_monitor.storage import SQLiteIPStorage
 from ip_monitor.utils.discord_rate_limiter import DiscordRateLimiter
 from ip_monitor.utils.message_queue import message_queue
-from ip_monitor.utils.rate_limiter import RateLimiter
+from ip_monitor.utils.async_rate_limiter import AsyncRateLimiter
 from ip_monitor.utils.service_health import service_health
 
 logger = logging.getLogger(__name__)
@@ -64,7 +64,7 @@ class IPMonitorBot:
             self.storage.migrate_from_json(config.ip_file, config.ip_history_file)
             self._migration_done = True
 
-        self.rate_limiter = RateLimiter(
+        self.rate_limiter = AsyncRateLimiter(
             period=config.rate_limit_period, max_calls=config.max_checks_per_period
         )
 
@@ -95,7 +95,7 @@ class IPMonitorBot:
 
         # Store original check interval for degradation adjustments
         self.base_check_interval = config.check_interval
-        
+
         # Cache cleanup task reference
         self.cache_cleanup_task = None
 

@@ -16,7 +16,7 @@ A robust Discord bot that monitors your public IP address and notifies you when 
 - 📬 **Async message queue**: Handles Discord API downtime with priority-based message queuing
 - 🏥 **Service health monitoring**: 5-level health system with automatic degradation and recovery
 - 🔄 **HTTP connection pooling**: Efficient connection reuse with configurable timeouts
-- 🔐 **Rate limiting**: Built-in rate limiting with exponential backoff and jitter
+- 🔐 **Async rate limiting**: Built-in async-native rate limiting with exponential backoff and jitter
 
 ### Storage & Data Management
 - 🗃️ **SQLite database**: Reliable data storage with ACID transactions and automatic migration

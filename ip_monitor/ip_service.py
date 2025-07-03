@@ -99,19 +99,23 @@ class IPService:
 
         # Track last successful IP for fallback
         self._last_known_ip: Optional[str] = None
-        
+
         # Caching configuration
         self.cache_enabled = cache_enabled
         self.cache_ttl = cache_ttl
         self.cache_stale_threshold = cache_stale_threshold
         self.cache = get_cache() if cache_enabled else None
-        
+
         # Configure cache TTL for different types
         if self.cache:
             self.cache.set_ttl(CacheType.IP_RESULT, cache_ttl)
-            self.cache.set_ttl(CacheType.API_RESPONSE, cache_ttl // 2)  # Shorter TTL for API responses
+            self.cache.set_ttl(
+                CacheType.API_RESPONSE, cache_ttl // 2
+            )  # Shorter TTL for API responses
             self.cache.set_ttl(CacheType.DNS_LOOKUP, 3600)  # 1 hour for DNS
-            self.cache.set_ttl(CacheType.PERFORMANCE_DATA, 600)  # 10 minutes for performance data
+            self.cache.set_ttl(
+                CacheType.PERFORMANCE_DATA, 600
+            )  # 10 minutes for performance data
 
         logger.debug(
             f"IP service initialized with connection pool size: {self.connection_pool_size}, "
@@ -334,16 +338,21 @@ class IPService:
                             # Save API configuration changes if using custom APIs
                             if api_configs:
                                 ip_api_manager.save_apis()
-                            
+
                             # Cache the global IP result
                             if self.cache_enabled and self.cache:
                                 self.cache.set(
-                                    "global", "current_ip", result,
+                                    "global",
+                                    "current_ip",
+                                    result,
                                     CacheType.IP_RESULT,
                                     ttl=self.cache_ttl,
-                                    metadata={"source": "concurrent", "timestamp": time.time()}
+                                    metadata={
+                                        "source": "concurrent",
+                                        "timestamp": time.time(),
+                                    },
                                 )
-                            
+
                             return result
 
                     # If we get here, all concurrent checks failed
@@ -560,7 +569,7 @@ class IPService:
             finally:
                 self.client = None
                 self._client_initialized = False
-        
+
         # Save cache to disk
         if self.cache_enabled and self.cache:
             try:
@@ -578,36 +587,36 @@ class IPService:
         """
         if not self.cache_enabled or self.cache is None:
             return {"enabled": False, "stats": {}}
-        
+
         stats = self.cache.get_stats()
         stale_entries = self.cache.get_stale_entries("ip_check")
-        
+
         return {
             "enabled": True,
             "stats": stats,
             "stale_entries_count": len(stale_entries),
             "cache_ttl": self.cache_ttl,
-            "stale_threshold": self.cache_stale_threshold
+            "stale_threshold": self.cache_stale_threshold,
         }
-    
+
     def invalidate_cache(self, namespace: Optional[str] = None) -> int:
         """
         Invalidate cache entries.
-        
+
         Args:
             namespace: Optional namespace to invalidate (None for all)
-            
+
         Returns:
             Number of entries invalidated
         """
         if not self.cache_enabled or self.cache is None:
             return 0
-        
+
         if namespace:
             return self.cache.invalidate(namespace)
         else:
             return self.cache.clear()
-    
+
     async def refresh_stale_cache_entries(self) -> int:
         """
         Refresh stale cache entries proactively.
@@ -617,16 +626,18 @@ class IPService:
         """
         if not self.cache_enabled or self.cache is None:
             return 0
-        
+
         stale_entries = self.cache.get_stale_entries("ip_check")
         refreshed = 0
-        
+
         for entry in stale_entries:
             try:
                 # Parse the cache key to determine API type
                 if entry.metadata and "api_name" in entry.metadata:
                     # Custom API entry
-                    api_config = ip_api_manager.get_api_by_name(entry.metadata["api_name"])
+                    api_config = ip_api_manager.get_api_by_name(
+                        entry.metadata["api_name"]
+                    )
                     if api_config:
                         fresh_ip = await self.fetch_ip_from_custom_api(api_config)
                         if fresh_ip:
@@ -639,5 +650,5 @@ class IPService:
                         refreshed += 1
             except Exception as e:
                 logger.debug(f"Failed to refresh cache entry: {e}")
-        
+
         return refreshed

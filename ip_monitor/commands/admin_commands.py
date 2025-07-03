@@ -1000,7 +1000,7 @@ class AdminCommands:
     async def handle_cache_command(self, message: discord.Message) -> bool:
         """
         Handle the !cache command to manage intelligent caching.
-        
+
         Subcommands:
         - !cache show - Show cache statistics and status
         - !cache clear [namespace] - Clear cache entries (optionally by namespace)
@@ -1045,7 +1045,7 @@ class AdminCommands:
         else:
             await self.discord_rate_limiter.send_message_with_backoff(
                 message.channel,
-                f"❌ Unknown cache subcommand: `{command}`. Use `!cache` for help."
+                f"❌ Unknown cache subcommand: `{command}`. Use `!cache` for help.",
             )
             return True
 
@@ -1053,20 +1053,19 @@ class AdminCommands:
         """Handle !cache show command."""
         try:
             cache_info = self.ip_service.get_cache_info()
-            
+
             if not cache_info["enabled"]:
                 await self.discord_rate_limiter.send_message_with_backoff(
-                    message.channel,
-                    "🗄️ **Cache Status**: Disabled"
+                    message.channel, "🗄️ **Cache Status**: Disabled"
                 )
                 return True
 
             stats = cache_info["stats"]
-            
+
             # Calculate additional metrics
             total_requests = stats["hits"] + stats["misses"]
             hit_rate = stats["hit_rate"] * 100 if "hit_rate" in stats else 0
-            
+
             response = (
                 "🗄️ **Intelligent Cache Status**\n"
                 f"```\n"
@@ -1091,11 +1090,11 @@ class AdminCommands:
                 f"  Loads:          {stats['loads']}\n"
                 f"```"
             )
-            
+
             await self.discord_rate_limiter.send_message_with_backoff(
                 message.channel, response
             )
-            
+
             logger.info(f"Admin {message.author} viewed cache status")
             return True
 
@@ -1110,11 +1109,10 @@ class AdminCommands:
         """Handle !cache clear [namespace] command."""
         try:
             cache_info = self.ip_service.get_cache_info()
-            
+
             if not cache_info["enabled"]:
                 await self.discord_rate_limiter.send_message_with_backoff(
-                    message.channel,
-                    "❌ Cache is disabled"
+                    message.channel, "❌ Cache is disabled"
                 )
                 return True
 
@@ -1123,17 +1121,21 @@ class AdminCommands:
                 namespace = parts[2]
 
             cleared_count = self.ip_service.invalidate_cache(namespace)
-            
+
             if namespace:
-                response = f"✅ Cleared {cleared_count} entries from namespace `{namespace}`"
+                response = (
+                    f"✅ Cleared {cleared_count} entries from namespace `{namespace}`"
+                )
             else:
                 response = f"✅ Cleared all {cleared_count} cache entries"
-            
+
             await self.discord_rate_limiter.send_message_with_backoff(
                 message.channel, response
             )
-            
-            logger.info(f"Admin {message.author} cleared cache (namespace: {namespace})")
+
+            logger.info(
+                f"Admin {message.author} cleared cache (namespace: {namespace})"
+            )
             return True
 
         except Exception as e:
@@ -1147,35 +1149,41 @@ class AdminCommands:
         """Handle !cache stats command."""
         try:
             cache_info = self.ip_service.get_cache_info()
-            
+
             if not cache_info["enabled"]:
                 await self.discord_rate_limiter.send_message_with_backoff(
-                    message.channel,
-                    "❌ Cache is disabled"
+                    message.channel, "❌ Cache is disabled"
                 )
                 return True
 
             stats = cache_info["stats"]
-            
+
             # Get cache instance for detailed stats
             from ip_monitor.utils.cache import get_cache
+
             cache = get_cache()
-            
+
             # Count entries by type
             entry_types = {}
             for entry in cache.memory_cache.values():
                 cache_type = entry.cache_type.value
                 entry_types[cache_type] = entry_types.get(cache_type, 0) + 1
-            
-            type_breakdown = "\n".join([
-                f"  {cache_type}: {count}" 
-                for cache_type, count in entry_types.items()
-            ]) if entry_types else "  No entries"
-            
+
+            type_breakdown = (
+                "\n".join(
+                    [
+                        f"  {cache_type}: {count}"
+                        for cache_type, count in entry_types.items()
+                    ]
+                )
+                if entry_types
+                else "  No entries"
+            )
+
             total_requests = stats["hits"] + stats["misses"]
             hit_rate = stats["hit_rate"] * 100 if "hit_rate" in stats else 0
             miss_rate = 100 - hit_rate if total_requests > 0 else 0
-            
+
             response = (
                 "📊 **Detailed Cache Statistics**\n"
                 f"```\n"
@@ -1206,11 +1214,11 @@ class AdminCommands:
                 f"  Disk Loads:       {stats['loads']}\n"
                 f"```"
             )
-            
+
             await self.discord_rate_limiter.send_message_with_backoff(
                 message.channel, response
             )
-            
+
             logger.info(f"Admin {message.author} viewed cache statistics")
             return True
 
@@ -1221,23 +1229,25 @@ class AdminCommands:
             logger.error(f"Error handling cache stats command: {e}")
             return True
 
-    async def _handle_cache_cleanup(self, message: discord.Message, parts: list) -> bool:
+    async def _handle_cache_cleanup(
+        self, message: discord.Message, parts: list
+    ) -> bool:
         """Handle !cache cleanup command."""
         try:
             cache_info = self.ip_service.get_cache_info()
-            
+
             if not cache_info["enabled"]:
                 await self.discord_rate_limiter.send_message_with_backoff(
-                    message.channel,
-                    "❌ Cache is disabled"
+                    message.channel, "❌ Cache is disabled"
                 )
                 return True
 
             from ip_monitor.utils.cache import get_cache
+
             cache = get_cache()
-            
+
             cleanup_results = cache.cleanup()
-            
+
             response = (
                 f"🧹 **Cache Cleanup Complete**\n"
                 f"```\n"
@@ -1246,11 +1256,11 @@ class AdminCommands:
                 f"Cache Saved to Disk:     Yes\n"
                 f"```"
             )
-            
+
             await self.discord_rate_limiter.send_message_with_backoff(
                 message.channel, response
             )
-            
+
             logger.info(f"Admin {message.author} performed cache cleanup")
             return True
 
@@ -1261,36 +1271,40 @@ class AdminCommands:
             logger.error(f"Error handling cache cleanup command: {e}")
             return True
 
-    async def _handle_cache_refresh(self, message: discord.Message, parts: list) -> bool:
+    async def _handle_cache_refresh(
+        self, message: discord.Message, parts: list
+    ) -> bool:
         """Handle !cache refresh command."""
         try:
             cache_info = self.ip_service.get_cache_info()
-            
+
             if not cache_info["enabled"]:
                 await self.discord_rate_limiter.send_message_with_backoff(
-                    message.channel,
-                    "❌ Cache is disabled"
+                    message.channel, "❌ Cache is disabled"
                 )
                 return True
 
             # Send initial message
             await self.discord_rate_limiter.send_message_with_backoff(
-                message.channel,
-                "🔄 Refreshing stale cache entries... Please wait."
+                message.channel, "🔄 Refreshing stale cache entries... Please wait."
             )
-            
+
             refreshed_count = await self.ip_service.refresh_stale_cache_entries()
-            
+
             if refreshed_count > 0:
-                response = f"✅ Successfully refreshed {refreshed_count} stale cache entries"
+                response = (
+                    f"✅ Successfully refreshed {refreshed_count} stale cache entries"
+                )
             else:
                 response = "ℹ️ No stale cache entries found to refresh"
-            
+
             await self.discord_rate_limiter.send_message_with_backoff(
                 message.channel, response
             )
-            
-            logger.info(f"Admin {message.author} refreshed {refreshed_count} cache entries")
+
+            logger.info(
+                f"Admin {message.author} refreshed {refreshed_count} cache entries"
+            )
             return True
 
         except Exception as e:

@@ -63,7 +63,7 @@ class AppConfig:
     connection_pool_max_keepalive: int
     connection_timeout: float
     read_timeout: float
-    
+
     # Intelligent caching settings
     cache_enabled: bool
     cache_ttl: int  # seconds
@@ -554,11 +554,13 @@ class AppConfig:
             config_dict = self.to_dict()
             # Remove sensitive data
             config_dict.pop("discord_token", None)
-            
+
             # Add cache configuration metadata
             config_dict["cache_info"] = {
                 "version": "1.0",
-                "saved_at": os.path.getmtime(file_path) if os.path.exists(file_path) else None
+                "saved_at": os.path.getmtime(file_path)
+                if os.path.exists(file_path)
+                else None,
             }
 
             with open(file_path, "w") as f:

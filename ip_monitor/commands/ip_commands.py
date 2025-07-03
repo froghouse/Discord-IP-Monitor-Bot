@@ -13,7 +13,7 @@ from ip_monitor.ip_service import IPService
 from ip_monitor.storage import IPStorage, SQLiteIPStorage
 from ip_monitor.utils.discord_rate_limiter import DiscordRateLimiter
 from ip_monitor.utils.message_queue import MessagePriority, message_queue
-from ip_monitor.utils.rate_limiter import RateLimiter
+from ip_monitor.utils.async_rate_limiter import AsyncRateLimiter
 from ip_monitor.utils.service_health import service_health
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class IPCommands:
         channel_id: int,
         ip_service: IPService,
         storage: Union[IPStorage, SQLiteIPStorage],
-        rate_limiter: RateLimiter,
+        rate_limiter: AsyncRateLimiter,
     ) -> None:
         """
         Initialize the IP commands handler.
@@ -160,7 +160,7 @@ class IPCommands:
                 return False
 
             # Check if we're rate limited
-            is_limited, wait_time = self.rate_limiter.is_limited()
+            is_limited, wait_time = await self.rate_limiter.is_limited()
             if is_limited:
                 logger.warning(f"Rate limit reached. Need to wait {wait_time} seconds.")
                 await self.send_message_with_retry(
@@ -239,8 +239,8 @@ class IPCommands:
         logger.info(f"Status check requested by {message.author}")
 
         # Format status info
-        is_limited, wait_time = self.rate_limiter.is_limited()
-        remaining_calls = self.rate_limiter.get_remaining_calls()
+        is_limited, wait_time = await self.rate_limiter.is_limited()
+        remaining_calls = await self.rate_limiter.get_remaining_calls()
         check_interval = getattr(self, "check_interval", 30)  # Default to 30 if not set
         max_retries = self.ip_service.max_retries
         concurrent_api_checking = self.ip_service.use_concurrent_checks
@@ -279,10 +279,12 @@ class IPCommands:
             memory_entries = stats.get("memory_entries", 0)
             memory_usage = stats.get("memory_usage_mb", 0)
             stale_entries = cache_info.get("stale_entries_count", 0)
-            
+
             if memory_entries > 0:
                 status_text += f"🗄️ Cache: Enabled ({hit_rate:.1f}% hit rate)\n"
-                status_text += f"   ↳ Entries: {memory_entries}, Memory: {memory_usage:.1f} MB"
+                status_text += (
+                    f"   ↳ Entries: {memory_entries}, Memory: {memory_usage:.1f} MB"
+                )
                 if stale_entries > 0:
                     status_text += f", Stale: {stale_entries}"
                 status_text += "\n"
@@ -421,7 +423,7 @@ class IPCommands:
         logger.info(f"IP check requested by {message.author}")
 
         # Check if we're rate limited
-        is_limited, wait_time = self.rate_limiter.is_limited()
+        is_limited, wait_time = await self.rate_limiter.is_limited()
         if is_limited:
             logger.warning(f"Rate limit reached. Need to wait {wait_time} seconds.")
             await self.send_message_with_retry(
