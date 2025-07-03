@@ -132,7 +132,7 @@ For backwards compatibility, the bot still supports the original text-based comm
 
 ### Prerequisites
 
-- Python 3.11 or higher
+- Python 3.13 or higher
 - Discord Bot Token (create one at [Discord Developer Portal](https://discord.com/developers/applications))
 - Permissions to write files in the bot directory
 
