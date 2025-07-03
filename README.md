@@ -191,6 +191,7 @@ The bot is built with a modular architecture designed for resilience, scalabilit
 ### Resilience & Fault Tolerance
 
 - **Discord Rate Limiter** (`ip_monitor/utils/discord_rate_limiter.py`): Handles Discord API rate limits with exponential backoff
+- **Async Rate Limiter** (`ip_monitor/utils/async_rate_limiter.py`): Async-native rate limiting for IP API calls with configurable windows and token bucket algorithm
 - **Circuit Breaker** (`ip_monitor/utils/circuit_breaker.py`): Prevents cascading failures with 3-state pattern (CLOSED/OPEN/HALF_OPEN)
 - **Service Health Monitor** (`ip_monitor/utils/service_health.py`): Tracks system health with 5-level degradation and automatic fallback
 - **Message Queue** (`ip_monitor/utils/message_queue.py`): Async message queuing with persistence and priority handling
@@ -392,6 +393,77 @@ The system tracks comprehensive metrics accessible via `!cache stats`:
 - **Operations**: Counts of hits, misses, evictions, and refreshes
 - **Efficiency Rating**: Automatic performance assessment
 
+## Async Rate Limiting System
+
+The bot includes an async-native rate limiting system that provides efficient, non-blocking rate limiting for IP API calls and user commands. This system replaces traditional thread-based rate limiting with async/await patterns for better performance.
+
+### Features
+
+#### AsyncRateLimiter
+- **Async-Native Design**: Uses `asyncio.Lock()` instead of threading locks
+- **Better Performance**: Eliminates thread switching overhead in async contexts
+- **Memory Management**: Automatic cleanup of expired call timestamps
+- **Detailed Monitoring**: Comprehensive status reporting and utilization metrics
+
+#### Core Methods
+```python
+# Check if rate limited
+is_limited, wait_time = await rate_limiter.is_limited()
+
+# Acquire a slot, waiting if necessary
+await rate_limiter.acquire()
+
+# Try to acquire without waiting
+if await rate_limiter.try_acquire():
+    # Proceed with operation
+    pass
+
+# Get detailed status
+status = await rate_limiter.get_status()
+```
+
+### Token Bucket Algorithm
+
+The system also includes `TokenBucketRateLimiter` for advanced use cases:
+- **Burst Traffic Support**: Allows burst traffic up to bucket capacity
+- **Smooth Rate Limiting**: Maintains overall rate while allowing bursts
+- **Configurable Rates**: Supports fractional tokens per second
+
+```python
+# Initialize with 2 tokens/second, capacity 10
+bucket = TokenBucketRateLimiter(rate=2.0, capacity=10)
+
+# Acquire multiple tokens for larger operations
+await bucket.acquire(tokens=3)
+```
+
+### Configuration
+
+Rate limiting is configured via environment variables:
+
+```bash
+# Rate limiting settings
+RATE_LIMIT_PERIOD=300              # Rate limit window in seconds (5 minutes)
+MAX_CHECKS_PER_PERIOD=10           # Maximum IP checks allowed in window
+```
+
+### Integration
+
+The async rate limiter is integrated throughout the bot:
+
+- **IP Commands**: Manual IP checks via `!ip` command respect rate limits
+- **Status Display**: Rate limit status shown in `!status` command
+- **Automatic Checks**: Scheduled IP monitoring respects configured limits
+- **Admin Monitoring**: Rate limit information available in diagnostics
+
+### Benefits Over Threading
+
+1. **No Thread Blocking**: All operations are async and non-blocking
+2. **Better Performance**: Eliminates context switching between threads
+3. **Cleaner Integration**: Works naturally with the async bot architecture
+4. **Enhanced Monitoring**: More detailed metrics and status reporting
+5. **Memory Efficiency**: Automatic cleanup prevents memory leaks
+
 ## Deployment
 
 For production deployment, you may want to use a process manager like `systemd`, `supervisor`, or Docker. Here's a simple systemd service file example:
@@ -433,7 +505,7 @@ WantedBy=multi-user.target
 - All HTTP requests use connection pooling with configurable timeouts
 - Custom IP APIs should use HTTPS endpoints when possible
 - Circuit breaker prevents excessive requests to failing services
-- Rate limiting protects against API abuse
+- Async rate limiting protects against API abuse without blocking threads
 
 ### System Security
 - Consider running the bot with minimal system permissions
@@ -473,7 +545,9 @@ WantedBy=multi-user.target
 - Monitor system health with `!status` command
 - Check message queue status with `!queue` command
 - Review circuit breaker status in the health report
+- Check rate limiting status in `!status` output (utilization percentage)
 - Adjust connection pool settings if experiencing timeouts
+- Review cache performance with `!cache stats` for optimization opportunities
 
 ### Diagnostic Commands
 
@@ -482,6 +556,7 @@ WantedBy=multi-user.target
 !status                                # Overall system health and performance
 !queue                                 # Message queue status and statistics
 !api stats                             # API performance rankings
+!cache stats                           # Detailed cache performance metrics
 ```
 
 #### Configuration Issues
@@ -496,6 +571,8 @@ WantedBy=multi-user.target
 !queue clear                          # Clear stuck messages
 !queue retry                          # Retry failed messages
 !api test <api_name>                  # Test specific API
+!cache clear                          # Clear cache if causing issues
+!cache cleanup                        # Clean up expired cache entries
 ```
 
 ### Log Files
