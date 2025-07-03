@@ -2,10 +2,11 @@
 Core bot implementation for the IP Monitor Bot.
 """
 
+import asyncio
 import logging
 
 import discord
-from discord.ext import tasks
+from discord.ext import tasks, commands
 
 from ip_monitor.commands.admin_commands import AdminCommands
 from ip_monitor.commands.ip_commands import IPCommands
@@ -34,10 +35,10 @@ class IPMonitorBot:
         """
         self.config = config
 
-        # Set up Discord client
+        # Set up Discord bot with slash command support
         intents = discord.Intents.default()
-        intents.message_content = True
-        self.client = discord.Client(intents=intents)
+        intents.message_content = True  # Keep for backwards compatibility during transition
+        self.client = commands.Bot(command_prefix='!', intents=intents)
 
         # Configure services
         self.ip_service = IPService(
@@ -70,7 +71,7 @@ class IPMonitorBot:
 
         self.discord_rate_limiter = DiscordRateLimiter()
 
-        # Set up command handlers
+        # Set up command handlers (legacy text commands)
         self.ip_commands = IPCommands(
             channel_id=config.channel_id,
             ip_service=self.ip_service,
@@ -86,6 +87,9 @@ class IPMonitorBot:
             config=config,
         )
 
+        # Set up slash command handlers
+        self._setup_slash_commands()
+
         # Configure client event handlers
         self.client.event(self.on_ready)
         self.client.event(self.on_message)
@@ -98,6 +102,40 @@ class IPMonitorBot:
 
         # Cache cleanup task reference
         self.cache_cleanup_task = None
+
+    def _setup_slash_commands(self) -> None:
+        """
+        Set up slash command cogs.
+        """
+        # Import slash command classes
+        from ip_monitor.slash_commands.ip_slash_commands import IPSlashCommands
+        from ip_monitor.slash_commands.admin_slash_commands import AdminSlashCommands
+
+        # Add IP slash commands cog
+        ip_slash_cog = IPSlashCommands(
+            bot=self.client,
+            channel_id=self.config.channel_id,
+            ip_service=self.ip_service,
+            storage=self.storage,
+            rate_limiter=self.rate_limiter,
+            ip_commands_handler=self.ip_commands,
+        )
+        
+        # Add admin slash commands cog
+        admin_slash_cog = AdminSlashCommands(
+            bot=self.client,
+            ip_service=self.ip_service,
+            storage=self.storage,
+            stop_callback=self._stop_bot,
+            config=self.config,
+            admin_commands_handler=self.admin_commands,
+        )
+
+        # Store cogs for later registration
+        self.ip_slash_cog = ip_slash_cog
+        self.admin_slash_cog = admin_slash_cog
+
+        logger.info("Slash commands prepared for registration")
 
     async def run(self) -> int:
         """
@@ -208,6 +246,21 @@ class IPMonitorBot:
                 except Exception as e:
                     logger.error(f"Failed to send startup message: {e}")
                     # Continue running even if startup message fails
+
+            # Register slash command cogs
+            try:
+                await self.client.add_cog(self.ip_slash_cog)
+                await self.client.add_cog(self.admin_slash_cog)
+                logger.info("Slash command cogs registered successfully")
+            except Exception as e:
+                logger.error(f"Failed to register slash command cogs: {e}")
+
+            # Sync slash commands with Discord
+            try:
+                synced = await self.client.tree.sync()
+                logger.info(f"Synced {len(synced)} slash commands with Discord")
+            except Exception as e:
+                logger.error(f"Failed to sync slash commands: {e}")
 
             # Start the scheduled task - this will handle the initial check
             self.check_ip_task = self._create_check_ip_task()

@@ -40,28 +40,62 @@ A robust Discord bot that monitors your public IP address and notifies you when 
 
 ## Commands
 
-### User Commands
+The bot supports both **modern slash commands** (recommended) and legacy text commands for backwards compatibility.
+
+### User Commands (Slash Commands)
+- `/ip` - Manually check the current public IP address
+- `/history` - View the history of IP address changes
+- `/status` - View bot status, configuration, and system health
+- `/help` - Display available commands and their usage
+
+### Admin Commands (Slash Commands)
+
+*All admin commands require administrator permissions in the Discord server.*
+
+#### Bot Management
+- `/stop` - Gracefully shut down the bot
+
+#### Configuration Management
+- `/config show [field]` - Display current configuration (optionally for a specific field)
+- `/config set <field> <value>` - Update a configuration field
+- `/config list` - List all configurable fields with descriptions
+- `/config save` - Save current configuration to file
+- `/config reload` - Reload configuration from file (requires restart)
+
+#### Custom IP API Management
+- `/api list` - List all configured IP APIs with performance data
+- `/api add <name> <url> [format] [field]` - Add new IP API
+- `/api remove <api_id>` - Remove IP API by ID or name
+- `/api toggle <api_id> <enable|disable>` - Enable or disable IP API
+- `/api test <api_id>` - Test IP API response
+- `/api stats` - Show API performance statistics
+
+#### Cache Management
+- `/cache show` - Show cache status and statistics
+- `/cache clear [namespace]` - Clear cache entries (all or by namespace)
+
+#### Message Queue Management
+- `/queue status` - Show message queue status and statistics
+- `/queue clear` - Clear all queued messages
+
+### Legacy Text Commands (Backwards Compatibility)
+
+For backwards compatibility, the bot still supports the original text-based commands:
+
+#### User Commands
 - `!ip` - Manually check the current public IP address
 - `!history` - View the history of IP address changes
 - `!status` - View bot status, configuration, and system health
 - `!help` - Display available commands
 
-### Admin Commands
-
-#### Bot Management
+#### Admin Commands
 - `!stop` - Gracefully shut down the bot (admin only)
-
-#### Configuration Management
-- `!config` - Manage bot configuration at runtime
 - `!config show` - Display current configuration
 - `!config show <field>` - Show specific configuration field
 - `!config set <field> <value>` - Update configuration field
 - `!config list` - List all configurable fields with descriptions
 - `!config save` - Save current configuration to file
 - `!config reload` - Reload configuration from file (requires restart)
-
-#### Custom IP API Management
-- `!api` - Manage custom IP detection APIs
 - `!api list` - List all configured IP APIs with performance data
 - `!api add <name> <url> [format] [field]` - Add new IP API
 - `!api remove <id>` - Remove IP API
@@ -69,21 +103,30 @@ A robust Discord bot that monitors your public IP address and notifies you when 
 - `!api test <id>` - Test IP API response
 - `!api priority <id> <priority>` - Set API priority
 - `!api stats` - Show API performance statistics
-
-#### Cache Management
-- `!cache` - Manage intelligent cache system
 - `!cache show` - Show cache status and statistics
 - `!cache clear [namespace]` - Clear cache entries (all or by namespace)
 - `!cache stats` - Show detailed cache statistics
 - `!cache cleanup` - Force cleanup of expired entries
 - `!cache refresh` - Refresh stale cache entries
-
-#### Message Queue Management
 - `!queue` - Show message queue status and statistics
 - `!queue clear` - Clear all queued messages
 - `!queue retry` - Retry all failed messages
 - `!queue start` - Start message queue processing
 - `!queue stop` - Stop message queue processing
+
+### Command Features
+
+#### Slash Command Benefits
+- **Auto-completion**: Discord provides parameter suggestions
+- **Parameter validation**: Built-in type checking and validation
+- **Better UX**: Modern, intuitive interface
+- **Ephemeral responses**: Admin commands respond privately by default
+- **Permission integration**: Automatic permission checking
+
+#### Permission System
+- **User commands**: Available to all users in the designated channel
+- **Admin commands**: Require administrator permissions in the Discord server
+- **Ephemeral responses**: Admin slash commands respond privately to prevent clutter
 
 ## Installation
 
