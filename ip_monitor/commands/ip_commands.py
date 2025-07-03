@@ -271,6 +271,26 @@ class IPCommands:
         else:
             status_text += "⚪ Circuit breaker: Disabled\n"
 
+        # Add cache information
+        cache_info = self.ip_service.get_cache_info()
+        if cache_info["enabled"]:
+            stats = cache_info["stats"]
+            hit_rate = stats.get("hit_rate", 0) * 100
+            memory_entries = stats.get("memory_entries", 0)
+            memory_usage = stats.get("memory_usage_mb", 0)
+            stale_entries = cache_info.get("stale_entries_count", 0)
+            
+            if memory_entries > 0:
+                status_text += f"🗄️ Cache: Enabled ({hit_rate:.1f}% hit rate)\n"
+                status_text += f"   ↳ Entries: {memory_entries}, Memory: {memory_usage:.1f} MB"
+                if stale_entries > 0:
+                    status_text += f", Stale: {stale_entries}"
+                status_text += "\n"
+            else:
+                status_text += "🗄️ Cache: Enabled (no entries yet)\n"
+        else:
+            status_text += "⚪ Cache: Disabled\n"
+
         # Add current IP info
         current_ip = self.storage.load_last_ip()
         if current_ip:
@@ -347,6 +367,7 @@ class IPCommands:
             "\n**Admin Commands:**\n"
             "- `!config` - Manage bot configuration\n"
             "- `!api` - Manage IP detection APIs\n"
+            "- `!cache` - Manage intelligent caching\n"
             "- `!queue` - Manage message queue\n"
             "- `!stop` - Stop the bot\n"
         )

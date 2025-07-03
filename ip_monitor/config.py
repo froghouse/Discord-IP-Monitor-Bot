@@ -63,6 +63,14 @@ class AppConfig:
     connection_pool_max_keepalive: int
     connection_timeout: float
     read_timeout: float
+    
+    # Intelligent caching settings
+    cache_enabled: bool
+    cache_ttl: int  # seconds
+    cache_max_memory_size: int  # maximum cache entries
+    cache_stale_threshold: float  # 0.0-1.0, when to consider entries stale
+    cache_file: str  # cache persistence file
+    cache_cleanup_interval: int  # seconds between cleanup runs
 
     # Class constants
     DEFAULT_MAX_RETRIES: ClassVar[int] = 3
@@ -81,6 +89,10 @@ class AppConfig:
     DEFAULT_CONNECTION_POOL_MAX_KEEPALIVE: ClassVar[int] = 5
     DEFAULT_CONNECTION_TIMEOUT: ClassVar[float] = 10.0
     DEFAULT_READ_TIMEOUT: ClassVar[float] = 30.0
+    DEFAULT_CACHE_TTL: ClassVar[int] = 300
+    DEFAULT_CACHE_MAX_MEMORY_SIZE: ClassVar[int] = 1000
+    DEFAULT_CACHE_STALE_THRESHOLD: ClassVar[float] = 0.8
+    DEFAULT_CACHE_CLEANUP_INTERVAL: ClassVar[int] = 300
 
     @classmethod
     def load_from_env(cls) -> "AppConfig":
@@ -212,10 +224,36 @@ class AppConfig:
                     str(cls.DEFAULT_READ_TIMEOUT),
                 )
             ),
+            cache_enabled=os.getenv("CACHE_ENABLED", "true").lower() == "true",
+            cache_ttl=int(
+                os.getenv(
+                    "CACHE_TTL",
+                    str(cls.DEFAULT_CACHE_TTL),
+                )
+            ),
+            cache_max_memory_size=int(
+                os.getenv(
+                    "CACHE_MAX_MEMORY_SIZE",
+                    str(cls.DEFAULT_CACHE_MAX_MEMORY_SIZE),
+                )
+            ),
+            cache_stale_threshold=float(
+                os.getenv(
+                    "CACHE_STALE_THRESHOLD",
+                    str(cls.DEFAULT_CACHE_STALE_THRESHOLD),
+                )
+            ),
+            cache_file=os.getenv("CACHE_FILE", "cache.json"),
+            cache_cleanup_interval=int(
+                os.getenv(
+                    "CACHE_CLEANUP_INTERVAL",
+                    str(cls.DEFAULT_CACHE_CLEANUP_INTERVAL),
+                )
+            ),
         )
 
         # Validate file paths
-        for file_path in [config.ip_file, config.ip_history_file]:
+        for file_path in [config.ip_file, config.ip_history_file, config.cache_file]:
             directory = os.path.dirname(file_path) or "."
             if directory != "." and not os.path.exists(directory):
                 logger.warning(f"Directory does not exist: {directory}")
@@ -375,6 +413,41 @@ class AppConfig:
                 "unit": "seconds",
                 "restart_required": False,
             },
+            "cache_enabled": {
+                "type": "bool",
+                "description": "Enable intelligent caching system",
+                "restart_required": False,
+            },
+            "cache_ttl": {
+                "type": "int",
+                "min_value": 30,
+                "max_value": 3600,
+                "description": "Default cache TTL in seconds",
+                "unit": "seconds",
+                "restart_required": False,
+            },
+            "cache_max_memory_size": {
+                "type": "int",
+                "min_value": 100,
+                "max_value": 10000,
+                "description": "Maximum cache entries in memory",
+                "restart_required": False,
+            },
+            "cache_stale_threshold": {
+                "type": "float",
+                "min_value": 0.1,
+                "max_value": 0.9,
+                "description": "Threshold for considering cache entries stale (0.0-1.0)",
+                "restart_required": False,
+            },
+            "cache_cleanup_interval": {
+                "type": "int",
+                "min_value": 60,
+                "max_value": 3600,
+                "description": "Interval between cache cleanup runs",
+                "unit": "seconds",
+                "restart_required": False,
+            },
         }
         return configurable_fields
 
@@ -481,6 +554,12 @@ class AppConfig:
             config_dict = self.to_dict()
             # Remove sensitive data
             config_dict.pop("discord_token", None)
+            
+            # Add cache configuration metadata
+            config_dict["cache_info"] = {
+                "version": "1.0",
+                "saved_at": os.path.getmtime(file_path) if os.path.exists(file_path) else None
+            }
 
             with open(file_path, "w") as f:
                 json.dump(config_dict, f, indent=2)

@@ -95,6 +95,9 @@ class IPMonitorBot:
 
         # Store original check interval for degradation adjustments
         self.base_check_interval = config.check_interval
+        
+        # Cache cleanup task reference
+        self.cache_cleanup_task = None
 
     async def run(self) -> int:
         """
@@ -366,6 +369,8 @@ class IPMonitorBot:
                 await self.admin_commands.handle_config_command(message)
             elif message.content.startswith("!api"):
                 await self.admin_commands.handle_api_command(message)
+            elif message.content.startswith("!cache"):
+                await self.admin_commands.handle_cache_command(message)
             elif message.content.startswith("!stop"):
                 await self.admin_commands.handle_stop_command(message)
 

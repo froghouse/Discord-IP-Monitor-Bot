@@ -14,6 +14,7 @@ import httpx
 from ip_monitor.ip_api_config import ResponseFormat, ip_api_manager
 from ip_monitor.utils.circuit_breaker import IPServiceCircuitBreaker
 from ip_monitor.utils.service_health import service_health
+from ip_monitor.utils.cache import get_cache, CacheType
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,9 @@ class IPService:
         connection_pool_max_keepalive: int = 5,
         connection_timeout: float = 10.0,
         read_timeout: float = 30.0,
+        cache_enabled: bool = True,
+        cache_ttl: int = 300,
+        cache_stale_threshold: float = 0.8,
     ) -> None:
         """
         Initialize the IP service.
@@ -63,6 +67,9 @@ class IPService:
             connection_pool_max_keepalive: Maximum number of keep-alive connections
             connection_timeout: Timeout for establishing connections
             read_timeout: Timeout for reading responses
+            cache_enabled: Whether to enable intelligent caching
+            cache_ttl: Default cache TTL in seconds
+            cache_stale_threshold: Threshold for considering cache entries stale (0.0-1.0)
         """
         self.max_retries = max_retries
         self.retry_delay = retry_delay
@@ -92,12 +99,26 @@ class IPService:
 
         # Track last successful IP for fallback
         self._last_known_ip: Optional[str] = None
+        
+        # Caching configuration
+        self.cache_enabled = cache_enabled
+        self.cache_ttl = cache_ttl
+        self.cache_stale_threshold = cache_stale_threshold
+        self.cache = get_cache() if cache_enabled else None
+        
+        # Configure cache TTL for different types
+        if self.cache:
+            self.cache.set_ttl(CacheType.IP_RESULT, cache_ttl)
+            self.cache.set_ttl(CacheType.API_RESPONSE, cache_ttl // 2)  # Shorter TTL for API responses
+            self.cache.set_ttl(CacheType.DNS_LOOKUP, 3600)  # 1 hour for DNS
+            self.cache.set_ttl(CacheType.PERFORMANCE_DATA, 600)  # 10 minutes for performance data
 
         logger.debug(
             f"IP service initialized with connection pool size: {self.connection_pool_size}, "
             f"max keepalive: {self.connection_pool_max_keepalive}, "
             f"connection timeout: {self.connection_timeout}s, "
-            f"read timeout: {self.read_timeout}s"
+            f"read timeout: {self.read_timeout}s, "
+            f"cache enabled: {self.cache_enabled}, cache TTL: {self.cache_ttl}s"
         )
 
     def get_apis_to_use(self) -> List[str]:
@@ -313,6 +334,16 @@ class IPService:
                             # Save API configuration changes if using custom APIs
                             if api_configs:
                                 ip_api_manager.save_apis()
+                            
+                            # Cache the global IP result
+                            if self.cache_enabled and self.cache:
+                                self.cache.set(
+                                    "global", "current_ip", result,
+                                    CacheType.IP_RESULT,
+                                    ttl=self.cache_ttl,
+                                    metadata={"source": "concurrent", "timestamp": time.time()}
+                                )
+                            
                             return result
 
                     # If we get here, all concurrent checks failed
@@ -529,3 +560,84 @@ class IPService:
             finally:
                 self.client = None
                 self._client_initialized = False
+        
+        # Save cache to disk
+        if self.cache_enabled and self.cache:
+            try:
+                self.cache.save()
+                logger.debug("Cache saved during IP service shutdown")
+            except Exception as e:
+                logger.warning(f"Failed to save cache during shutdown: {e}")
+
+    def get_cache_info(self) -> dict:
+        """
+        Get information about the cache state and statistics.
+
+        Returns:
+            Dictionary with cache information
+        """
+        if not self.cache_enabled or self.cache is None:
+            return {"enabled": False, "stats": {}}
+        
+        stats = self.cache.get_stats()
+        stale_entries = self.cache.get_stale_entries("ip_check")
+        
+        return {
+            "enabled": True,
+            "stats": stats,
+            "stale_entries_count": len(stale_entries),
+            "cache_ttl": self.cache_ttl,
+            "stale_threshold": self.cache_stale_threshold
+        }
+    
+    def invalidate_cache(self, namespace: Optional[str] = None) -> int:
+        """
+        Invalidate cache entries.
+        
+        Args:
+            namespace: Optional namespace to invalidate (None for all)
+            
+        Returns:
+            Number of entries invalidated
+        """
+        if not self.cache_enabled or self.cache is None:
+            return 0
+        
+        if namespace:
+            return self.cache.invalidate(namespace)
+        else:
+            return self.cache.clear()
+    
+    async def refresh_stale_cache_entries(self) -> int:
+        """
+        Refresh stale cache entries proactively.
+
+        Returns:
+            Number of entries refreshed
+        """
+        if not self.cache_enabled or self.cache is None:
+            return 0
+        
+        stale_entries = self.cache.get_stale_entries("ip_check")
+        refreshed = 0
+        
+        for entry in stale_entries:
+            try:
+                # Parse the cache key to determine API type
+                if entry.metadata and "api_name" in entry.metadata:
+                    # Custom API entry
+                    api_config = ip_api_manager.get_api_by_name(entry.metadata["api_name"])
+                    if api_config:
+                        fresh_ip = await self.fetch_ip_from_custom_api(api_config)
+                        if fresh_ip:
+                            refreshed += 1
+                elif entry.metadata and "api_url" in entry.metadata:
+                    # Legacy API entry
+                    api_url = entry.metadata["api_url"]
+                    fresh_ip = await self.fetch_ip_from_api(api_url)
+                    if fresh_ip:
+                        refreshed += 1
+            except Exception as e:
+                logger.debug(f"Failed to refresh cache entry: {e}")
+        
+        return refreshed

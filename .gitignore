@@ -49,3 +49,5 @@ dmypy.json
 # Local development configuration
 *.local
 config.local.py
+CLAUDE.md
+FUTURE_FEATURES.md
