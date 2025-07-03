@@ -13,6 +13,7 @@ from ip_monitor.storage import IPStorage
 from ip_monitor.utils.rate_limiter import RateLimiter
 from ip_monitor.utils.discord_rate_limiter import DiscordRateLimiter
 from ip_monitor.utils.service_health import service_health
+from ip_monitor.utils.message_queue import message_queue, MessagePriority
 
 logger = logging.getLogger(__name__)
 
@@ -46,18 +47,25 @@ class IPCommands:
         self.discord_rate_limiter = DiscordRateLimiter()
 
     async def send_message_with_retry(
-        self, channel: discord.TextChannel, content: str, max_retries: int = 3
+        self,
+        channel: discord.TextChannel,
+        content: str,
+        max_retries: int = 3,
+        priority: MessagePriority = MessagePriority.NORMAL,
+        use_queue: bool = True,
     ) -> bool:
         """
-        Send a message to a Discord channel with retry logic and rate limiting.
+        Send a message to a Discord channel with retry logic, rate limiting, and queuing.
 
         Args:
             channel: The Discord channel to send the message to
             content: The message content to send
             max_retries: The maximum number of retries (default is 3)
+            priority: Message priority for queuing
+            use_queue: Whether to use message queue for delivery
 
         Returns:
-            bool: True if message was sent successfully, False otherwise
+            bool: True if message was sent successfully or queued, False otherwise
         """
         try:
             # Check if notifications are enabled in current degradation mode
@@ -65,21 +73,69 @@ class IPCommands:
                 logger.debug("Notifications disabled in current degradation mode")
                 return True  # Pretend success to not break logic
 
-            message = await self.discord_rate_limiter.send_message_with_backoff(
-                channel, content
-            )
-            if message is not None:
-                service_health.record_success("discord_api", "send_message")
-                return True
+            # Check Discord API health
+            discord_health = service_health.get_service_health("discord_api")
+
+            # If Discord API is healthy, try direct send first
+            if discord_health and discord_health.status.value in ["healthy", "unknown"]:
+                try:
+                    message = await self.discord_rate_limiter.send_message_with_backoff(
+                        channel, content
+                    )
+                    if message is not None:
+                        service_health.record_success("discord_api", "send_message")
+                        return True
+                except Exception as e:
+                    logger.debug(f"Direct send failed, will queue message: {e}")
+                    service_health.record_failure(
+                        "discord_api", f"Direct send failed: {e}", "send_message"
+                    )
+
+            # Queue the message if direct send failed or Discord API is degraded
+            if use_queue:
+                # Check if message queue is enabled via service health (fallback check)
+                try:
+                    # Create dedupe key for IP-related messages to prevent spam
+                    dedupe_key = None
+                    if "IP address" in content or "IP check" in content:
+                        dedupe_key = f"ip_notification_{hash(content) % 10000}"
+
+                    message_id = await message_queue.enqueue(
+                        channel_id=channel.id,
+                        content=content,
+                        priority=priority,
+                        max_retries=max_retries,
+                        dedupe_key=dedupe_key,
+                        tags=["ip_monitor"],
+                    )
+
+                    if message_id:
+                        logger.info(
+                            f"Message queued with ID {message_id} (priority: {priority.name})"
+                        )
+                        return True
+                    else:
+                        logger.error("Failed to queue message")
+                        return False
+                except Exception as queue_error:
+                    logger.error(f"Error accessing message queue: {queue_error}")
+                    service_health.record_failure(
+                        "discord_api", f"Queue error: {queue_error}", "message_queue"
+                    )
+                    return False
             else:
+                # No queuing, mark as failed
                 service_health.record_failure(
-                    "discord_api", "Failed to send message", "send_message"
+                    "discord_api",
+                    "Direct send failed and queuing disabled",
+                    "send_message",
                 )
                 return False
+
         except Exception as e:
-            logger.error(f"Failed to send message with rate limiting: {e}")
+            logger.error(f"Failed to send/queue message: {e}")
             service_health.record_failure(
-                "discord_api", f"Send message error: {e}", "send_message"
+                "discord_api", f"Send/queue error: {e}", "send_message"
             )
             return False
 
@@ -139,20 +195,24 @@ class IPCommands:
 
             # Only send a message if the IP has changed or if a user requested the check
             if last_ip and last_ip != current_ip:
-                # IP has changed, always send a message
+                # IP has changed, always send a message (HIGH priority)
                 message = "🔄 IP address has changed!\n\n"
                 message += f"**Previous IP:** `{last_ip}`\n"
                 message += f"**Current IP:** `{current_ip}`\n"
                 message += f"**Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                await self.send_message_with_retry(channel, message)
+                await self.send_message_with_retry(
+                    channel, message, priority=MessagePriority.HIGH
+                )
             elif user_requested:
-                # User requested a check, send the result even if IP hasn't changed
+                # User requested a check, send the result even if IP hasn't changed (NORMAL priority)
                 message = "✅ IP address check complete.\n\n"
                 message += f"**Current IP:** `{current_ip}`\n"
                 message += f"**Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                 if last_ip:
                     message += f"\n\nNo change from previous IP: `{last_ip}`"
-                await self.send_message_with_retry(channel, message)
+                await self.send_message_with_retry(
+                    channel, message, priority=MessagePriority.NORMAL
+                )
             else:
                 # Scheduled check with no change, don't send a message
                 logger.info(
@@ -252,7 +312,19 @@ class IPCommands:
         if active_fallbacks:
             status_text += f"🔄 Active Fallbacks: {', '.join(active_fallbacks)}\n"
 
-        await self.send_message_with_retry(message.channel, status_text)
+        # Add message queue status
+        queue_status = message_queue.get_queue_status()
+        status_text += f"📥 Message Queue: {queue_status['queue_size']}/{queue_status['max_queue_size']} messages\n"
+
+        if queue_status["queue_size"] > 0:
+            status_text += f"   ↳ Ready: {queue_status['ready_to_process']}, Scheduled: {queue_status['scheduled_for_later']}\n"
+
+        queue_stats = queue_status["statistics"]
+        status_text += f"📊 Queue Stats: {queue_stats['total_delivered']} sent, {queue_stats['total_failed']} failed\n"
+
+        await self.send_message_with_retry(
+            message.channel, status_text, priority=MessagePriority.LOW
+        )
         return True
 
     async def handle_help_command(self, message: discord.Message) -> bool:

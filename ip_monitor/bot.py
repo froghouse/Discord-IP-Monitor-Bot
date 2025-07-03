@@ -15,6 +15,7 @@ from ip_monitor.storage import IPStorage
 from ip_monitor.utils.rate_limiter import RateLimiter
 from ip_monitor.utils.discord_rate_limiter import DiscordRateLimiter
 from ip_monitor.utils.service_health import service_health
+from ip_monitor.utils.message_queue import message_queue
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +120,10 @@ class IPMonitorBot:
         """
         logger.info("Cleaning up bot resources")
 
+        # Stop message queue processing
+        logger.info("Stopping message queue processing")
+        await message_queue.stop_processing()
+
         # Cancel the background task properly
         if self.check_ip_task and self.check_ip_task.is_running():
             logger.info("Stopping scheduled IP check task")
@@ -162,6 +167,24 @@ class IPMonitorBot:
                 logger.info(
                     f"Initialized circuit breaker with last known IP: {last_ip}"
                 )
+
+            # Initialize and start message queue
+            if self.config.message_queue_enabled:
+                # Configure message queue with settings from config
+                message_queue.max_queue_size = self.config.message_queue_max_size
+                message_queue.max_message_age_hours = (
+                    self.config.message_queue_max_age_hours
+                )
+                message_queue.batch_size = self.config.message_queue_batch_size
+                message_queue.process_interval = (
+                    self.config.message_queue_process_interval
+                )
+
+                message_queue.set_discord_client(self.client)
+                message_queue.start_processing()
+                logger.info("Message queue initialized and started")
+            else:
+                logger.info("Message queue disabled by configuration")
 
             if self.config.startup_message_enabled:
                 try:
@@ -327,6 +350,8 @@ class IPMonitorBot:
                 await self.ip_commands.handle_status_command(message)
             elif message.content.startswith("!help"):
                 await self.ip_commands.handle_help_command(message)
+            elif message.content.startswith("!queue"):
+                await self.admin_commands.handle_queue_command(message)
             elif message.content.startswith("!stop"):
                 await self.admin_commands.handle_stop_command(message)
 

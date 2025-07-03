@@ -45,6 +45,13 @@ class AppConfig:
     testing_mode: bool
     log_level: str
 
+    # Message queue settings
+    message_queue_enabled: bool
+    message_queue_max_size: int
+    message_queue_max_age_hours: int
+    message_queue_batch_size: int
+    message_queue_process_interval: float
+
     # Class constants
     DEFAULT_MAX_RETRIES: ClassVar[int] = 3
     DEFAULT_RETRY_DELAY: ClassVar[int] = 5
@@ -54,6 +61,10 @@ class AppConfig:
     DEFAULT_MAX_CHECKS: ClassVar[int] = 10
     DEFAULT_CIRCUIT_BREAKER_FAILURE_THRESHOLD: ClassVar[int] = 3
     DEFAULT_CIRCUIT_BREAKER_RECOVERY_TIMEOUT: ClassVar[float] = 120.0
+    DEFAULT_MESSAGE_QUEUE_MAX_SIZE: ClassVar[int] = 1000
+    DEFAULT_MESSAGE_QUEUE_MAX_AGE_HOURS: ClassVar[int] = 24
+    DEFAULT_MESSAGE_QUEUE_BATCH_SIZE: ClassVar[int] = 5
+    DEFAULT_MESSAGE_QUEUE_PROCESS_INTERVAL: ClassVar[float] = 1.0
 
     @classmethod
     def load_from_env(cls) -> "AppConfig":
@@ -132,6 +143,31 @@ class AppConfig:
             == "true",
             testing_mode=os.getenv("TESTING_MODE", "false").lower() == "true",
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
+            message_queue_enabled=os.getenv("MESSAGE_QUEUE_ENABLED", "true").lower()
+            == "true",
+            message_queue_max_size=int(
+                os.getenv(
+                    "MESSAGE_QUEUE_MAX_SIZE", str(cls.DEFAULT_MESSAGE_QUEUE_MAX_SIZE)
+                )
+            ),
+            message_queue_max_age_hours=int(
+                os.getenv(
+                    "MESSAGE_QUEUE_MAX_AGE_HOURS",
+                    str(cls.DEFAULT_MESSAGE_QUEUE_MAX_AGE_HOURS),
+                )
+            ),
+            message_queue_batch_size=int(
+                os.getenv(
+                    "MESSAGE_QUEUE_BATCH_SIZE",
+                    str(cls.DEFAULT_MESSAGE_QUEUE_BATCH_SIZE),
+                )
+            ),
+            message_queue_process_interval=float(
+                os.getenv(
+                    "MESSAGE_QUEUE_PROCESS_INTERVAL",
+                    str(cls.DEFAULT_MESSAGE_QUEUE_PROCESS_INTERVAL),
+                )
+            ),
         )
 
         # Validate file paths
