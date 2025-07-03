@@ -47,6 +47,10 @@ class AppConfig:
     testing_mode: bool
     log_level: str
 
+    # Custom IP API settings
+    custom_apis_enabled: bool
+    api_config_file: str
+
     # Message queue settings
     message_queue_enabled: bool
     message_queue_max_size: int
@@ -146,6 +150,9 @@ class AppConfig:
             == "true",
             testing_mode=os.getenv("TESTING_MODE", "false").lower() == "true",
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
+            custom_apis_enabled=os.getenv("CUSTOM_APIS_ENABLED", "true").lower()
+            == "true",
+            api_config_file=os.getenv("API_CONFIG_FILE", "ip_apis.json"),
             message_queue_enabled=os.getenv("MESSAGE_QUEUE_ENABLED", "true").lower()
             == "true",
             message_queue_max_size=int(
@@ -262,6 +269,11 @@ class AppConfig:
             "startup_message_enabled": {
                 "type": "bool",
                 "description": "Enable startup notification message",
+                "restart_required": False,
+            },
+            "custom_apis_enabled": {
+                "type": "bool",
+                "description": "Enable custom IP detection APIs",
                 "restart_required": False,
             },
             "message_queue_enabled": {

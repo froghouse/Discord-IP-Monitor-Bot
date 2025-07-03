@@ -8,6 +8,7 @@ from typing import Any, Callable, Coroutine, Union
 import discord
 
 from ip_monitor.config import AppConfig
+from ip_monitor.ip_api_config import IPAPIEndpoint, ResponseFormat, ip_api_manager
 from ip_monitor.ip_service import IPService
 from ip_monitor.storage import IPStorage, SQLiteIPStorage
 from ip_monitor.utils.discord_rate_limiter import DiscordRateLimiter
@@ -520,3 +521,478 @@ class AdminCommands:
 
         except Exception as e:
             logger.error(f"Failed to apply config change {field_name}: {e}")
+
+    async def handle_api_command(self, message: discord.Message) -> bool:
+        """
+        Handle the !api command to manage IP detection APIs.
+
+        Args:
+            message: The Discord message containing the command
+
+        Returns:
+            bool: True if handled successfully
+        """
+        # Only admins can manage APIs
+        if not message.author.guild_permissions.administrator:
+            return False
+
+        parts = message.content.split()
+        if len(parts) < 2:
+            # Show API help
+            help_text = "**IP API Management Commands:**\n"
+            help_text += "`!api list` - List all configured IP APIs\n"
+            help_text += "`!api add <name> <url> [format] [field]` - Add new IP API\n"
+            help_text += "`!api remove <id>` - Remove IP API\n"
+            help_text += "`!api enable <id>` - Enable IP API\n"
+            help_text += "`!api disable <id>` - Disable IP API\n"
+            help_text += "`!api test <id>` - Test IP API\n"
+            help_text += "`!api priority <id> <priority>` - Set API priority\n"
+            help_text += "`!api stats` - Show API performance statistics\n"
+            help_text += "\n**Formats:** `json`, `text`, `auto` (default)\n"
+            help_text += "**Examples:**\n"
+            help_text += '`!api add "My API" "https://api.example.com/ip" json ip`\n'
+            help_text += '`!api add "Simple API" "https://text.example.com/" text`'
+
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, help_text
+            )
+            return True
+
+        command = parts[1].lower()
+
+        if command == "list":
+            return await self._handle_api_list(message)
+        elif command == "add":
+            return await self._handle_api_add(message, parts)
+        elif command == "remove":
+            return await self._handle_api_remove(message, parts)
+        elif command == "enable":
+            return await self._handle_api_enable(message, parts)
+        elif command == "disable":
+            return await self._handle_api_disable(message, parts)
+        elif command == "test":
+            return await self._handle_api_test(message, parts)
+        elif command == "priority":
+            return await self._handle_api_priority(message, parts)
+        elif command == "stats":
+            return await self._handle_api_stats(message)
+        else:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, "❌ Unknown API command. Use `!api` for help."
+            )
+            return True
+
+    async def _handle_api_list(self, message: discord.Message) -> bool:
+        """Handle api list command."""
+        apis = ip_api_manager.list_apis()
+
+        if not apis:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, "No IP APIs configured."
+            )
+            return True
+
+        list_text = "**Configured IP APIs:**\n\n"
+
+        for api in apis:
+            status = "🟢 Enabled" if api.enabled else "🔴 Disabled"
+            success_rate = api.get_success_rate()
+            perf_score = api.get_performance_score()
+
+            list_text += f"**{api.name}** (`{api.id}`)\n"
+            list_text += f"  URL: `{api.url}`\n"
+            list_text += f"  Status: {status} | Priority: {api.priority}\n"
+            list_text += f"  Format: {api.response_format.value}"
+            if api.json_field:
+                list_text += f" (field: {api.json_field})"
+            list_text += "\n"
+
+            if api.success_count > 0 or api.failure_count > 0:
+                list_text += f"  Performance: {success_rate:.1f}% success | Score: {perf_score:.1f}\n"
+                list_text += f"  Calls: {api.success_count} success, {api.failure_count} failed\n"
+                if api.avg_response_time > 0:
+                    list_text += f"  Avg Response: {api.avg_response_time:.2f}s\n"
+
+            list_text += "\n"
+
+        await self.discord_rate_limiter.send_message_with_backoff(
+            message.channel, list_text
+        )
+        return True
+
+    async def _handle_api_add(self, message: discord.Message, parts: list) -> bool:
+        """Handle api add command."""
+        if len(parts) < 4:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel,
+                "❌ Usage: `!api add <name> <url> [format] [field]`\n"
+                "Formats: json, text, auto (default)",
+            )
+            return True
+
+        name = parts[2].strip('"')
+        url = parts[3].strip('"')
+
+        # Parse optional format and field
+        response_format = ResponseFormat.AUTO
+        json_field = None
+
+        if len(parts) > 4:
+            format_str = parts[4].lower()
+            if format_str in ["json", "text", "auto"]:
+                response_format = ResponseFormat(format_str)
+            else:
+                await self.discord_rate_limiter.send_message_with_backoff(
+                    message.channel,
+                    f"❌ Invalid format '{format_str}'. Use: json, text, auto",
+                )
+                return True
+
+        if len(parts) > 5 and response_format == ResponseFormat.JSON:
+            json_field = parts[5]
+        elif response_format == ResponseFormat.JSON and not json_field:
+            json_field = "ip"  # Default field name
+
+        # Generate unique ID
+        api_id = name.lower().replace(" ", "_").replace("-", "_")
+        counter = 1
+        original_id = api_id
+        while ip_api_manager.get_api(api_id):
+            api_id = f"{original_id}_{counter}"
+            counter += 1
+
+        try:
+            # Create new API endpoint
+            endpoint = IPAPIEndpoint(
+                id=api_id,
+                name=name,
+                url=url,
+                response_format=response_format,
+                json_field=json_field,
+                priority=len(ip_api_manager.endpoints) + 1,
+            )
+
+            if ip_api_manager.add_api(endpoint):
+                success_text = f"✅ Added IP API: **{name}** (`{api_id}`)\n"
+                success_text += f"URL: `{url}`\n"
+                success_text += f"Format: {response_format.value}"
+                if json_field:
+                    success_text += f" (field: {json_field})"
+
+                await self.discord_rate_limiter.send_message_with_backoff(
+                    message.channel, success_text
+                )
+                logger.info(f"Admin {message.author} added IP API: {name} ({api_id})")
+            else:
+                await self.discord_rate_limiter.send_message_with_backoff(
+                    message.channel, f"❌ Failed to add API (ID conflict: {api_id})"
+                )
+
+        except ValueError as e:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, f"❌ Invalid API configuration: {e}"
+            )
+        except Exception as e:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, f"❌ Error adding API: {e}"
+            )
+
+        return True
+
+    async def _handle_api_remove(self, message: discord.Message, parts: list) -> bool:
+        """Handle api remove command."""
+        if len(parts) < 3:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, "❌ Usage: `!api remove <id>`"
+            )
+            return True
+
+        api_id = parts[2]
+        api = ip_api_manager.get_api(api_id)
+
+        if not api:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, f"❌ API '{api_id}' not found."
+            )
+            return True
+
+        if ip_api_manager.remove_api(api_id):
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, f"✅ Removed IP API: **{api.name}** (`{api_id}`)"
+            )
+            logger.info(f"Admin {message.author} removed IP API: {api.name} ({api_id})")
+        else:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, f"❌ Failed to remove API '{api_id}'"
+            )
+
+        return True
+
+    async def _handle_api_enable(self, message: discord.Message, parts: list) -> bool:
+        """Handle api enable command."""
+        if len(parts) < 3:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, "❌ Usage: `!api enable <id>`"
+            )
+            return True
+
+        api_id = parts[2]
+        api = ip_api_manager.get_api(api_id)
+
+        if not api:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, f"❌ API '{api_id}' not found."
+            )
+            return True
+
+        if ip_api_manager.enable_api(api_id):
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, f"✅ Enabled IP API: **{api.name}** (`{api_id}`)"
+            )
+            logger.info(f"Admin {message.author} enabled IP API: {api.name} ({api_id})")
+        else:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, f"❌ Failed to enable API '{api_id}'"
+            )
+
+        return True
+
+    async def _handle_api_disable(self, message: discord.Message, parts: list) -> bool:
+        """Handle api disable command."""
+        if len(parts) < 3:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, "❌ Usage: `!api disable <id>`"
+            )
+            return True
+
+        api_id = parts[2]
+        api = ip_api_manager.get_api(api_id)
+
+        if not api:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, f"❌ API '{api_id}' not found."
+            )
+            return True
+
+        if ip_api_manager.disable_api(api_id):
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, f"✅ Disabled IP API: **{api.name}** (`{api_id}`)"
+            )
+            logger.info(
+                f"Admin {message.author} disabled IP API: {api.name} ({api_id})"
+            )
+        else:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, f"❌ Failed to disable API '{api_id}'"
+            )
+
+        return True
+
+    async def _handle_api_priority(self, message: discord.Message, parts: list) -> bool:
+        """Handle api priority command."""
+        if len(parts) < 4:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, "❌ Usage: `!api priority <id> <priority>`"
+            )
+            return True
+
+        api_id = parts[2]
+        try:
+            priority = int(parts[3])
+        except ValueError:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, "❌ Priority must be a number"
+            )
+            return True
+
+        api = ip_api_manager.get_api(api_id)
+        if not api:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, f"❌ API '{api_id}' not found."
+            )
+            return True
+
+        if ip_api_manager.update_api_priority(api_id, priority):
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel,
+                f"✅ Updated priority for **{api.name}** (`{api_id}`) to {priority}",
+            )
+            logger.info(
+                f"Admin {message.author} updated API priority: {api.name} -> {priority}"
+            )
+        else:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, f"❌ Failed to update priority for API '{api_id}'"
+            )
+
+        return True
+
+    async def _handle_api_test(self, message: discord.Message, parts: list) -> bool:
+        """Handle api test command."""
+        if len(parts) < 3:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, "❌ Usage: `!api test <id>`"
+            )
+            return True
+
+        api_id = parts[2]
+        api = ip_api_manager.get_api(api_id)
+
+        if not api:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, f"❌ API '{api_id}' not found."
+            )
+            return True
+
+        # Test the API using the IP service
+        await self.discord_rate_limiter.send_message_with_backoff(
+            message.channel, f"🔄 Testing **{api.name}** (`{api_id}`)..."
+        )
+
+        try:
+            # This will be implemented when we update the IP service
+            test_result = await self._test_single_api(api)
+
+            if test_result["success"]:
+                ip = test_result["ip"]
+                response_time = test_result["response_time"]
+                result_text = f"✅ **{api.name}** test successful!\n"
+                result_text += f"Detected IP: `{ip}`\n"
+                result_text += f"Response time: {response_time:.2f}s"
+            else:
+                error = test_result["error"]
+                result_text = f"❌ **{api.name}** test failed!\n"
+                result_text += f"Error: {error}"
+
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, result_text
+            )
+
+        except Exception as e:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, f"❌ Error testing API: {e}"
+            )
+
+        return True
+
+    async def _handle_api_stats(self, message: discord.Message) -> bool:
+        """Handle api stats command."""
+        apis = ip_api_manager.list_apis()
+
+        if not apis:
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, "No IP APIs configured."
+            )
+            return True
+
+        stats_text = "**IP API Performance Statistics:**\n\n"
+
+        # Sort by performance score
+        apis_with_stats = [
+            api for api in apis if api.success_count > 0 or api.failure_count > 0
+        ]
+        apis_with_stats.sort(key=lambda x: x.get_performance_score(), reverse=True)
+
+        if not apis_with_stats:
+            stats_text += "No performance data available yet."
+        else:
+            for i, api in enumerate(apis_with_stats, 1):
+                success_rate = api.get_success_rate()
+                perf_score = api.get_performance_score()
+                total_calls = api.success_count + api.failure_count
+
+                stats_text += f"**{i}. {api.name}** (`{api.id}`)\n"
+                stats_text += f"  Performance Score: {perf_score:.1f}/100\n"
+                stats_text += f"  Success Rate: {success_rate:.1f}% ({api.success_count}/{total_calls})\n"
+
+                if api.avg_response_time > 0:
+                    stats_text += f"  Avg Response Time: {api.avg_response_time:.2f}s\n"
+
+                # Recent activity
+                import time
+
+                current_time = time.time()
+                if api.last_success:
+                    last_success_min = (current_time - api.last_success) / 60
+                    stats_text += f"  Last Success: {last_success_min:.1f} min ago\n"
+                if api.last_failure:
+                    last_failure_min = (current_time - api.last_failure) / 60
+                    stats_text += f"  Last Failure: {last_failure_min:.1f} min ago\n"
+
+                stats_text += "\n"
+
+        await self.discord_rate_limiter.send_message_with_backoff(
+            message.channel, stats_text
+        )
+        return True
+
+    async def _test_single_api(self, api: IPAPIEndpoint) -> dict:
+        """
+        Test a single API endpoint.
+
+        Args:
+            api: The API endpoint to test
+
+        Returns:
+            Dict with test results
+        """
+        import time
+
+        import httpx
+
+        start_time = time.time()
+
+        try:
+            headers = api.headers or {}
+            headers.setdefault("User-Agent", "IP-Monitor-Bot/1.0")
+
+            async with httpx.AsyncClient(timeout=api.timeout) as client:
+                response = await client.get(api.url, headers=headers)
+                response.raise_for_status()
+
+                response_time = time.time() - start_time
+
+                # Parse response based on format
+                if api.response_format == ResponseFormat.JSON or (
+                    api.response_format == ResponseFormat.AUTO
+                    and response.headers.get("content-type", "").startswith(
+                        "application/json"
+                    )
+                ):
+                    data = response.json()
+                    if api.json_field:
+                        ip = data.get(api.json_field)
+                    else:
+                        # Try common field names
+                        ip = data.get("ip") or data.get("origin") or data.get("address")
+                else:
+                    # Plain text response
+                    ip = response.text.strip()
+
+                if not ip:
+                    return {
+                        "success": False,
+                        "error": "No IP address found in response",
+                        "response_time": response_time,
+                    }
+
+                # Validate IP
+                if not self.ip_service.is_valid_ip(ip):
+                    return {
+                        "success": False,
+                        "error": f"Invalid IP address returned: {ip}",
+                        "response_time": response_time,
+                    }
+
+                # Update API statistics
+                api.record_success(response_time)
+                ip_api_manager.save_apis()
+
+                return {"success": True, "ip": ip, "response_time": response_time}
+
+        except Exception as e:
+            response_time = time.time() - start_time
+            api.record_failure()
+            ip_api_manager.save_apis()
+
+            return {"success": False, "error": str(e), "response_time": response_time}

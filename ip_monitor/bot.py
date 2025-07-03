@@ -47,6 +47,7 @@ class IPMonitorBot:
             circuit_breaker_enabled=config.circuit_breaker_enabled,
             circuit_breaker_failure_threshold=config.circuit_breaker_failure_threshold,
             circuit_breaker_recovery_timeout=config.circuit_breaker_recovery_timeout,
+            use_custom_apis=config.custom_apis_enabled,
         )
 
         self.storage = SQLiteIPStorage(
@@ -359,6 +360,8 @@ class IPMonitorBot:
                 await self.admin_commands.handle_queue_command(message)
             elif message.content.startswith("!config"):
                 await self.admin_commands.handle_config_command(message)
+            elif message.content.startswith("!api"):
+                await self.admin_commands.handle_api_command(message)
             elif message.content.startswith("!stop"):
                 await self.admin_commands.handle_stop_command(message)
 

@@ -104,6 +104,14 @@ The bot uses environment variables loaded from a `.env` file. See `.env.example`
 - `!config list` - List all configurable fields with descriptions
 - `!config save` - Save current configuration to file
 - `!config reload` - Reload configuration from file (requires restart)
+- `!api` - Manage custom IP detection APIs
+- `!api list` - List all configured IP APIs
+- `!api add <name> <url> [format] [field]` - Add new IP API
+- `!api remove <id>` - Remove IP API
+- `!api enable/disable <id>` - Enable/disable IP API
+- `!api test <id>` - Test IP API
+- `!api priority <id> <priority>` - Set API priority
+- `!api stats` - Show API performance statistics
 - `!queue` - Show message queue status and statistics
 - `!queue clear` - Clear all queued messages
 - `!queue retry` - Retry all failed messages
@@ -137,6 +145,9 @@ The bot supports dynamic configuration changes through Discord commands without 
 **Messages:**
 - `startup_message_enabled` (true/false) - Enable startup notifications
 
+**Custom APIs:**
+- `custom_apis_enabled` (true/false) - Enable custom IP detection APIs
+
 **Message Queue:**
 - `message_queue_enabled` (true/false) - Enable async message queue
 - `message_queue_max_size` (10-10000) - Maximum messages in queue
@@ -158,6 +169,68 @@ Configuration changes are automatically saved to `bot_config.json` and persist a
 !config list                           # List all configurable fields
 !config save                           # Save current config to file
 ```
+
+## Custom IP Detection APIs
+
+The bot supports configuring custom IP detection services with automatic performance tracking and failover.
+
+### API Response Formats
+
+**Supported Formats:**
+- `json` - JSON response with IP in specified field
+- `text` - Plain text IP response
+- `auto` - Auto-detect format (default)
+
+**JSON Field Examples:**
+- `ip` - Most common field name
+- `origin` - Used by some services
+- `address` - Alternative field name
+
+### API Management Commands
+
+**Adding APIs:**
+```
+!api add "My JSON API" "https://api.example.com/ip" json ip
+!api add "Simple Text API" "https://text.example.com/" text
+!api add "Auto-detect API" "https://auto.example.com/"
+```
+
+**Managing APIs:**
+```
+!api list                              # Show all APIs with performance data
+!api enable my_json_api                # Enable specific API
+!api disable my_json_api               # Disable specific API
+!api priority my_json_api 1            # Set highest priority
+!api test my_json_api                  # Test API response
+!api remove my_json_api                # Remove API permanently
+!api stats                             # Show performance rankings
+```
+
+### Performance Tracking
+
+The system automatically tracks:
+- **Success Rate**: Percentage of successful requests
+- **Response Time**: Average response time with moving average
+- **Performance Score**: Composite score considering success rate, speed, and recent failures
+- **Recent Activity**: Last success/failure timestamps
+
+APIs are automatically ranked by performance score and used in optimal order.
+
+### API Configuration
+
+**Custom API Settings:**
+- `custom_apis_enabled` (true/false) - Enable custom IP detection APIs
+- `api_config_file` - Configuration file path (default: `ip_apis.json`)
+
+**Default APIs:**
+The system includes 5 default APIs (IPify JSON/Text, ifconfig.me, icanhazip.com, AWS CheckIP) which are automatically configured on first run.
+
+### Failover Behavior
+
+- APIs are tried in priority order, then by performance score
+- Failed APIs are automatically deprioritized
+- System falls back to built-in APIs if all custom APIs fail
+- Performance data persists across bot restarts
 
 ## Resilience Features
 

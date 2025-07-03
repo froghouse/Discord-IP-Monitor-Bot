@@ -346,6 +346,7 @@ class IPCommands:
             "- `!help` - Show this help message\n"
             "\n**Admin Commands:**\n"
             "- `!config` - Manage bot configuration\n"
+            "- `!api` - Manage IP detection APIs\n"
             "- `!queue` - Manage message queue\n"
             "- `!stop` - Stop the bot\n"
         )

@@ -6,10 +6,12 @@ import asyncio
 import ipaddress
 import json
 import logging
+import time
 from typing import List, Optional
 
 import httpx
 
+from ip_monitor.ip_api_config import ResponseFormat, ip_api_manager
 from ip_monitor.utils.circuit_breaker import IPServiceCircuitBreaker
 from ip_monitor.utils.service_health import service_health
 
@@ -39,6 +41,7 @@ class IPService:
         circuit_breaker_enabled: bool = True,
         circuit_breaker_failure_threshold: int = 3,
         circuit_breaker_recovery_timeout: float = 120.0,
+        use_custom_apis: bool = True,
     ) -> None:
         """
         Initialize the IP service.
@@ -47,15 +50,17 @@ class IPService:
             max_retries: Maximum number of retries for failed API calls
             retry_delay: Delay between retries in seconds
             use_concurrent_checks: Whether to check APIs concurrently
-            apis: List of IP API endpoints to use (optional)
+            apis: List of IP API endpoints to use (optional, legacy)
             circuit_breaker_enabled: Whether to use circuit breaker pattern
             circuit_breaker_failure_threshold: Number of failures before opening circuit
             circuit_breaker_recovery_timeout: Time to wait before testing recovery
+            use_custom_apis: Whether to use custom configured APIs
         """
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.use_concurrent_checks = use_concurrent_checks
-        self.apis = apis or self.DEFAULT_IP_APIS
+        self.use_custom_apis = use_custom_apis
+        self.legacy_apis = apis or self.DEFAULT_IP_APIS
         self.client = None  # Will be initialized when needed
 
         # Circuit breaker setup
@@ -70,6 +75,26 @@ class IPService:
 
         # Track last successful IP for fallback
         self._last_known_ip: Optional[str] = None
+
+    def get_apis_to_use(self) -> List[str]:
+        """
+        Get list of API URLs to use for IP detection.
+
+        Returns:
+            List of API URLs
+        """
+        if self.use_custom_apis:
+            # Use custom configured APIs
+            custom_urls = ip_api_manager.get_api_urls(enabled_only=True)
+            if custom_urls:
+                return custom_urls
+            else:
+                logger.warning(
+                    "No custom APIs configured, falling back to default APIs"
+                )
+
+        # Fall back to legacy/default APIs
+        return self.legacy_apis
 
     @staticmethod
     def is_valid_ip(ip: str) -> bool:
@@ -87,6 +112,77 @@ class IPService:
             return True
         except ValueError:
             return False
+
+    async def fetch_ip_from_custom_api(
+        self, client: httpx.AsyncClient, api_config
+    ) -> Optional[str]:
+        """
+        Fetch IP from a custom API endpoint with specific configuration.
+
+        Args:
+            client: httpx AsyncClient to use for the request
+            api_config: IPAPIEndpoint configuration object
+
+        Returns:
+            IP address string or None if unsuccessful
+        """
+        start_time = time.time()
+
+        try:
+            headers = api_config.headers or {}
+            headers.setdefault("User-Agent", "IP-Monitor-Bot/1.0")
+
+            response = await client.get(
+                api_config.url, headers=headers, timeout=api_config.timeout
+            )
+            response.raise_for_status()
+
+            response_time = time.time() - start_time
+
+            # Parse response based on format
+            if api_config.response_format == ResponseFormat.JSON or (
+                api_config.response_format == ResponseFormat.AUTO
+                and response.headers.get("content-type", "").startswith(
+                    "application/json"
+                )
+            ):
+                try:
+                    data = response.json()
+                    if api_config.json_field:
+                        ip = data.get(api_config.json_field)
+                    else:
+                        # Try common field names
+                        ip = data.get("ip") or data.get("origin") or data.get("address")
+                except json.JSONDecodeError:
+                    logger.warning(f"Invalid JSON response from {api_config.url}")
+                    return None
+            else:
+                # Plain text response
+                ip = response.text.strip()
+
+            if not ip:
+                logger.warning(f"No IP found in response from {api_config.url}")
+                api_config.record_failure()
+                return None
+
+            if not self.is_valid_ip(ip):
+                logger.warning(f"Invalid IP '{ip}' from {api_config.url}")
+                api_config.record_failure()
+                return None
+
+            # Record success
+            api_config.record_success(response_time)
+            logger.debug(
+                f"Successfully got IP '{ip}' from {api_config.name} in {response_time:.2f}s"
+            )
+
+            return ip
+
+        except Exception as e:
+            response_time = time.time() - start_time
+            api_config.record_failure()
+            logger.debug(f"Error fetching IP from {api_config.name}: {e}")
+            return None
 
     async def fetch_ip_from_api(
         self, client: httpx.AsyncClient, api: str
@@ -155,18 +251,39 @@ class IPService:
 
         try:
             for attempt in range(self.max_retries):
+                # Get APIs to use (custom or legacy)
+                if self.use_custom_apis:
+                    api_configs = ip_api_manager.list_apis(enabled_only=True)
+                    if not api_configs:
+                        logger.warning("No custom APIs available, using legacy APIs")
+                        api_configs = None
+                else:
+                    api_configs = None
+
                 # If we should check APIs concurrently
                 if self.use_concurrent_checks:
-                    # Create tasks for all APIs
-                    tasks = [
-                        self.fetch_ip_from_api(self.client, api) for api in self.apis
-                    ]
+                    if api_configs:
+                        # Use custom API configurations
+                        tasks = [
+                            self.fetch_ip_from_custom_api(self.client, api_config)
+                            for api_config in api_configs
+                        ]
+                    else:
+                        # Use legacy API URLs
+                        tasks = [
+                            self.fetch_ip_from_api(self.client, api)
+                            for api in self.get_apis_to_use()
+                        ]
+
                     # Wait for first successful result
                     results = await asyncio.gather(*tasks, return_exceptions=True)
 
                     # Process results
                     for result in results:
                         if isinstance(result, str) and self.is_valid_ip(result):
+                            # Save API configuration changes if using custom APIs
+                            if api_configs:
+                                ip_api_manager.save_apis()
                             return result
 
                     # If we get here, all concurrent checks failed
@@ -178,10 +295,22 @@ class IPService:
                     continue
 
                 # Sequential API checking (fallback approach)
-                for api in self.apis:
-                    ip = await self.fetch_ip_from_api(self.client, api)
-                    if ip:
-                        return ip
+                if api_configs:
+                    # Use custom API configurations
+                    for api_config in api_configs:
+                        ip = await self.fetch_ip_from_custom_api(
+                            self.client, api_config
+                        )
+                        if ip:
+                            # Save API configuration changes
+                            ip_api_manager.save_apis()
+                            return ip
+                else:
+                    # Use legacy API URLs
+                    for api in self.get_apis_to_use():
+                        ip = await self.fetch_ip_from_api(self.client, api)
+                        if ip:
+                            return ip
 
                 # If we get here, all APIs failed in this sequential attempt
                 if attempt < self.max_retries - 1:
