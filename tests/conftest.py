@@ -185,3 +185,71 @@ def event_loop():
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
+
+
+@pytest.fixture
+def mock_client():
+    """Create a mock Discord client."""
+    client = Mock()
+    client.user = Mock()
+    client.user.id = 123456789
+    client.user.name = "TestBot"
+    return client
+
+
+@pytest.fixture
+def mock_ip_service():
+    """Create a mock IP service."""
+    service = Mock()
+    service.get_current_ip = AsyncMock(return_value="192.168.1.1")
+    service.get_cache_info = Mock(return_value={
+        'enabled': True,
+        'cache_ttl': 300,
+        'stale_threshold': 0.8,
+        'stale_entries_count': 0,
+        'stats': {
+            'memory_entries': 0,
+            'hits': 0,
+            'misses': 0,
+            'evictions': 0,
+            'invalidations': 0,
+            'refreshes': 0,
+            'saves': 0,
+            'loads': 0,
+        }
+    })
+    service.invalidate_cache = Mock(return_value=0)
+    service.refresh_stale_cache_entries = AsyncMock(return_value=0)
+    return service
+
+
+@pytest.fixture
+def mock_storage():
+    """Create a mock storage."""
+    storage = Mock()
+    storage.get_current_ip = Mock(return_value="192.168.1.1")
+    storage.save_current_ip = Mock()
+    storage.get_ip_history = Mock(return_value=[])
+    return storage
+
+
+@pytest.fixture
+def mock_stop_callback():
+    """Create a mock stop callback."""
+    return AsyncMock()
+
+
+@pytest.fixture
+def mock_message():
+    """Create a mock Discord message."""
+    message = Mock()
+    message.author = Mock()
+    message.author.id = 987654321
+    message.author.name = "TestUser"
+    message.author.guild_permissions = Mock()
+    message.author.guild_permissions.administrator = False
+    message.channel = Mock()
+    message.channel.id = 12345
+    message.channel.send = AsyncMock()
+    message.content = "!test"
+    return message
