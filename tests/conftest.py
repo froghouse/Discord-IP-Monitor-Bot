@@ -1,8 +1,13 @@
 import os
 import sys
+import sqlite3
+import tempfile
 from unittest.mock import AsyncMock, Mock
+from pathlib import Path
 
 import pytest
+import aiohttp
+from aiohttp import web
 
 # Add the project root to the Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -280,3 +285,283 @@ def mock_non_admin_message():
     message.channel.send = AsyncMock()
     message.content = "!user"
     return message
+
+
+# Database Test Fixtures
+@pytest.fixture
+def temp_db_path():
+    """Create a temporary SQLite database file path."""
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as temp_file:
+        temp_path = temp_file.name
+    
+    yield temp_path
+    
+    # Cleanup
+    if os.path.exists(temp_path):
+        os.unlink(temp_path)
+
+
+@pytest.fixture
+def temp_db_connection(temp_db_path):
+    """Create a temporary SQLite database connection with test schema."""
+    conn = sqlite3.connect(temp_db_path)
+    cursor = conn.cursor()
+    
+    # Create test schema
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS current_ip (
+            id INTEGER PRIMARY KEY,
+            ip TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ip_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ip TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_ip_history_timestamp 
+        ON ip_history(timestamp)
+    """)
+    
+    conn.commit()
+    
+    yield conn
+    
+    conn.close()
+
+
+@pytest.fixture
+def sqlite_storage(temp_db_path):
+    """Create a SQLiteIPStorage instance with temporary database."""
+    from ip_monitor.storage import SQLiteIPStorage
+    return SQLiteIPStorage(temp_db_path, history_size=10)
+
+
+@pytest.fixture
+def sqlite_storage_with_data(sqlite_storage):
+    """Create a SQLiteIPStorage instance with test data."""
+    # Insert test data
+    test_ips = [
+        ("192.168.1.1", "2023-01-01T12:00:00Z"),
+        ("192.168.1.2", "2023-01-01T13:00:00Z"),
+        ("192.168.1.3", "2023-01-01T14:00:00Z"),
+    ]
+    
+    with sqlite3.connect(sqlite_storage.db_file) as conn:
+        cursor = conn.cursor()
+        
+        # Add current IP
+        cursor.execute(
+            "INSERT INTO current_ip (ip, timestamp) VALUES (?, ?)",
+            test_ips[-1]
+        )
+        
+        # Add history in reverse order so chronological order is correct
+        for ip, timestamp in reversed(test_ips):
+            cursor.execute(
+                "INSERT INTO ip_history (ip, timestamp) VALUES (?, ?)",
+                (ip, timestamp)
+            )
+        
+        conn.commit()
+    
+    return sqlite_storage
+
+
+# HTTP Mock Server Fixtures
+@pytest.fixture
+async def mock_ip_api_server():
+    """Create a mock HTTP server for IP API testing."""
+    responses = {
+        "/json": {"ip": "203.0.113.1"},
+        "/text": "203.0.113.1",
+        "/custom": {"origin": "203.0.113.1"},
+        "/slow": {"ip": "203.0.113.1"},  # Will add delay
+        "/error": None,  # Will return 500 error
+    }
+    
+    async def json_handler(request):
+        return web.json_response(responses["/json"])
+    
+    async def text_handler(request):
+        return web.Response(text=responses["/text"])
+    
+    async def custom_handler(request):
+        return web.json_response(responses["/custom"])
+    
+    async def slow_handler(request):
+        await asyncio.sleep(2)  # Simulate slow response
+        return web.json_response(responses["/slow"])
+    
+    async def error_handler(request):
+        return web.Response(status=500, text="Internal Server Error")
+    
+    app = web.Application()
+    app.router.add_get("/json", json_handler)
+    app.router.add_get("/text", text_handler)
+    app.router.add_get("/custom", custom_handler)
+    app.router.add_get("/slow", slow_handler)
+    app.router.add_get("/error", error_handler)
+    
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    site = web.TCPSite(runner, "127.0.0.1", 0)
+    await site.start()
+    
+    port = site._server.sockets[0].getsockname()[1]
+    base_url = f"http://127.0.0.1:{port}"
+    
+    yield {
+        "base_url": base_url,
+        "port": port,
+        "responses": responses,
+        "endpoints": {
+            "json": f"{base_url}/json",
+            "text": f"{base_url}/text",
+            "custom": f"{base_url}/custom",
+            "slow": f"{base_url}/slow",
+            "error": f"{base_url}/error",
+        }
+    }
+    
+    await runner.cleanup()
+
+
+@pytest.fixture
+def mock_httpx_client():
+    """Create a mock httpx client for testing."""
+    client = Mock()
+    client.get = AsyncMock()
+    client.aclose = AsyncMock()
+    
+    # Default successful response
+    response = Mock()
+    response.status_code = 200
+    response.text = "203.0.113.1"
+    response.json.return_value = {"ip": "203.0.113.1"}
+    response.raise_for_status = Mock()
+    
+    client.get.return_value = response
+    
+    return client
+
+
+@pytest.fixture
+def mock_httpx_responses():
+    """Create configurable mock HTTP responses."""
+    class MockResponse:
+        def __init__(self, status_code=200, text="", json_data=None):
+            self.status_code = status_code
+            self.text = text
+            self._json_data = json_data or {}
+        
+        def json(self):
+            return self._json_data
+        
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise httpx.HTTPError(f"HTTP {self.status_code}")
+    
+    return MockResponse
+
+
+# Enhanced Discord Bot Mock Fixtures
+@pytest.fixture
+def mock_discord_client():
+    """Enhanced Discord client mock with comprehensive API coverage."""
+    client = AsyncMock()
+    
+    # Bot user
+    client.user = Mock()
+    client.user.id = 123456789
+    client.user.name = "TestBot"
+    client.user.discriminator = "0001"
+    client.user.mention = "<@123456789>"
+    
+    # Connection status
+    client.is_ready = Mock(return_value=True)
+    client.is_closed = Mock(return_value=False)
+    client.latency = 0.1
+    
+    # Guild and channel mocks
+    guild = Mock()
+    guild.id = 987654321
+    guild.name = "Test Guild"
+    guild.member_count = 100
+    
+    channel = AsyncMock()
+    channel.id = 12345
+    channel.name = "test-channel"
+    channel.guild = guild
+    channel.send = AsyncMock()
+    channel.typing = AsyncMock()
+    
+    client.get_guild = Mock(return_value=guild)
+    client.get_channel = Mock(return_value=channel)
+    client.guilds = [guild]
+    
+    # Command tree for slash commands
+    client.tree = Mock()
+    client.tree.sync = AsyncMock()
+    client.tree.add_command = Mock()
+    client.tree.remove_command = Mock()
+    
+    return client
+
+
+@pytest.fixture
+def mock_discord_interaction():
+    """Create a mock Discord interaction for slash commands."""
+    interaction = AsyncMock()
+    
+    # User info
+    interaction.user = Mock()
+    interaction.user.id = 987654321
+    interaction.user.name = "TestUser"
+    interaction.user.discriminator = "0001"
+    interaction.user.guild_permissions = Mock()
+    interaction.user.guild_permissions.administrator = True
+    
+    # Guild and channel info
+    interaction.guild_id = 987654321
+    interaction.channel_id = 12345
+    interaction.guild = Mock()
+    interaction.guild.id = 987654321
+    interaction.channel = Mock()
+    interaction.channel.id = 12345
+    
+    # Response methods
+    interaction.response = AsyncMock()
+    interaction.response.send_message = AsyncMock()
+    interaction.response.defer = AsyncMock()
+    interaction.followup = AsyncMock()
+    interaction.followup.send = AsyncMock()
+    
+    # Command info
+    interaction.command = Mock()
+    interaction.command.name = "test"
+    interaction.data = {"name": "test", "options": []}
+    
+    return interaction
+
+
+@pytest.fixture
+def mock_discord_cog():
+    """Create a mock Discord cog for testing."""
+    from discord.ext import commands
+    
+    cog = Mock(spec=commands.Cog)
+    cog.qualified_name = "TestCog"
+    cog.description = "Test cog for testing"
+    cog.get_commands.return_value = []
+    
+    return cog
