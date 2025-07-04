@@ -78,7 +78,9 @@ class AdminSlashCommands(commands.Cog):
                 ephemeral=True,
             )
 
-            logger.info(f"Bot shutdown requested by {interaction.user} via slash command")
+            logger.info(
+                f"Bot shutdown requested by {interaction.user} via slash command"
+            )
             await self.stop_callback()
 
         except Exception as e:
@@ -92,7 +94,9 @@ class AdminSlashCommands(commands.Cog):
                 pass
 
     # Config command group
-    config_group = app_commands.Group(name="config", description="Manage bot configuration")
+    config_group = app_commands.Group(
+        name="config", description="Manage bot configuration"
+    )
 
     @config_group.command(name="show", description="Show current configuration")
     @app_commands.describe(field="Specific configuration field to show (optional)")
@@ -123,15 +127,21 @@ class AdminSlashCommands(commands.Cog):
                         self.content = "!config show"
 
             mock_message = MockMessage(interaction.user, interaction.channel)
-            
+
             # Use existing logic but capture the response
             parts = [field] if field else []
-            result = await self.admin_commands_handler._handle_config_show(mock_message, parts)
-            
+            result = await self.admin_commands_handler._handle_config_show(
+                mock_message, parts
+            )
+
             if result:
-                await interaction.followup.send("Configuration displayed successfully.", ephemeral=True)
+                await interaction.followup.send(
+                    "Configuration displayed successfully.", ephemeral=True
+                )
             else:
-                await interaction.followup.send("❌ Failed to display configuration.", ephemeral=True)
+                await interaction.followup.send(
+                    "❌ Failed to display configuration.", ephemeral=True
+                )
 
         except Exception as e:
             logger.error(f"Error in config show slash command: {e}")
@@ -146,7 +156,7 @@ class AdminSlashCommands(commands.Cog):
     @config_group.command(name="set", description="Update a configuration field")
     @app_commands.describe(
         field="Configuration field to update",
-        value="New value for the configuration field"
+        value="New value for the configuration field",
     )
     async def config_set_slash(
         self, interaction: discord.Interaction, field: str, value: str
@@ -171,15 +181,24 @@ class AdminSlashCommands(commands.Cog):
                     self.channel = channel
                     self.content = f"!config set {field} {value}"
 
-            mock_message = MockMessage(interaction.user, interaction.channel, field, value)
-            
+            mock_message = MockMessage(
+                interaction.user, interaction.channel, field, value
+            )
+
             # Use existing logic
-            result = await self.admin_commands_handler._handle_config_set(mock_message, [field, value])
-            
+            result = await self.admin_commands_handler._handle_config_set(
+                mock_message, [field, value]
+            )
+
             if result:
-                await interaction.followup.send(f"✅ Configuration updated: `{field}` = `{value}`", ephemeral=True)
+                await interaction.followup.send(
+                    f"✅ Configuration updated: `{field}` = `{value}`", ephemeral=True
+                )
             else:
-                await interaction.followup.send(f"❌ Failed to update configuration field `{field}`.", ephemeral=True)
+                await interaction.followup.send(
+                    f"❌ Failed to update configuration field `{field}`.",
+                    ephemeral=True,
+                )
 
         except Exception as e:
             logger.error(f"Error in config set slash command: {e}")
@@ -214,14 +233,18 @@ class AdminSlashCommands(commands.Cog):
                     self.content = "!config list"
 
             mock_message = MockMessage(interaction.user, interaction.channel)
-            
+
             # Use existing logic
             result = await self.admin_commands_handler._handle_config_list(mock_message)
-            
+
             if result:
-                await interaction.followup.send("Configuration fields listed successfully.", ephemeral=True)
+                await interaction.followup.send(
+                    "Configuration fields listed successfully.", ephemeral=True
+                )
             else:
-                await interaction.followup.send("❌ Failed to list configuration fields.", ephemeral=True)
+                await interaction.followup.send(
+                    "❌ Failed to list configuration fields.", ephemeral=True
+                )
 
         except Exception as e:
             logger.error(f"Error in config list slash command: {e}")
@@ -256,14 +279,18 @@ class AdminSlashCommands(commands.Cog):
                     self.content = "!config save"
 
             mock_message = MockMessage(interaction.user, interaction.channel)
-            
+
             # Use existing logic
             result = await self.admin_commands_handler._handle_config_save(mock_message)
-            
+
             if result:
-                await interaction.followup.send("✅ Configuration saved to file successfully.", ephemeral=True)
+                await interaction.followup.send(
+                    "✅ Configuration saved to file successfully.", ephemeral=True
+                )
             else:
-                await interaction.followup.send("❌ Failed to save configuration to file.", ephemeral=True)
+                await interaction.followup.send(
+                    "❌ Failed to save configuration to file.", ephemeral=True
+                )
 
         except Exception as e:
             logger.error(f"Error in config save slash command: {e}")
@@ -298,14 +325,20 @@ class AdminSlashCommands(commands.Cog):
                     self.content = "!config reload"
 
             mock_message = MockMessage(interaction.user, interaction.channel)
-            
+
             # Use existing logic
-            result = await self.admin_commands_handler._handle_config_reload(mock_message)
-            
+            result = await self.admin_commands_handler._handle_config_reload(
+                mock_message
+            )
+
             if result:
-                await interaction.followup.send("✅ Configuration reloaded from file successfully.", ephemeral=True)
+                await interaction.followup.send(
+                    "✅ Configuration reloaded from file successfully.", ephemeral=True
+                )
             else:
-                await interaction.followup.send("❌ Failed to reload configuration from file.", ephemeral=True)
+                await interaction.followup.send(
+                    "❌ Failed to reload configuration from file.", ephemeral=True
+                )
 
         except Exception as e:
             logger.error(f"Error in config reload slash command: {e}")
@@ -343,14 +376,18 @@ class AdminSlashCommands(commands.Cog):
                     self.content = "!api list"
 
             mock_message = MockMessage(interaction.user, interaction.channel)
-            
+
             # Use existing logic
             result = await self.admin_commands_handler._handle_api_list(mock_message)
-            
+
             if result:
-                await interaction.followup.send("API list displayed successfully.", ephemeral=True)
+                await interaction.followup.send(
+                    "API list displayed successfully.", ephemeral=True
+                )
             else:
-                await interaction.followup.send("❌ Failed to display API list.", ephemeral=True)
+                await interaction.followup.send(
+                    "❌ Failed to display API list.", ephemeral=True
+                )
 
         except Exception as e:
             logger.error(f"Error in api list slash command: {e}")
@@ -367,7 +404,7 @@ class AdminSlashCommands(commands.Cog):
         name="Name for the API",
         url="URL of the API endpoint",
         format="Response format (json, text, auto)",
-        field="JSON field name for IP (if format is json)"
+        field="JSON field name for IP (if format is json)",
     )
     async def api_add_slash(
         self,
@@ -402,15 +439,24 @@ class AdminSlashCommands(commands.Cog):
                         content_parts.append(field)
                     self.content = " ".join(content_parts)
 
-            mock_message = MockMessage(interaction.user, interaction.channel, name, url, format, field)
-            
+            mock_message = MockMessage(
+                interaction.user, interaction.channel, name, url, format, field
+            )
+
             # Use existing logic
-            result = await self.admin_commands_handler._handle_api_add(mock_message, [name, url] + ([format] if format else []) + ([field] if field else []))
-            
+            result = await self.admin_commands_handler._handle_api_add(
+                mock_message,
+                [name, url] + ([format] if format else []) + ([field] if field else []),
+            )
+
             if result:
-                await interaction.followup.send(f"✅ API `{name}` added successfully.", ephemeral=True)
+                await interaction.followup.send(
+                    f"✅ API `{name}` added successfully.", ephemeral=True
+                )
             else:
-                await interaction.followup.send(f"❌ Failed to add API `{name}`.", ephemeral=True)
+                await interaction.followup.send(
+                    f"❌ Failed to add API `{name}`.", ephemeral=True
+                )
 
         except Exception as e:
             logger.error(f"Error in api add slash command: {e}")
@@ -448,14 +494,20 @@ class AdminSlashCommands(commands.Cog):
                     self.content = f"!api remove {api_id}"
 
             mock_message = MockMessage(interaction.user, interaction.channel, api_id)
-            
+
             # Use existing logic
-            result = await self.admin_commands_handler._handle_api_remove(mock_message, [api_id])
-            
+            result = await self.admin_commands_handler._handle_api_remove(
+                mock_message, [api_id]
+            )
+
             if result:
-                await interaction.followup.send(f"✅ API `{api_id}` removed successfully.", ephemeral=True)
+                await interaction.followup.send(
+                    f"✅ API `{api_id}` removed successfully.", ephemeral=True
+                )
             else:
-                await interaction.followup.send(f"❌ Failed to remove API `{api_id}`.", ephemeral=True)
+                await interaction.followup.send(
+                    f"❌ Failed to remove API `{api_id}`.", ephemeral=True
+                )
 
         except Exception as e:
             logger.error(f"Error in api remove slash command: {e}")
@@ -467,10 +519,12 @@ class AdminSlashCommands(commands.Cog):
             except discord.NotFound:
                 pass
 
-    @api_group.command(name="toggle", description="Enable or disable an IP detection API")
+    @api_group.command(
+        name="toggle", description="Enable or disable an IP detection API"
+    )
     @app_commands.describe(
         api_id="ID or name of the API to toggle",
-        action="Whether to enable or disable the API"
+        action="Whether to enable or disable the API",
     )
     async def api_toggle_slash(
         self,
@@ -498,18 +552,28 @@ class AdminSlashCommands(commands.Cog):
                     self.channel = channel
                     self.content = f"!api {action} {api_id}"
 
-            mock_message = MockMessage(interaction.user, interaction.channel, action, api_id)
-            
+            mock_message = MockMessage(
+                interaction.user, interaction.channel, action, api_id
+            )
+
             # Use existing logic
             if action == "enable":
-                result = await self.admin_commands_handler._handle_api_enable(mock_message, [api_id])
+                result = await self.admin_commands_handler._handle_api_enable(
+                    mock_message, [api_id]
+                )
             else:
-                result = await self.admin_commands_handler._handle_api_disable(mock_message, [api_id])
-            
+                result = await self.admin_commands_handler._handle_api_disable(
+                    mock_message, [api_id]
+                )
+
             if result:
-                await interaction.followup.send(f"✅ API `{api_id}` {action}d successfully.", ephemeral=True)
+                await interaction.followup.send(
+                    f"✅ API `{api_id}` {action}d successfully.", ephemeral=True
+                )
             else:
-                await interaction.followup.send(f"❌ Failed to {action} API `{api_id}`.", ephemeral=True)
+                await interaction.followup.send(
+                    f"❌ Failed to {action} API `{api_id}`.", ephemeral=True
+                )
 
         except Exception as e:
             logger.error(f"Error in api toggle slash command: {e}")
@@ -547,12 +611,16 @@ class AdminSlashCommands(commands.Cog):
                     self.content = f"!api test {api_id}"
 
             mock_message = MockMessage(interaction.user, interaction.channel, api_id)
-            
+
             # Use existing logic
-            result = await self.admin_commands_handler._handle_api_test(mock_message, [api_id])
-            
+            result = await self.admin_commands_handler._handle_api_test(
+                mock_message, [api_id]
+            )
+
             if result:
-                await interaction.followup.send("API test completed successfully.", ephemeral=True)
+                await interaction.followup.send(
+                    "API test completed successfully.", ephemeral=True
+                )
             else:
                 await interaction.followup.send("❌ API test failed.", ephemeral=True)
 
@@ -589,14 +657,18 @@ class AdminSlashCommands(commands.Cog):
                     self.content = "!api stats"
 
             mock_message = MockMessage(interaction.user, interaction.channel)
-            
+
             # Use existing logic
             result = await self.admin_commands_handler._handle_api_stats(mock_message)
-            
+
             if result:
-                await interaction.followup.send("API statistics displayed successfully.", ephemeral=True)
+                await interaction.followup.send(
+                    "API statistics displayed successfully.", ephemeral=True
+                )
             else:
-                await interaction.followup.send("❌ Failed to display API statistics.", ephemeral=True)
+                await interaction.followup.send(
+                    "❌ Failed to display API statistics.", ephemeral=True
+                )
 
         except Exception as e:
             logger.error(f"Error in api stats slash command: {e}")
@@ -609,7 +681,9 @@ class AdminSlashCommands(commands.Cog):
                 pass
 
     # Cache command group
-    cache_group = app_commands.Group(name="cache", description="Manage intelligent caching")
+    cache_group = app_commands.Group(
+        name="cache", description="Manage intelligent caching"
+    )
 
     @cache_group.command(name="show", description="Show cache status and statistics")
     async def cache_show_slash(self, interaction: discord.Interaction) -> None:
@@ -634,14 +708,20 @@ class AdminSlashCommands(commands.Cog):
                     self.content = "!cache show"
 
             mock_message = MockMessage(interaction.user, interaction.channel)
-            
+
             # Use existing logic
-            result = await self.admin_commands_handler._handle_cache_show(mock_message, [])
-            
+            result = await self.admin_commands_handler._handle_cache_show(
+                mock_message, []
+            )
+
             if result:
-                await interaction.followup.send("Cache status displayed successfully.", ephemeral=True)
+                await interaction.followup.send(
+                    "Cache status displayed successfully.", ephemeral=True
+                )
             else:
-                await interaction.followup.send("❌ Failed to display cache status.", ephemeral=True)
+                await interaction.followup.send(
+                    "❌ Failed to display cache status.", ephemeral=True
+                )
 
         except Exception as e:
             logger.error(f"Error in cache show slash command: {e}")
@@ -682,17 +762,26 @@ class AdminSlashCommands(commands.Cog):
                         self.content = "!cache clear"
 
             mock_message = MockMessage(interaction.user, interaction.channel, namespace)
-            
+
             # Use existing logic
-            result = await self.admin_commands_handler._handle_cache_clear(mock_message, [namespace] if namespace else [])
-            
+            result = await self.admin_commands_handler._handle_cache_clear(
+                mock_message, [namespace] if namespace else []
+            )
+
             if result:
                 if namespace:
-                    await interaction.followup.send(f"✅ Cache namespace `{namespace}` cleared successfully.", ephemeral=True)
+                    await interaction.followup.send(
+                        f"✅ Cache namespace `{namespace}` cleared successfully.",
+                        ephemeral=True,
+                    )
                 else:
-                    await interaction.followup.send("✅ All cache entries cleared successfully.", ephemeral=True)
+                    await interaction.followup.send(
+                        "✅ All cache entries cleared successfully.", ephemeral=True
+                    )
             else:
-                await interaction.followup.send("❌ Failed to clear cache entries.", ephemeral=True)
+                await interaction.followup.send(
+                    "❌ Failed to clear cache entries.", ephemeral=True
+                )
 
         except Exception as e:
             logger.error(f"Error in cache clear slash command: {e}")
@@ -730,14 +819,20 @@ class AdminSlashCommands(commands.Cog):
                     self.content = "!queue"
 
             mock_message = MockMessage(interaction.user, interaction.channel)
-            
+
             # Use existing logic
-            result = await self.admin_commands_handler.handle_queue_command(mock_message)
-            
+            result = await self.admin_commands_handler.handle_queue_command(
+                mock_message
+            )
+
             if result:
-                await interaction.followup.send("Queue status displayed successfully.", ephemeral=True)
+                await interaction.followup.send(
+                    "Queue status displayed successfully.", ephemeral=True
+                )
             else:
-                await interaction.followup.send("❌ Failed to display queue status.", ephemeral=True)
+                await interaction.followup.send(
+                    "❌ Failed to display queue status.", ephemeral=True
+                )
 
         except Exception as e:
             logger.error(f"Error in queue status slash command: {e}")
@@ -772,14 +867,20 @@ class AdminSlashCommands(commands.Cog):
                     self.content = "!queue clear"
 
             mock_message = MockMessage(interaction.user, interaction.channel)
-            
+
             # Use existing logic
-            result = await self.admin_commands_handler.handle_queue_command(mock_message)
-            
+            result = await self.admin_commands_handler.handle_queue_command(
+                mock_message
+            )
+
             if result:
-                await interaction.followup.send("✅ Message queue cleared successfully.", ephemeral=True)
+                await interaction.followup.send(
+                    "✅ Message queue cleared successfully.", ephemeral=True
+                )
             else:
-                await interaction.followup.send("❌ Failed to clear message queue.", ephemeral=True)
+                await interaction.followup.send(
+                    "❌ Failed to clear message queue.", ephemeral=True
+                )
 
         except Exception as e:
             logger.error(f"Error in queue clear slash command: {e}")

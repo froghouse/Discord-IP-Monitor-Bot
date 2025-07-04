@@ -2,20 +2,19 @@
 Core bot implementation for the IP Monitor Bot.
 """
 
-import asyncio
 import logging
 
 import discord
-from discord.ext import tasks, commands
+from discord.ext import commands, tasks
 
-from ip_monitor.commands.admin_commands import AdminCommands
+from ip_monitor.commands.admin_commands import AdminCommandRouter
 from ip_monitor.commands.ip_commands import IPCommands
 from ip_monitor.config import AppConfig
 from ip_monitor.ip_service import IPService
 from ip_monitor.storage import SQLiteIPStorage
+from ip_monitor.utils.async_rate_limiter import AsyncRateLimiter
 from ip_monitor.utils.discord_rate_limiter import DiscordRateLimiter
 from ip_monitor.utils.message_queue import message_queue
-from ip_monitor.utils.async_rate_limiter import AsyncRateLimiter
 from ip_monitor.utils.service_health import service_health
 
 logger = logging.getLogger(__name__)
@@ -37,8 +36,10 @@ class IPMonitorBot:
 
         # Set up Discord bot with slash command support
         intents = discord.Intents.default()
-        intents.message_content = True  # Keep for backwards compatibility during transition
-        self.client = commands.Bot(command_prefix='!', intents=intents)
+        intents.message_content = (
+            True  # Keep for backwards compatibility during transition
+        )
+        self.client = commands.Bot(command_prefix="!", intents=intents)
 
         # Configure services
         self.ip_service = IPService(
@@ -79,7 +80,7 @@ class IPMonitorBot:
             rate_limiter=self.rate_limiter,
         )
 
-        self.admin_commands = AdminCommands(
+        self.admin_commands = AdminCommandRouter(
             client=self.client,
             ip_service=self.ip_service,
             storage=self.storage,
@@ -108,8 +109,8 @@ class IPMonitorBot:
         Set up slash command cogs.
         """
         # Import slash command classes
-        from ip_monitor.slash_commands.ip_slash_commands import IPSlashCommands
         from ip_monitor.slash_commands.admin_slash_commands import AdminSlashCommands
+        from ip_monitor.slash_commands.ip_slash_commands import IPSlashCommands
 
         # Add IP slash commands cog
         ip_slash_cog = IPSlashCommands(
@@ -120,7 +121,7 @@ class IPMonitorBot:
             rate_limiter=self.rate_limiter,
             ip_commands_handler=self.ip_commands,
         )
-        
+
         # Add admin slash commands cog
         admin_slash_cog = AdminSlashCommands(
             bot=self.client,

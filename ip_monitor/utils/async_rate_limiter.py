@@ -6,9 +6,9 @@ implementation, offering better performance and compatibility with asyncio appli
 """
 
 import asyncio
-import time
-from typing import Tuple, List
 import logging
+import time
+from typing import List, Tuple
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,6 @@ Slash command implementations for IP-related commands.
 
 import logging
 from datetime import datetime
-from typing import Optional
 
 import discord
 from discord import app_commands
@@ -13,7 +12,6 @@ from discord.ext import commands
 from ip_monitor.ip_service import IPService
 from ip_monitor.storage import SQLiteIPStorage
 from ip_monitor.utils.async_rate_limiter import AsyncRateLimiter
-from ip_monitor.utils.message_queue import MessagePriority
 from ip_monitor.utils.service_health import service_health
 
 logger = logging.getLogger(__name__)
@@ -166,7 +164,9 @@ class IPSlashCommands(commands.Cog):
             except discord.NotFound:
                 pass
 
-    @app_commands.command(name="status", description="View bot status and configuration")
+    @app_commands.command(
+        name="status", description="View bot status and configuration"
+    )
     async def status_slash(self, interaction: discord.Interaction) -> None:
         """
         Slash command to show bot status.
@@ -174,7 +174,9 @@ class IPSlashCommands(commands.Cog):
         try:
             await interaction.response.defer()
 
-            logger.info(f"Status check requested by {interaction.user} via slash command")
+            logger.info(
+                f"Status check requested by {interaction.user} via slash command"
+            )
 
             # Format status info
             is_limited, wait_time = await self.rate_limiter.is_limited()
@@ -198,9 +200,7 @@ class IPSlashCommands(commands.Cog):
                     status_text += "🟢 Circuit breaker: CLOSED (normal operation)\\n"
                 elif cb_state == "open":
                     time_until_half_open = cb_info.get("time_until_half_open", 0)
-                    status_text += (
-                        f"🔴 Circuit breaker: OPEN (retry in {time_until_half_open:.0f}s)\\n"
-                    )
+                    status_text += f"🔴 Circuit breaker: OPEN (retry in {time_until_half_open:.0f}s)\\n"
                 elif cb_state == "half_open":
                     status_text += "🟡 Circuit breaker: HALF-OPEN (testing recovery)\\n"
 
@@ -276,6 +276,7 @@ class IPSlashCommands(commands.Cog):
             # Add message queue status if available
             try:
                 from ip_monitor.utils.message_queue import message_queue
+
                 queue_status = message_queue.get_queue_status()
                 status_text += f"📥 Message Queue: {queue_status['queue_size']}/{queue_status['max_queue_size']} messages\\n"
 
@@ -299,7 +300,9 @@ class IPSlashCommands(commands.Cog):
             except discord.NotFound:
                 pass
 
-    @app_commands.command(name="help", description="Display available commands and their usage")
+    @app_commands.command(
+        name="help", description="Display available commands and their usage"
+    )
     async def help_slash(self, interaction: discord.Interaction) -> None:
         """
         Slash command to show available commands.

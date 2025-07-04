@@ -12,9 +12,9 @@ from typing import List, Optional
 import httpx
 
 from ip_monitor.ip_api_config import ResponseFormat, ip_api_manager
+from ip_monitor.utils.cache import CacheType, get_cache
 from ip_monitor.utils.circuit_breaker import IPServiceCircuitBreaker
 from ip_monitor.utils.service_health import service_health
-from ip_monitor.utils.cache import get_cache, CacheType
 
 logger = logging.getLogger(__name__)
 

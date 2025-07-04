@@ -11,9 +11,9 @@ import discord
 
 from ip_monitor.ip_service import IPService
 from ip_monitor.storage import IPStorage, SQLiteIPStorage
+from ip_monitor.utils.async_rate_limiter import AsyncRateLimiter
 from ip_monitor.utils.discord_rate_limiter import DiscordRateLimiter
 from ip_monitor.utils.message_queue import MessagePriority, message_queue
-from ip_monitor.utils.async_rate_limiter import AsyncRateLimiter
 from ip_monitor.utils.service_health import service_health
 
 logger = logging.getLogger(__name__)
