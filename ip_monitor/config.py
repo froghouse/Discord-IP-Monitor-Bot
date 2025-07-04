@@ -6,7 +6,7 @@ import json
 import logging
 import os
 from dataclasses import asdict, dataclass
-from typing import Any, ClassVar, Dict, Union
+from typing import Any, ClassVar, Dict
 
 from dotenv import load_dotenv
 
@@ -451,9 +451,20 @@ class AppConfig:
         }
         return configurable_fields
 
-    def validate_config_value(
-        self, field_name: str, value: str
-    ) -> tuple[bool, Union[Any, str]]:
+    def get_field_info(self, field_name: str) -> Dict[str, Any]:
+        """
+        Get information about a specific configuration field.
+
+        Args:
+            field_name: Name of the configuration field
+
+        Returns:
+            Dict containing field information, or empty dict if field not found
+        """
+        configurable_fields = self.get_runtime_configurable_fields()
+        return configurable_fields.get(field_name, {})
+
+    def validate_config_value(self, field_name: str, value: str) -> Dict[str, Any]:
         """
         Validate a configuration value.
 
@@ -462,12 +473,16 @@ class AppConfig:
             value: String value to validate and convert
 
         Returns:
-            Tuple of (is_valid, converted_value_or_error_message)
+            Dict with keys: 'valid' (bool), 'converted_value' (Any), 'error' (str)
         """
         configurable_fields = self.get_runtime_configurable_fields()
 
         if field_name not in configurable_fields:
-            return False, f"Field '{field_name}' is not configurable at runtime"
+            return {
+                "valid": False,
+                "error": f"Field '{field_name}' is not configurable at runtime",
+                "converted_value": None,
+            }
 
         field_info = configurable_fields[field_name]
         field_type = field_info["type"]
@@ -484,12 +499,17 @@ class AppConfig:
                 elif value.lower() in ["false", "no", "0", "off", "disabled"]:
                     converted_value = False
                 else:
-                    return (
-                        False,
-                        f"Invalid boolean value: '{value}'. Use true/false, yes/no, 1/0, on/off, or enabled/disabled",
-                    )
+                    return {
+                        "valid": False,
+                        "error": f"Invalid boolean value: '{value}'. Use true/false, yes/no, 1/0, on/off, or enabled/disabled",
+                        "converted_value": None,
+                    }
             else:
-                return False, f"Unsupported field type: {field_type}"
+                return {
+                    "valid": False,
+                    "error": f"Unsupported field type: {field_type}",
+                    "converted_value": None,
+                }
 
             # Validate ranges for numeric values
             if field_type in ["int", "float"]:
@@ -497,23 +517,29 @@ class AppConfig:
                     "min_value" in field_info
                     and converted_value < field_info["min_value"]
                 ):
-                    return (
-                        False,
-                        f"Value {converted_value} is below minimum {field_info['min_value']}",
-                    )
+                    return {
+                        "valid": False,
+                        "error": f"Value {converted_value} is below minimum {field_info['min_value']}",
+                        "converted_value": None,
+                    }
                 if (
                     "max_value" in field_info
                     and converted_value > field_info["max_value"]
                 ):
-                    return (
-                        False,
-                        f"Value {converted_value} is above maximum {field_info['max_value']}",
-                    )
+                    return {
+                        "valid": False,
+                        "error": f"Value {converted_value} is above maximum {field_info['max_value']}",
+                        "converted_value": None,
+                    }
 
-            return True, converted_value
+            return {"valid": True, "converted_value": converted_value, "error": None}
 
         except ValueError as e:
-            return False, f"Invalid {field_type} value: '{value}' ({str(e)})"
+            return {
+                "valid": False,
+                "error": f"Invalid {field_type} value: '{value}' ({str(e)})",
+                "converted_value": None,
+            }
 
     def update_field(self, field_name: str, value: Any) -> bool:
         """
@@ -540,12 +566,12 @@ class AppConfig:
         """
         return asdict(self)
 
-    def save_to_file(self, file_path: str) -> bool:
+    def save_to_file(self, file_path: str = "bot_config.json") -> bool:
         """
         Save configuration to JSON file.
 
         Args:
-            file_path: Path to save configuration file
+            file_path: Path to save configuration file (default: "bot_config.json")
 
         Returns:
             bool: True if save was successful

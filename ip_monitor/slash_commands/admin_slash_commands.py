@@ -129,7 +129,9 @@ class AdminSlashCommands(commands.Cog):
             mock_message = MockMessage(interaction.user, interaction.channel)
 
             # Use existing logic through the router
-            config_handler = self.admin_commands_handler.get_handler_for_command("config")
+            config_handler = self.admin_commands_handler.get_handler_for_command(
+                "config"
+            )
             if config_handler:
                 result = await config_handler._handle_config_show(mock_message, field)
             else:
@@ -187,9 +189,13 @@ class AdminSlashCommands(commands.Cog):
             )
 
             # Use existing logic through the router
-            config_handler = self.admin_commands_handler.get_handler_for_command("config")
+            config_handler = self.admin_commands_handler.get_handler_for_command(
+                "config"
+            )
             if config_handler:
-                result = await config_handler._handle_config_set(mock_message, field, value)
+                result = await config_handler._handle_config_set(
+                    mock_message, field, value
+                )
             else:
                 result = False
 
@@ -238,7 +244,9 @@ class AdminSlashCommands(commands.Cog):
             mock_message = MockMessage(interaction.user, interaction.channel)
 
             # Use existing logic through the router
-            config_handler = self.admin_commands_handler.get_handler_for_command("config")
+            config_handler = self.admin_commands_handler.get_handler_for_command(
+                "config"
+            )
             if config_handler:
                 result = await config_handler._handle_config_list(mock_message)
             else:
@@ -288,7 +296,9 @@ class AdminSlashCommands(commands.Cog):
             mock_message = MockMessage(interaction.user, interaction.channel)
 
             # Use existing logic through the router
-            config_handler = self.admin_commands_handler.get_handler_for_command("config")
+            config_handler = self.admin_commands_handler.get_handler_for_command(
+                "config"
+            )
             if config_handler:
                 result = await config_handler._handle_config_save(mock_message)
             else:
@@ -338,7 +348,9 @@ class AdminSlashCommands(commands.Cog):
             mock_message = MockMessage(interaction.user, interaction.channel)
 
             # Use existing logic through the router
-            config_handler = self.admin_commands_handler.get_handler_for_command("config")
+            config_handler = self.admin_commands_handler.get_handler_for_command(
+                "config"
+            )
             if config_handler:
                 result = await config_handler._handle_config_reload(mock_message)
             else:
@@ -521,7 +533,9 @@ class AdminSlashCommands(commands.Cog):
             # Use existing logic through the router
             api_handler = self.admin_commands_handler.get_handler_for_command("api")
             if api_handler:
-                result = await api_handler.handle_command(mock_message, ["api", "remove", api_id])
+                result = await api_handler.handle_command(
+                    mock_message, ["api", "remove", api_id]
+                )
             else:
                 result = False
 
@@ -584,7 +598,9 @@ class AdminSlashCommands(commands.Cog):
             # Use existing logic through the router
             api_handler = self.admin_commands_handler.get_handler_for_command("api")
             if api_handler:
-                result = await api_handler.handle_command(mock_message, ["api", action, api_id])
+                result = await api_handler.handle_command(
+                    mock_message, ["api", action, api_id]
+                )
             else:
                 result = False
 
@@ -637,7 +653,9 @@ class AdminSlashCommands(commands.Cog):
             # Use existing logic through the router
             api_handler = self.admin_commands_handler.get_handler_for_command("api")
             if api_handler:
-                result = await api_handler.handle_command(mock_message, ["api", "test", api_id])
+                result = await api_handler.handle_command(
+                    mock_message, ["api", "test", api_id]
+                )
             else:
                 result = False
 
@@ -685,7 +703,9 @@ class AdminSlashCommands(commands.Cog):
             # Use existing logic through the router
             api_handler = self.admin_commands_handler.get_handler_for_command("api")
             if api_handler:
-                result = await api_handler.handle_command(mock_message, ["api", "stats"])
+                result = await api_handler.handle_command(
+                    mock_message, ["api", "stats"]
+                )
             else:
                 result = False
 
@@ -740,7 +760,9 @@ class AdminSlashCommands(commands.Cog):
             # Use existing logic through the router
             cache_handler = self.admin_commands_handler.get_handler_for_command("cache")
             if cache_handler:
-                result = await cache_handler.handle_command(mock_message, ["cache", "show"])
+                result = await cache_handler.handle_command(
+                    mock_message, ["cache", "show"]
+                )
             else:
                 result = False
 
@@ -908,7 +930,9 @@ class AdminSlashCommands(commands.Cog):
             # Use existing logic through the router
             queue_handler = self.admin_commands_handler.get_handler_for_command("queue")
             if queue_handler:
-                result = await queue_handler.handle_command(mock_message, ["queue", "clear"])
+                result = await queue_handler.handle_command(
+                    mock_message, ["queue", "clear"]
+                )
             else:
                 result = False
 

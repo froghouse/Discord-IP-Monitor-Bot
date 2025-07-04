@@ -31,7 +31,6 @@ class TestAdminCommandRouterIntegration:
             config=mock_config,
         )
 
-
     def test_initialization(self, admin_router):
         """Test that AdminCommandRouter initializes correctly."""
         assert len(admin_router.handlers) == 5
