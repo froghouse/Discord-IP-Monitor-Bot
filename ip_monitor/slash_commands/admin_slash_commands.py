@@ -128,11 +128,12 @@ class AdminSlashCommands(commands.Cog):
 
             mock_message = MockMessage(interaction.user, interaction.channel)
 
-            # Use existing logic but capture the response
-            parts = [field] if field else []
-            result = await self.admin_commands_handler._handle_config_show(
-                mock_message, parts
-            )
+            # Use existing logic through the router
+            config_handler = self.admin_commands_handler.get_handler_for_command("config")
+            if config_handler:
+                result = await config_handler._handle_config_show(mock_message, field)
+            else:
+                result = False
 
             if result:
                 await interaction.followup.send(
@@ -185,10 +186,12 @@ class AdminSlashCommands(commands.Cog):
                 interaction.user, interaction.channel, field, value
             )
 
-            # Use existing logic
-            result = await self.admin_commands_handler._handle_config_set(
-                mock_message, [field, value]
-            )
+            # Use existing logic through the router
+            config_handler = self.admin_commands_handler.get_handler_for_command("config")
+            if config_handler:
+                result = await config_handler._handle_config_set(mock_message, field, value)
+            else:
+                result = False
 
             if result:
                 await interaction.followup.send(
@@ -234,8 +237,12 @@ class AdminSlashCommands(commands.Cog):
 
             mock_message = MockMessage(interaction.user, interaction.channel)
 
-            # Use existing logic
-            result = await self.admin_commands_handler._handle_config_list(mock_message)
+            # Use existing logic through the router
+            config_handler = self.admin_commands_handler.get_handler_for_command("config")
+            if config_handler:
+                result = await config_handler._handle_config_list(mock_message)
+            else:
+                result = False
 
             if result:
                 await interaction.followup.send(
@@ -280,8 +287,12 @@ class AdminSlashCommands(commands.Cog):
 
             mock_message = MockMessage(interaction.user, interaction.channel)
 
-            # Use existing logic
-            result = await self.admin_commands_handler._handle_config_save(mock_message)
+            # Use existing logic through the router
+            config_handler = self.admin_commands_handler.get_handler_for_command("config")
+            if config_handler:
+                result = await config_handler._handle_config_save(mock_message)
+            else:
+                result = False
 
             if result:
                 await interaction.followup.send(
@@ -326,10 +337,12 @@ class AdminSlashCommands(commands.Cog):
 
             mock_message = MockMessage(interaction.user, interaction.channel)
 
-            # Use existing logic
-            result = await self.admin_commands_handler._handle_config_reload(
-                mock_message
-            )
+            # Use existing logic through the router
+            config_handler = self.admin_commands_handler.get_handler_for_command("config")
+            if config_handler:
+                result = await config_handler._handle_config_reload(mock_message)
+            else:
+                result = False
 
             if result:
                 await interaction.followup.send(
@@ -377,8 +390,12 @@ class AdminSlashCommands(commands.Cog):
 
             mock_message = MockMessage(interaction.user, interaction.channel)
 
-            # Use existing logic
-            result = await self.admin_commands_handler._handle_api_list(mock_message)
+            # Use existing logic through the router
+            api_handler = self.admin_commands_handler.get_handler_for_command("api")
+            if api_handler:
+                result = await api_handler.handle_command(mock_message, ["api", "list"])
+            else:
+                result = False
 
             if result:
                 await interaction.followup.send(
@@ -443,11 +460,17 @@ class AdminSlashCommands(commands.Cog):
                 interaction.user, interaction.channel, name, url, format, field
             )
 
-            # Use existing logic
-            result = await self.admin_commands_handler._handle_api_add(
-                mock_message,
-                [name, url] + ([format] if format else []) + ([field] if field else []),
-            )
+            # Use existing logic through the router
+            api_handler = self.admin_commands_handler.get_handler_for_command("api")
+            if api_handler:
+                args = ["api", "add", name, url]
+                if format and format != "auto":
+                    args.append(format)
+                if field:
+                    args.append(field)
+                result = await api_handler.handle_command(mock_message, args)
+            else:
+                result = False
 
             if result:
                 await interaction.followup.send(
@@ -495,10 +518,12 @@ class AdminSlashCommands(commands.Cog):
 
             mock_message = MockMessage(interaction.user, interaction.channel, api_id)
 
-            # Use existing logic
-            result = await self.admin_commands_handler._handle_api_remove(
-                mock_message, [api_id]
-            )
+            # Use existing logic through the router
+            api_handler = self.admin_commands_handler.get_handler_for_command("api")
+            if api_handler:
+                result = await api_handler.handle_command(mock_message, ["api", "remove", api_id])
+            else:
+                result = False
 
             if result:
                 await interaction.followup.send(
@@ -556,15 +581,12 @@ class AdminSlashCommands(commands.Cog):
                 interaction.user, interaction.channel, action, api_id
             )
 
-            # Use existing logic
-            if action == "enable":
-                result = await self.admin_commands_handler._handle_api_enable(
-                    mock_message, [api_id]
-                )
+            # Use existing logic through the router
+            api_handler = self.admin_commands_handler.get_handler_for_command("api")
+            if api_handler:
+                result = await api_handler.handle_command(mock_message, ["api", action, api_id])
             else:
-                result = await self.admin_commands_handler._handle_api_disable(
-                    mock_message, [api_id]
-                )
+                result = False
 
             if result:
                 await interaction.followup.send(
@@ -612,10 +634,12 @@ class AdminSlashCommands(commands.Cog):
 
             mock_message = MockMessage(interaction.user, interaction.channel, api_id)
 
-            # Use existing logic
-            result = await self.admin_commands_handler._handle_api_test(
-                mock_message, [api_id]
-            )
+            # Use existing logic through the router
+            api_handler = self.admin_commands_handler.get_handler_for_command("api")
+            if api_handler:
+                result = await api_handler.handle_command(mock_message, ["api", "test", api_id])
+            else:
+                result = False
 
             if result:
                 await interaction.followup.send(
@@ -658,8 +682,12 @@ class AdminSlashCommands(commands.Cog):
 
             mock_message = MockMessage(interaction.user, interaction.channel)
 
-            # Use existing logic
-            result = await self.admin_commands_handler._handle_api_stats(mock_message)
+            # Use existing logic through the router
+            api_handler = self.admin_commands_handler.get_handler_for_command("api")
+            if api_handler:
+                result = await api_handler.handle_command(mock_message, ["api", "stats"])
+            else:
+                result = False
 
             if result:
                 await interaction.followup.send(
@@ -709,10 +737,12 @@ class AdminSlashCommands(commands.Cog):
 
             mock_message = MockMessage(interaction.user, interaction.channel)
 
-            # Use existing logic
-            result = await self.admin_commands_handler._handle_cache_show(
-                mock_message, []
-            )
+            # Use existing logic through the router
+            cache_handler = self.admin_commands_handler.get_handler_for_command("cache")
+            if cache_handler:
+                result = await cache_handler.handle_command(mock_message, ["cache", "show"])
+            else:
+                result = False
 
             if result:
                 await interaction.followup.send(
@@ -763,10 +793,15 @@ class AdminSlashCommands(commands.Cog):
 
             mock_message = MockMessage(interaction.user, interaction.channel, namespace)
 
-            # Use existing logic
-            result = await self.admin_commands_handler._handle_cache_clear(
-                mock_message, [namespace] if namespace else []
-            )
+            # Use existing logic through the router
+            cache_handler = self.admin_commands_handler.get_handler_for_command("cache")
+            if cache_handler:
+                args = ["cache", "clear"]
+                if namespace:
+                    args.append(namespace)
+                result = await cache_handler.handle_command(mock_message, args)
+            else:
+                result = False
 
             if result:
                 if namespace:
@@ -820,10 +855,12 @@ class AdminSlashCommands(commands.Cog):
 
             mock_message = MockMessage(interaction.user, interaction.channel)
 
-            # Use existing logic
-            result = await self.admin_commands_handler.handle_queue_command(
-                mock_message
-            )
+            # Use existing logic through the router
+            queue_handler = self.admin_commands_handler.get_handler_for_command("queue")
+            if queue_handler:
+                result = await queue_handler.handle_command(mock_message, ["queue"])
+            else:
+                result = False
 
             if result:
                 await interaction.followup.send(
@@ -868,10 +905,12 @@ class AdminSlashCommands(commands.Cog):
 
             mock_message = MockMessage(interaction.user, interaction.channel)
 
-            # Use existing logic
-            result = await self.admin_commands_handler.handle_queue_command(
-                mock_message
-            )
+            # Use existing logic through the router
+            queue_handler = self.admin_commands_handler.get_handler_for_command("queue")
+            if queue_handler:
+                result = await queue_handler.handle_command(mock_message, ["queue", "clear"])
+            else:
+                result = False
 
             if result:
                 await interaction.followup.send(
