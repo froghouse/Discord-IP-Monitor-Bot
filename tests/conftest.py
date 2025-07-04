@@ -1,8 +1,9 @@
 import asyncio
-import pytest
-import sys
 import os
-from unittest.mock import Mock, AsyncMock
+import sys
+from unittest.mock import AsyncMock, Mock
+
+import pytest
 
 # Add the project root to the Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -202,22 +203,24 @@ def mock_ip_service():
     """Create a mock IP service."""
     service = Mock()
     service.get_current_ip = AsyncMock(return_value="192.168.1.1")
-    service.get_cache_info = Mock(return_value={
-        'enabled': True,
-        'cache_ttl': 300,
-        'stale_threshold': 0.8,
-        'stale_entries_count': 0,
-        'stats': {
-            'memory_entries': 0,
-            'hits': 0,
-            'misses': 0,
-            'evictions': 0,
-            'invalidations': 0,
-            'refreshes': 0,
-            'saves': 0,
-            'loads': 0,
+    service.get_cache_info = Mock(
+        return_value={
+            "enabled": True,
+            "cache_ttl": 300,
+            "stale_threshold": 0.8,
+            "stale_entries_count": 0,
+            "stats": {
+                "memory_entries": 0,
+                "hits": 0,
+                "misses": 0,
+                "evictions": 0,
+                "invalidations": 0,
+                "refreshes": 0,
+                "saves": 0,
+                "loads": 0,
+            },
         }
-    })
+    )
     service.invalidate_cache = Mock(return_value=0)
     service.refresh_stale_cache_entries = AsyncMock(return_value=0)
     return service
@@ -252,4 +255,36 @@ def mock_message():
     message.channel.id = 12345
     message.channel.send = AsyncMock()
     message.content = "!test"
+    return message
+
+
+@pytest.fixture
+def mock_admin_message():
+    """Create a mock Discord message with admin permissions."""
+    message = Mock()
+    message.author = Mock()
+    message.author.id = 987654321
+    message.author.name = "AdminUser"
+    message.author.guild_permissions = Mock()
+    message.author.guild_permissions.administrator = True
+    message.channel = Mock()
+    message.channel.id = 12345
+    message.channel.send = AsyncMock()
+    message.content = "!admin"
+    return message
+
+
+@pytest.fixture
+def mock_non_admin_message():
+    """Create a mock Discord message without admin permissions."""
+    message = Mock()
+    message.author = Mock()
+    message.author.id = 987654322
+    message.author.name = "RegularUser"
+    message.author.guild_permissions = Mock()
+    message.author.guild_permissions.administrator = False
+    message.channel = Mock()
+    message.channel.id = 12345
+    message.channel.send = AsyncMock()
+    message.content = "!user"
     return message

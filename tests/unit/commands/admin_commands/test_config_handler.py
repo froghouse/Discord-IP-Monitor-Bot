@@ -2,9 +2,10 @@
 Tests for the ConfigHandler class.
 """
 
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
+
 import discord
+import pytest
 
 from ip_monitor.commands.admin_commands.config_handler import ConfigHandler
 from ip_monitor.config import AppConfig

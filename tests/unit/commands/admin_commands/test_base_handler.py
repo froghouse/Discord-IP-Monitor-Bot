@@ -2,10 +2,11 @@
 Tests for the BaseHandler class.
 """
 
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
-import discord
 import logging
+from unittest.mock import AsyncMock, Mock, patch
+
+import discord
+import pytest
 
 from ip_monitor.commands.admin_commands.base_handler import BaseHandler
 from ip_monitor.config import AppConfig
