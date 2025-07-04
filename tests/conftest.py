@@ -380,6 +380,7 @@ def sqlite_storage_with_data(sqlite_storage):
 @pytest.fixture
 async def mock_ip_api_server():
     """Create a mock HTTP server for IP API testing."""
+    import asyncio
     responses = {
         "/json": {"ip": "203.0.113.1"},
         "/text": "203.0.113.1",
@@ -434,6 +435,39 @@ async def mock_ip_api_server():
     }
     
     await runner.cleanup()
+
+
+# Enhanced HTTP Mock Fixtures
+@pytest.fixture
+async def http_mock_fixture():
+    """Create enhanced HTTP mock fixture for integration testing."""
+    from tests.utils.http_server_mocks import HTTPMockFixture
+    
+    fixture = HTTPMockFixture()
+    yield fixture
+    await fixture.cleanup()
+
+
+@pytest.fixture
+async def mock_api_server():
+    """Create a single mock API server for testing."""
+    from tests.utils.http_server_mocks import MockIPAPIServer
+    
+    server = MockIPAPIServer()
+    await server.start()
+    yield server
+    await server.stop()
+
+
+@pytest.fixture
+async def mock_api_cluster():
+    """Create a cluster of mock API servers for testing."""
+    from tests.utils.http_server_mocks import MockAPICluster
+    
+    cluster = MockAPICluster(server_count=3)
+    await cluster.start()
+    yield cluster
+    await cluster.stop()
 
 
 @pytest.fixture
