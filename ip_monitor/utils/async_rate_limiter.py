@@ -8,7 +8,6 @@ implementation, offering better performance and compatibility with asyncio appli
 import asyncio
 import logging
 import time
-from typing import List, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -31,14 +30,14 @@ class AsyncRateLimiter:
         """
         self.period = period
         self.max_calls = max_calls
-        self.calls: List[float] = []  # List of timestamps
+        self.calls: list[float] = []  # List of timestamps
         self.lock = asyncio.Lock()  # Async lock for coroutine safety
 
         logger.debug(
             f"AsyncRateLimiter initialized: {max_calls} calls per {period} seconds"
         )
 
-    async def is_limited(self) -> Tuple[bool, int]:
+    async def is_limited(self) -> tuple[bool, int]:
         """
         Check if the rate limit is reached.
 

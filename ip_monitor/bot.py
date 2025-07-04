@@ -152,9 +152,8 @@ class IPMonitorBot:
                 if ip:
                     logger.info(f"Test completed successfully. Current IP: {ip}")
                     return 0
-                else:
-                    logger.error("Test failed - could not retrieve IP")
-                    return 1
+                logger.error("Test failed - could not retrieve IP")
+                return 1
 
             await self.client.start(self.config.discord_token)
             return 0
@@ -207,7 +206,8 @@ class IPMonitorBot:
             channel = self.client.get_channel(self.config.channel_id)
             if not channel:
                 logger.error(
-                    f"Could not find channel with ID {self.config.channel_id}. Stopping bot."
+                    f"Could not find channel with ID {self.config.channel_id}. "
+                    "Stopping bot."
                 )
                 await self.client.close()
                 return
@@ -240,9 +240,12 @@ class IPMonitorBot:
 
             if self.config.startup_message_enabled:
                 try:
+                    startup_msg = (
+                        f"🟢 IP Monitor Bot started! Will check IP every "
+                        f"{self.config.check_interval} minutes."
+                    )
                     await self.discord_rate_limiter.send_message_with_backoff(
-                        channel,
-                        f"🟢 IP Monitor Bot started! Will check IP every {self.config.check_interval} minutes.",
+                        channel, startup_msg
                     )
                 except Exception as e:
                     logger.error(f"Failed to send startup message: {e}")

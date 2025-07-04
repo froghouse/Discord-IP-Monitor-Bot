@@ -2,8 +2,9 @@
 Queue handler for admin commands.
 """
 
+from collections.abc import Callable, Coroutine
 import logging
-from typing import Any, Callable, Coroutine, Union
+from typing import Any
 
 import discord
 
@@ -26,7 +27,7 @@ class QueueHandler(BaseHandler):
         self,
         client: discord.Client,
         ip_service: IPService,
-        storage: Union[IPStorage, SQLiteIPStorage],
+        storage: IPStorage | SQLiteIPStorage,
         stop_callback: Callable[[], Coroutine[Any, Any, None]],
         config: AppConfig,
     ) -> None:
@@ -92,19 +93,18 @@ class QueueHandler(BaseHandler):
         try:
             if subcommand == "clear":
                 return await self._handle_queue_clear(message)
-            elif subcommand == "retry":
+            if subcommand == "retry":
                 return await self._handle_queue_retry(message)
-            elif subcommand == "start":
+            if subcommand == "start":
                 return await self._handle_queue_start(message)
-            elif subcommand == "stop":
+            if subcommand == "stop":
                 return await self._handle_queue_stop(message)
-            else:
-                # Show help for unknown subcommand
-                help_text = self._get_queue_help_text()
-                await self.discord_rate_limiter.send_message_with_backoff(
-                    message.channel, help_text
-                )
-                return True
+            # Show help for unknown subcommand
+            help_text = self._get_queue_help_text()
+            await self.discord_rate_limiter.send_message_with_backoff(
+                message.channel, help_text
+            )
+            return True
         except Exception as e:
             await self.handle_command_error(message, e, f"queue {subcommand}")
             return False

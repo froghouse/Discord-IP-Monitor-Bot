@@ -3,7 +3,7 @@ Slash command implementations for admin commands.
 """
 
 import logging
-from typing import Literal, Optional
+from typing import Literal
 
 import discord
 from discord import app_commands
@@ -101,7 +101,7 @@ class AdminSlashCommands(commands.Cog):
     @config_group.command(name="show", description="Show current configuration")
     @app_commands.describe(field="Specific configuration field to show (optional)")
     async def config_show_slash(
-        self, interaction: discord.Interaction, field: Optional[str] = None
+        self, interaction: discord.Interaction, field: str | None = None
     ) -> None:
         """
         Show current configuration.
@@ -440,8 +440,8 @@ class AdminSlashCommands(commands.Cog):
         interaction: discord.Interaction,
         name: str,
         url: str,
-        format: Optional[Literal["json", "text", "auto"]] = "auto",
-        field: Optional[str] = None,
+        format: Literal["json", "text", "auto"] | None = "auto",
+        field: str | None = None,
     ) -> None:
         """
         Add a new IP detection API.
@@ -788,7 +788,7 @@ class AdminSlashCommands(commands.Cog):
     @cache_group.command(name="clear", description="Clear cache entries")
     @app_commands.describe(namespace="Specific namespace to clear (optional)")
     async def cache_clear_slash(
-        self, interaction: discord.Interaction, namespace: Optional[str] = None
+        self, interaction: discord.Interaction, namespace: str | None = None
     ) -> None:
         """
         Clear cache entries.
@@ -959,4 +959,3 @@ class AdminSlashCommands(commands.Cog):
 async def setup(bot: commands.Bot) -> None:
     """Setup function to add this cog to the bot."""
     # This will be called when the cog is loaded
-    pass

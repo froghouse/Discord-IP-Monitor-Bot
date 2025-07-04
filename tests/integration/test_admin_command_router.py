@@ -179,7 +179,7 @@ class TestAdminCommandRouterIntegration:
             result = await admin_router.handle_config_command(mock_admin_message)
             assert result is True
             mock_handle.assert_called_once_with(
-                mock_admin_message, ["config", "show", "field"]
+                mock_admin_message, ["show", "field"]
             )
 
     async def test_handle_config_command_no_args(
@@ -210,7 +210,7 @@ class TestAdminCommandRouterIntegration:
 
             result = await admin_router.handle_queue_command(mock_admin_message)
             assert result is True
-            mock_handle.assert_called_once_with(mock_admin_message, ["queue", "status"])
+            mock_handle.assert_called_once_with(mock_admin_message, ["status"])
 
     async def test_handle_api_command_backward_compatibility(
         self, admin_router, mock_admin_message
@@ -226,7 +226,7 @@ class TestAdminCommandRouterIntegration:
             result = await admin_router.handle_api_command(mock_admin_message)
             assert result is True
             mock_handle.assert_called_once_with(
-                mock_admin_message, ["api", "test", "endpoint"]
+                mock_admin_message, ["test", "endpoint"]
             )
 
     async def test_handle_cache_command_backward_compatibility(
@@ -243,7 +243,7 @@ class TestAdminCommandRouterIntegration:
             result = await admin_router.handle_cache_command(mock_admin_message)
             assert result is True
             mock_handle.assert_called_once_with(
-                mock_admin_message, ["cache", "clear", "namespace"]
+                mock_admin_message, ["clear", "namespace"]
             )
 
     def test_get_admin_help_text(self, admin_router):

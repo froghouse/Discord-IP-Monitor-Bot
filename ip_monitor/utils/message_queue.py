@@ -3,13 +3,13 @@ Async message queue for Discord notifications during API downtime.
 """
 
 import asyncio
+from dataclasses import asdict, dataclass
+from enum import Enum
 import json
 import logging
 import os
 import time
-from dataclasses import asdict, dataclass
-from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 import discord
@@ -47,18 +47,18 @@ class QueuedMessage:
     content: str
     priority: MessagePriority
     created_at: float
-    scheduled_at: Optional[float] = None
+    scheduled_at: float | None = None
     status: MessageStatus = MessageStatus.PENDING
     retry_count: int = 0
     max_retries: int = 3
-    expires_at: Optional[float] = None
-    embed: Optional[Dict[str, Any]] = None
-    files: Optional[List[str]] = None
-    tags: Optional[List[str]] = None
-    dedupe_key: Optional[str] = None
-    last_error: Optional[str] = None
+    expires_at: float | None = None
+    embed: dict[str, Any] | None = None
+    files: list[str] | None = None
+    tags: list[str] | None = None
+    dedupe_key: str | None = None
+    last_error: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         data = asdict(self)
         data["priority"] = self.priority.value
@@ -66,7 +66,7 @@ class QueuedMessage:
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "QueuedMessage":
+    def from_dict(cls, data: dict[str, Any]) -> "QueuedMessage":
         """Create from dictionary after JSON deserialization."""
         data["priority"] = MessagePriority(data["priority"])
         data["status"] = MessageStatus(data["status"])
@@ -123,13 +123,13 @@ class AsyncMessageQueue:
         self.process_interval = process_interval
 
         # In-memory queue (priority queue)
-        self.queue: List[QueuedMessage] = []
-        self.dedupe_cache: Dict[str, str] = {}  # dedupe_key -> message_id
+        self.queue: list[QueuedMessage] = []
+        self.dedupe_cache: dict[str, str] = {}  # dedupe_key -> message_id
 
         # Processing state
         self.is_processing = False
-        self.process_task: Optional[asyncio.Task] = None
-        self.discord_client: Optional[discord.Client] = None
+        self.process_task: asyncio.Task | None = None
+        self.discord_client: discord.Client | None = None
 
         # Statistics
         self.stats = {
@@ -172,7 +172,7 @@ class AsyncMessageQueue:
             return
 
         try:
-            with open(self.queue_file, "r") as f:
+            with open(self.queue_file) as f:
                 data = json.load(f)
 
             queue_data = data.get("queue", [])
@@ -259,13 +259,13 @@ class AsyncMessageQueue:
         channel_id: int,
         content: str,
         priority: MessagePriority = MessagePriority.NORMAL,
-        delay_seconds: Optional[float] = None,
-        expires_in_hours: Optional[float] = None,
-        embed: Optional[discord.Embed] = None,
-        tags: Optional[List[str]] = None,
-        dedupe_key: Optional[str] = None,
+        delay_seconds: float | None = None,
+        expires_in_hours: float | None = None,
+        embed: discord.Embed | None = None,
+        tags: list[str] | None = None,
+        dedupe_key: str | None = None,
         max_retries: int = 3,
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Add a message to the queue.
 
@@ -473,7 +473,7 @@ class AsyncMessageQueue:
                 if message.dedupe_key and message.dedupe_key in self.dedupe_cache:
                     del self.dedupe_cache[message.dedupe_key]
 
-    def get_queue_status(self) -> Dict[str, Any]:
+    def get_queue_status(self) -> dict[str, Any]:
         """Get comprehensive queue status information."""
         current_time = time.time()
 
@@ -523,7 +523,7 @@ class AsyncMessageQueue:
             "dedupe_cache_size": len(self.dedupe_cache),
         }
 
-    def clear_queue(self, priority: Optional[MessagePriority] = None) -> int:
+    def clear_queue(self, priority: MessagePriority | None = None) -> int:
         """
         Clear messages from queue.
 
@@ -553,7 +553,7 @@ class AsyncMessageQueue:
         logger.info(f"Cleared {cleared_count} messages from queue")
         return cleared_count
 
-    def get_message_by_id(self, message_id: str) -> Optional[QueuedMessage]:
+    def get_message_by_id(self, message_id: str) -> QueuedMessage | None:
         """Get a specific message by ID."""
         for msg in self.queue:
             if msg.id == message_id:

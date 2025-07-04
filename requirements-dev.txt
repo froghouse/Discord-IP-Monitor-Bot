@@ -1,0 +1,37 @@
+# Development dependencies for Discord IP Monitor Bot
+
+# Code quality and formatting
+ruff==0.11.5
+isort==6.0.1
+black==23.12.1  # Alternative formatter (optional)
+
+# Pre-commit hooks
+pre-commit==3.6.0
+
+# Security scanning
+bandit[toml]==1.7.6
+safety==3.0.1
+detect-secrets==1.5.0
+
+# Type checking (optional)
+mypy==1.7.1
+types-requests==2.31.0.20240218
+
+# Testing enhancements
+pytest-benchmark==4.0.0
+pytest-xdist==3.5.0  # For parallel test execution
+pytest-timeout==2.2.0  # For test timeouts
+pytest-rerunfailures==12.0  # For flaky test reruns
+
+# Documentation tools
+mkdocs==1.5.3
+mkdocs-material==9.5.3
+mkdocs-mermaid2-plugin==1.1.1
+
+# Development utilities
+ipython==8.18.1  # Enhanced REPL
+ipdb==0.13.13    # Enhanced debugger
+rich==13.7.0     # Enhanced terminal output
+
+# Package management
+pip-tools==7.3.0  # For requirements management

@@ -2,11 +2,11 @@
 Service health monitoring and graceful degradation for the IP Monitor Bot.
 """
 
-import logging
-import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+import logging
+import time
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +40,9 @@ class ServiceHealth:
     last_failure: float = 0.0
     failure_count: int = 0
     success_count: int = 0
-    error_message: Optional[str] = None
-    degraded_since: Optional[float] = None
-    capabilities: Dict[str, bool] = field(default_factory=dict)
+    error_message: str | None = None
+    degraded_since: float | None = None
+    capabilities: dict[str, bool] = field(default_factory=dict)
 
 
 @dataclass
@@ -56,7 +56,7 @@ class DegradationMode:
     enable_notifications: bool = True
     enable_history_logging: bool = True
     enable_status_commands: bool = True
-    fallback_behaviors: List[str] = field(default_factory=list)
+    fallback_behaviors: list[str] = field(default_factory=list)
 
 
 class ServiceHealthMonitor:
@@ -66,9 +66,9 @@ class ServiceHealthMonitor:
 
     def __init__(self):
         """Initialize the service health monitor."""
-        self.services: Dict[str, ServiceHealth] = {}
+        self.services: dict[str, ServiceHealth] = {}
         self.current_degradation = DegradationLevel.NORMAL
-        self.degradation_history: List[Dict[str, Any]] = []
+        self.degradation_history: list[dict[str, Any]] = []
 
         # Define degradation modes
         self.degradation_modes = {
@@ -156,7 +156,7 @@ class ServiceHealthMonitor:
             },
         )
 
-    def register_service(self, name: str, capabilities: Dict[str, bool]) -> None:
+    def register_service(self, name: str, capabilities: dict[str, bool]) -> None:
         """
         Register a service for health monitoring.
 
@@ -170,7 +170,7 @@ class ServiceHealthMonitor:
         )
 
     def record_success(
-        self, service_name: str, operation: Optional[str] = None
+        self, service_name: str, operation: str | None = None
     ) -> None:
         """
         Record a successful operation for a service.
@@ -208,7 +208,7 @@ class ServiceHealthMonitor:
         self._evaluate_system_health()
 
     def record_failure(
-        self, service_name: str, error: str, operation: Optional[str] = None
+        self, service_name: str, error: str, operation: str | None = None
     ) -> None:
         """
         Record a failed operation for a service.
@@ -322,11 +322,11 @@ class ServiceHealthMonitor:
             )
             logger.info(f"New mode: {self.degradation_modes[to_level].description}")
 
-    def get_service_health(self, service_name: str) -> Optional[ServiceHealth]:
+    def get_service_health(self, service_name: str) -> ServiceHealth | None:
         """Get health information for a specific service."""
         return self.services.get(service_name)
 
-    def get_system_health(self) -> Dict[str, Any]:
+    def get_system_health(self) -> dict[str, Any]:
         """Get comprehensive system health information."""
         current_time = time.time()
 

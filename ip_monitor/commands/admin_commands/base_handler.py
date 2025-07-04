@@ -2,9 +2,10 @@
 Base handler class for admin commands.
 """
 
-import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Coroutine, Union
+from collections.abc import Callable, Coroutine
+import logging
+from typing import Any
 
 import discord
 
@@ -28,7 +29,7 @@ class BaseHandler(ABC):
         self,
         client: discord.Client,
         ip_service: IPService,
-        storage: Union[IPStorage, SQLiteIPStorage],
+        storage: IPStorage | SQLiteIPStorage,
         stop_callback: Callable[[], Coroutine[Any, Any, None]],
         config: AppConfig,
     ) -> None:
@@ -210,7 +211,6 @@ class BaseHandler(ABC):
         Returns:
             bool: True if command was handled successfully, False otherwise
         """
-        pass
 
     @abstractmethod
     def get_help_text(self) -> str:
@@ -220,4 +220,3 @@ class BaseHandler(ABC):
         Returns:
             str: Help text describing available commands
         """
-        pass

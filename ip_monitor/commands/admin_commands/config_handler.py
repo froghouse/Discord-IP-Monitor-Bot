@@ -2,8 +2,9 @@
 Configuration handler for admin commands.
 """
 
+from collections.abc import Callable, Coroutine
 import logging
-from typing import Any, Callable, Coroutine, Union
+from typing import Any
 
 import discord
 
@@ -26,7 +27,7 @@ class ConfigHandler(BaseHandler):
         self,
         client: discord.Client,
         ip_service: IPService,
-        storage: Union[IPStorage, SQLiteIPStorage],
+        storage: IPStorage | SQLiteIPStorage,
         stop_callback: Callable[[], Coroutine[Any, Any, None]],
         config: AppConfig,
     ) -> None:
@@ -97,7 +98,7 @@ class ConfigHandler(BaseHandler):
             if subcommand == "show":
                 field = args[1] if len(args) > 1 else None
                 return await self._handle_config_show(message, field)
-            elif subcommand == "set":
+            if subcommand == "set":
                 if len(args) < 3:
                     await self.send_error_message(
                         message, "Usage: !config set <field> <value>"
@@ -106,17 +107,16 @@ class ConfigHandler(BaseHandler):
                 field = args[1]
                 value = " ".join(args[2:])
                 return await self._handle_config_set(message, field, value)
-            elif subcommand == "list":
+            if subcommand == "list":
                 return await self._handle_config_list(message)
-            elif subcommand == "save":
+            if subcommand == "save":
                 return await self._handle_config_save(message)
-            elif subcommand == "reload":
+            if subcommand == "reload":
                 return await self._handle_config_reload(message)
-            else:
-                await self.send_error_message(
-                    message, f"Unknown config subcommand: {subcommand}"
-                )
-                return False
+            await self.send_error_message(
+                message, f"Unknown config subcommand: {subcommand}"
+            )
+            return False
         except Exception as e:
             await self.handle_command_error(message, e, f"config {subcommand}")
             return False
@@ -218,7 +218,7 @@ class ConfigHandler(BaseHandler):
 
         except Exception as e:
             await self.send_error_message(
-                message, f"Failed to update configuration: {str(e)}"
+                message, f"Failed to update configuration: {e!s}"
             )
             return False
 
@@ -275,7 +275,7 @@ class ConfigHandler(BaseHandler):
             logger.info(f"Configuration saved by {message.author}")
         except Exception as e:
             await self.send_error_message(
-                message, f"Failed to save configuration: {str(e)}"
+                message, f"Failed to save configuration: {e!s}"
             )
             return False
 

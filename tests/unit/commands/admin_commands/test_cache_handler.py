@@ -215,7 +215,7 @@ class TestCacheHandler:
         cache_handler.ip_service.get_cache_info.return_value = mock_cache_info
 
         with patch(
-            "ip_monitor.commands.admin_commands.cache_handler.get_cache"
+            "ip_monitor.utils.cache.get_cache"
         ) as mock_get_cache:
             mock_get_cache.return_value = MagicMock(
                 max_memory_size=100,
@@ -252,7 +252,7 @@ class TestCacheHandler:
         cache_handler.ip_service.get_cache_info.return_value = mock_cache_info
 
         with patch(
-            "ip_monitor.commands.admin_commands.cache_handler.get_cache"
+            "ip_monitor.utils.cache.get_cache"
         ) as mock_get_cache:
             mock_get_cache.side_effect = ImportError("Cannot import cache")
 
@@ -266,7 +266,7 @@ class TestCacheHandler:
         cache_handler.ip_service.get_cache_info.return_value = mock_cache_info
 
         with patch(
-            "ip_monitor.commands.admin_commands.cache_handler.get_cache"
+            "ip_monitor.utils.cache.get_cache"
         ) as mock_get_cache:
             mock_get_cache.return_value = mock_cache_instance
 
@@ -383,7 +383,7 @@ class TestCacheHandler:
             # without mocking the entire response, but we can verify the method runs
             async def test_efficiency():
                 with patch(
-                    "ip_monitor.commands.admin_commands.cache_handler.get_cache"
+                    "ip_monitor.utils.cache.get_cache"
                 ) as mock_get_cache:
                     mock_get_cache.return_value = MagicMock(
                         max_memory_size=100, memory_cache={}

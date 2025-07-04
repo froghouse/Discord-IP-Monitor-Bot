@@ -2,8 +2,8 @@
 Slash command implementations for IP-related commands.
 """
 
-import logging
 from datetime import datetime
+import logging
 
 import discord
 from discord import app_commands
@@ -339,4 +339,3 @@ class IPSlashCommands(commands.Cog):
 async def setup(bot: commands.Bot) -> None:
     """Setup function to add this cog to the bot."""
     # This will be called when the cog is loaded
-    pass

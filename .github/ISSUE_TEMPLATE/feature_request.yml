@@ -1,0 +1,187 @@
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement for the Discord IP Monitor Bot
+title: "[FEATURE] "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest a new feature! ✨
+        
+        Please fill out the form below to help us understand your feature request.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please check these items before submitting the feature request
+      options:
+        - label: I have searched for existing issues and this is not a duplicate
+          required: true
+        - label: I have read the project roadmap and this feature is not already planned
+          required: true
+        - label: This feature would be useful for other users, not just my specific use case
+          required: false
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? What's the motivation?
+      placeholder: |
+        Is your feature request related to a problem? Please describe.
+        A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like to see implemented
+      placeholder: |
+        A clear and concise description of what you want to happen.
+        How should this feature work? What should the user experience be like?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Describe any alternative solutions or features you've considered
+      placeholder: |
+        A clear and concise description of any alternative solutions or features you've considered.
+        Are there existing workarounds?
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: What category does this feature fall under?
+      options:
+        - Discord Integration
+        - IP Monitoring
+        - Admin Commands
+        - User Commands
+        - Configuration
+        - Notifications
+        - Performance
+        - Security
+        - Documentation
+        - Developer Experience
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Low - Nice to have
+        - Medium - Would improve my workflow
+        - High - Important for my use case
+        - Critical - Blocking issue
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Estimated Complexity
+      description: How complex do you think this feature would be to implement?
+      options:
+        - Simple - Small change or addition
+        - Medium - Moderate development effort
+        - Complex - Significant development effort
+        - Major - Large architectural changes required
+        - Not sure
+    validations:
+      required: false
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Use Cases
+      description: Describe specific use cases for this feature
+      placeholder: |
+        1. As a [user type], I want to [action] so that [benefit]
+        2. When [scenario], users should be able to [action]
+        3. etc.
+      value: |
+        1. 
+        2. 
+        3. 
+
+  - type: textarea
+    id: mockup
+    attributes:
+      label: Mockup or Examples
+      description: |
+        If applicable, provide examples of how this feature would work
+        This could include command examples, screenshots, or mockups
+      placeholder: |
+        Example commands:
+        !newfeature enable
+        !newfeature configure setting value
+        
+        Expected output:
+        ✅ New feature enabled successfully
+
+  - type: textarea
+    id: technical
+    attributes:
+      label: Technical Considerations
+      description: |
+        Any technical details, constraints, or considerations for implementation
+        (Optional - mainly for technically-minded contributors)
+      placeholder: |
+        - API requirements
+        - Database changes needed
+        - Performance considerations
+        - Compatibility concerns
+        - Security implications
+
+  - type: textarea
+    id: documentation
+    attributes:
+      label: Documentation Impact
+      description: What documentation would need to be updated or created?
+      placeholder: |
+        - README.md updates
+        - New command documentation
+        - Configuration examples
+        - User guide sections
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or information about the feature request
+      placeholder: |
+        - Related issues or discussions
+        - External references or inspiration
+        - Any other relevant information
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Would you be interested in contributing to the implementation?
+      options:
+        - label: I would be interested in implementing this feature
+        - label: I would be interested in testing this feature
+        - label: I would be interested in helping with documentation
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

@@ -2,9 +2,10 @@
 API handler for admin commands.
 """
 
+from collections.abc import Callable, Coroutine
 import logging
 import time
-from typing import Any, Callable, Coroutine, Union
+from typing import Any
 
 import discord
 import httpx
@@ -28,7 +29,7 @@ class ApiHandler(BaseHandler):
         self,
         client: discord.Client,
         ip_service: IPService,
-        storage: Union[IPStorage, SQLiteIPStorage],
+        storage: IPStorage | SQLiteIPStorage,
         stop_callback: Callable[[], Coroutine[Any, Any, None]],
         config: AppConfig,
     ) -> None:
@@ -98,25 +99,24 @@ class ApiHandler(BaseHandler):
         try:
             if subcommand == "list":
                 return await self._handle_api_list(message)
-            elif subcommand == "add":
+            if subcommand == "add":
                 return await self._handle_api_add(message, args)
-            elif subcommand == "remove":
+            if subcommand == "remove":
                 return await self._handle_api_remove(message, args)
-            elif subcommand == "enable":
+            if subcommand == "enable":
                 return await self._handle_api_enable(message, args)
-            elif subcommand == "disable":
+            if subcommand == "disable":
                 return await self._handle_api_disable(message, args)
-            elif subcommand == "test":
+            if subcommand == "test":
                 return await self._handle_api_test(message, args)
-            elif subcommand == "priority":
+            if subcommand == "priority":
                 return await self._handle_api_priority(message, args)
-            elif subcommand == "stats":
+            if subcommand == "stats":
                 return await self._handle_api_stats(message)
-            else:
-                await self.send_error_message(
-                    message, f"Unknown API subcommand: {subcommand}"
-                )
-                return False
+            await self.send_error_message(
+                message, f"Unknown API subcommand: {subcommand}"
+            )
+            return False
         except Exception as e:
             await self.handle_command_error(message, e, f"api {subcommand}")
             return False
@@ -241,7 +241,7 @@ class ApiHandler(BaseHandler):
                 await self.send_error_message(message, f"Failed to add API '{name}'")
 
         except Exception as e:
-            await self.send_error_message(message, f"Error adding API: {str(e)}")
+            await self.send_error_message(message, f"Error adding API: {e!s}")
             return False
 
         return True

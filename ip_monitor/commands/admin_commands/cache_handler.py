@@ -2,8 +2,9 @@
 Cache handler for admin commands.
 """
 
+from collections.abc import Callable, Coroutine
 import logging
-from typing import Any, Callable, Coroutine, Union
+from typing import Any
 
 import discord
 
@@ -25,7 +26,7 @@ class CacheHandler(BaseHandler):
         self,
         client: discord.Client,
         ip_service: IPService,
-        storage: Union[IPStorage, SQLiteIPStorage],
+        storage: IPStorage | SQLiteIPStorage,
         stop_callback: Callable[[], Coroutine[Any, Any, None]],
         config: AppConfig,
     ) -> None:
@@ -95,19 +96,18 @@ class CacheHandler(BaseHandler):
         try:
             if subcommand == "show":
                 return await self._handle_cache_show(message, args)
-            elif subcommand == "clear":
+            if subcommand == "clear":
                 return await self._handle_cache_clear(message, args)
-            elif subcommand == "stats":
+            if subcommand == "stats":
                 return await self._handle_cache_stats(message, args)
-            elif subcommand == "cleanup":
+            if subcommand == "cleanup":
                 return await self._handle_cache_cleanup(message, args)
-            elif subcommand == "refresh":
+            if subcommand == "refresh":
                 return await self._handle_cache_refresh(message, args)
-            else:
-                await self.send_error_message(
-                    message, f"Unknown cache subcommand: {subcommand}"
-                )
-                return False
+            await self.send_error_message(
+                message, f"Unknown cache subcommand: {subcommand}"
+            )
+            return False
         except Exception as e:
             await self.handle_command_error(message, e, f"cache {subcommand}")
             return False

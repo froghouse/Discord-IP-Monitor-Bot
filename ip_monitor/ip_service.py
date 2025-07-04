@@ -7,7 +7,6 @@ import ipaddress
 import json
 import logging
 import time
-from typing import List, Optional
 
 import httpx
 
@@ -38,7 +37,7 @@ class IPService:
         max_retries: int = 3,
         retry_delay: int = 5,
         use_concurrent_checks: bool = True,
-        apis: Optional[List[str]] = None,
+        apis: list[str] | None = None,
         circuit_breaker_enabled: bool = True,
         circuit_breaker_failure_threshold: int = 3,
         circuit_breaker_recovery_timeout: float = 120.0,
@@ -98,7 +97,7 @@ class IPService:
             self.circuit_breaker = None
 
         # Track last successful IP for fallback
-        self._last_known_ip: Optional[str] = None
+        self._last_known_ip: str | None = None
 
         # Caching configuration
         self.cache_enabled = cache_enabled
@@ -125,7 +124,7 @@ class IPService:
             f"cache enabled: {self.cache_enabled}, cache TTL: {self.cache_ttl}s"
         )
 
-    def get_apis_to_use(self) -> List[str]:
+    def get_apis_to_use(self) -> list[str]:
         """
         Get list of API URLs to use for IP detection.
 
@@ -137,10 +136,9 @@ class IPService:
             custom_urls = ip_api_manager.get_api_urls(enabled_only=True)
             if custom_urls:
                 return custom_urls
-            else:
-                logger.warning(
-                    "No custom APIs configured, falling back to default APIs"
-                )
+            logger.warning(
+                "No custom APIs configured, falling back to default APIs"
+            )
 
         # Fall back to legacy/default APIs
         return self.legacy_apis
@@ -162,7 +160,7 @@ class IPService:
         except ValueError:
             return False
 
-    async def fetch_ip_from_custom_api(self, api_config) -> Optional[str]:
+    async def fetch_ip_from_custom_api(self, api_config) -> str | None:
         """
         Fetch IP from a custom API endpoint with specific configuration.
 
@@ -240,7 +238,7 @@ class IPService:
             logger.debug(f"Error fetching IP from {api_config.name}: {e}")
             return None
 
-    async def fetch_ip_from_api(self, api: str) -> Optional[str]:
+    async def fetch_ip_from_api(self, api: str) -> str | None:
         """
         Fetch IP from a single API endpoint.
 
@@ -272,12 +270,11 @@ class IPService:
                 logger.debug(f"Successfully got IP {ip} from {api}")
                 service_health.record_success("ip_service", "fetch_ip")
                 return ip
-            else:
-                logger.warning(f"Invalid IP address returned by {api}: {ip}")
-                service_health.record_failure(
-                    "ip_service", f"Invalid IP from {api}: {ip}", "fetch_ip"
-                )
-                return None
+            logger.warning(f"Invalid IP address returned by {api}: {ip}")
+            service_health.record_failure(
+                "ip_service", f"Invalid IP from {api}: {ip}", "fetch_ip"
+            )
+            return None
 
         except httpx.HTTPError as e:
             logger.warning(f"Failed to get IP from {api}: {e}")
@@ -292,7 +289,7 @@ class IPService:
             )
             return None
 
-    async def _get_ip_without_circuit_breaker(self) -> Optional[str]:
+    async def _get_ip_without_circuit_breaker(self) -> str | None:
         """
         Get IP address without circuit breaker (original implementation).
 
@@ -392,7 +389,7 @@ class IPService:
             logger.error(f"Unexpected error in IP fetch: {e}")
             return None
 
-    async def get_public_ip(self) -> Optional[str]:
+    async def get_public_ip(self) -> str | None:
         """
         Get the current public IP address with circuit breaker protection.
 
@@ -599,7 +596,7 @@ class IPService:
             "stale_threshold": self.cache_stale_threshold,
         }
 
-    def invalidate_cache(self, namespace: Optional[str] = None) -> int:
+    def invalidate_cache(self, namespace: str | None = None) -> int:
         """
         Invalidate cache entries.
 
@@ -614,8 +611,7 @@ class IPService:
 
         if namespace:
             return self.cache.invalidate(namespace)
-        else:
-            return self.cache.clear()
+        return self.cache.clear()
 
     async def refresh_stale_cache_entries(self) -> int:
         """

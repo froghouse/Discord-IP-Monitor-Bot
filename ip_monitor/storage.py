@@ -2,14 +2,14 @@
 Storage operations for the IP Monitor Bot using SQLite for data integrity.
 """
 
+from datetime import datetime
 import json
 import logging
 import os
 import shutil
 import sqlite3
 import tempfile
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ip_monitor.utils.service_health import service_health
 
@@ -84,7 +84,7 @@ class SQLiteIPStorage:
                 "storage", f"Database init error: {e}", "init_database"
             )
 
-    def load_ip_history(self) -> List[Dict[str, Any]]:
+    def load_ip_history(self) -> list[dict[str, Any]]:
         """
         Load the IP address history from database.
 
@@ -116,7 +116,7 @@ class SQLiteIPStorage:
             )
             return []
 
-    def save_ip_history(self, history: List[Dict[str, Any]]) -> bool:
+    def save_ip_history(self, history: list[dict[str, Any]]) -> bool:
         """
         Save the IP address history to database.
         Note: This method is kept for compatibility but SQLite handles history automatically.
@@ -155,7 +155,7 @@ class SQLiteIPStorage:
             )
             return False
 
-    def load_last_ip(self) -> Optional[str]:
+    def load_last_ip(self) -> str | None:
         """
         Load the last known IP from database.
 
@@ -293,12 +293,12 @@ class SQLiteIPStorage:
             # Load existing JSON data
             current_ip_data = None
             if os.path.exists(ip_file):
-                with open(ip_file, "r") as f:
+                with open(ip_file) as f:
                     current_ip_data = json.load(f)
 
             history_data = []
             if os.path.exists(history_file):
-                with open(history_file, "r") as f:
+                with open(history_file) as f:
                     history_data = json.load(f)
 
             with sqlite3.connect(self.db_file) as conn:
@@ -337,7 +337,7 @@ class SQLiteIPStorage:
                 logger.info("Successfully migrated JSON data to SQLite")
                 return True
 
-        except (json.JSONDecodeError, sqlite3.Error, IOError) as e:
+        except (OSError, json.JSONDecodeError, sqlite3.Error) as e:
             logger.error(f"Error migrating JSON data: {e}")
             return False
 
@@ -414,7 +414,7 @@ class IPStorage:
                     )
             return False
 
-    def load_ip_history(self) -> List[Dict[str, Any]]:
+    def load_ip_history(self) -> list[dict[str, Any]]:
         """
         Load the IP address history from file.
 
@@ -423,7 +423,7 @@ class IPStorage:
         """
         if os.path.exists(self.history_file):
             try:
-                with open(self.history_file, "r") as f:
+                with open(self.history_file) as f:
                     data = json.load(f)
                     if isinstance(data, list):
                         service_health.record_success("storage", "read_file")
@@ -432,14 +432,14 @@ class IPStorage:
                     service_health.record_failure(
                         "storage", "Invalid format in IP history file", "read_file"
                     )
-            except (json.JSONDecodeError, IOError) as e:
+            except (OSError, json.JSONDecodeError) as e:
                 logger.error(f"Error loading IP history: {e}")
                 service_health.record_failure(
                     "storage", f"Error loading IP history: {e}", "read_file"
                 )
         return []
 
-    def save_ip_history(self, history: List[Dict[str, Any]]) -> bool:
+    def save_ip_history(self, history: list[dict[str, Any]]) -> bool:
         """
         Save the IP address history to file.
 
@@ -459,7 +459,7 @@ class IPStorage:
             logger.error(f"Error saving IP history: {e}")
             return False
 
-    def load_last_ip(self) -> Optional[str]:
+    def load_last_ip(self) -> str | None:
         """
         Load the last known IP from file.
 
@@ -468,7 +468,7 @@ class IPStorage:
         """
         if os.path.exists(self.ip_file):
             try:
-                with open(self.ip_file, "r") as f:
+                with open(self.ip_file) as f:
                     data = json.load(f)
                     ip = data.get("ip")
                     if ip and self.is_valid_ip(ip):
@@ -478,7 +478,7 @@ class IPStorage:
                     service_health.record_failure(
                         "storage", "Invalid or missing IP in last_ip.json", "read_file"
                     )
-            except (json.JSONDecodeError, IOError) as e:
+            except (OSError, json.JSONDecodeError) as e:
                 logger.error(f"Error loading last IP: {e}")
                 service_health.record_failure(
                     "storage", f"Error loading last IP: {e}", "read_file"

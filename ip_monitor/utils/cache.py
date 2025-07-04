@@ -5,15 +5,15 @@ This module provides a comprehensive caching layer that reduces API calls
 through intelligent TTL management, cache invalidation, and persistence.
 """
 
+from dataclasses import dataclass
+from enum import Enum
 import hashlib
 import json
 import logging
-import time
-from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict, List, Optional
+import time
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class CacheEntry:
     access_count: int
     ttl: float
     cache_type: CacheType
-    metadata: Dict[str, Any] = None
+    metadata: dict[str, Any] = None
 
     def __post_init__(self):
         if self.metadata is None:
@@ -58,7 +58,7 @@ class CacheEntry:
         self.last_accessed = time.time()
         self.access_count += 1
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert cache entry to dictionary for serialization."""
         return {
             "key": self.key,
@@ -72,7 +72,7 @@ class CacheEntry:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "CacheEntry":
+    def from_dict(cls, data: dict[str, Any]) -> "CacheEntry":
         """Create cache entry from dictionary."""
         return cls(
             key=data["key"],
@@ -109,7 +109,7 @@ class IntelligentCache:
         """
         self.cache_file = Path(cache_file)
         self.max_memory_size = max_memory_size
-        self.memory_cache: Dict[str, CacheEntry] = {}
+        self.memory_cache: dict[str, CacheEntry] = {}
         self.lock = Lock()
 
         # Default TTL values (in seconds)
@@ -137,7 +137,7 @@ class IntelligentCache:
     def _generate_key(self, namespace: str, identifier: str) -> str:
         """Generate a unique cache key."""
         combined = f"{namespace}:{identifier}"
-        return hashlib.md5(combined.encode()).hexdigest()
+        return hashlib.sha256(combined.encode()).hexdigest()
 
     def _evict_expired(self) -> None:
         """Remove expired entries from memory cache."""
@@ -172,7 +172,7 @@ class IntelligentCache:
         namespace: str,
         identifier: str,
         cache_type: CacheType = CacheType.IP_RESULT,
-    ) -> Optional[Any]:
+    ) -> Any | None:
         """
         Get a value from the cache.
 
@@ -210,8 +210,8 @@ class IntelligentCache:
         identifier: str,
         value: Any,
         cache_type: CacheType = CacheType.IP_RESULT,
-        ttl: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        ttl: float | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         Set a value in the cache.
@@ -252,7 +252,7 @@ class IntelligentCache:
             self.memory_cache[key] = entry
             logger.debug(f"Cache set for {namespace}:{identifier}, TTL: {ttl}s")
 
-    def invalidate(self, namespace: str, identifier: Optional[str] = None) -> int:
+    def invalidate(self, namespace: str, identifier: str | None = None) -> int:
         """
         Invalidate cache entries.
 
@@ -271,20 +271,19 @@ class IntelligentCache:
                     self.stats["invalidations"] += 1
                     return 1
                 return 0
-            else:
-                # Invalidate entire namespace
-                keys_to_remove = []
-                for key, entry in self.memory_cache.items():
-                    if entry.key.startswith(namespace + ":"):
-                        keys_to_remove.append(key)
+            # Invalidate entire namespace
+            keys_to_remove = []
+            for key, entry in self.memory_cache.items():
+                if entry.key.startswith(namespace + ":"):
+                    keys_to_remove.append(key)
 
-                for key in keys_to_remove:
-                    del self.memory_cache[key]
-                    self.stats["invalidations"] += 1
+            for key in keys_to_remove:
+                del self.memory_cache[key]
+                self.stats["invalidations"] += 1
 
-                return len(keys_to_remove)
+            return len(keys_to_remove)
 
-    def get_stale_entries(self, namespace: Optional[str] = None) -> List[CacheEntry]:
+    def get_stale_entries(self, namespace: str | None = None) -> list[CacheEntry]:
         """
         Get entries that are approaching expiration.
 
@@ -334,7 +333,7 @@ class IntelligentCache:
             logger.debug(f"Cache refreshed for {namespace}:{identifier}")
             return True
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         with self.lock:
             total_requests = self.stats["hits"] + self.stats["misses"]
@@ -353,7 +352,7 @@ class IntelligentCache:
         avg_entry_size = 1024  # 1KB per entry estimate
         return (len(self.memory_cache) * avg_entry_size) / (1024 * 1024)
 
-    def cleanup(self) -> Dict[str, int]:
+    def cleanup(self) -> dict[str, int]:
         """Clean up expired entries and optimize cache."""
         with self.lock:
             initial_count = len(self.memory_cache)
@@ -390,7 +389,7 @@ class IntelligentCache:
             if not self.cache_file.exists():
                 return
 
-            with open(self.cache_file, "r") as f:
+            with open(self.cache_file) as f:
                 cache_data = json.load(f)
 
             # Load entries, filtering out expired ones
@@ -431,7 +430,7 @@ class IntelligentCache:
 
 
 # Global cache instance
-_cache_instance: Optional[IntelligentCache] = None
+_cache_instance: IntelligentCache | None = None
 
 
 def get_cache() -> IntelligentCache:

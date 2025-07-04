@@ -1,0 +1,167 @@
+name: 🐛 Bug Report
+description: Report a bug to help us improve the Discord IP Monitor Bot
+title: "[BUG] "
+labels: ["bug", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! 🐛
+        
+        Please fill out the form below with as much detail as possible to help us understand and reproduce the issue.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please check these items before submitting the bug report
+      options:
+        - label: I have searched for existing issues and this is not a duplicate
+          required: true
+        - label: I have read the documentation and troubleshooting guide
+          required: true
+        - label: I am using the latest version of the bot
+          required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: Describe the bug...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: List the steps to reproduce the behavior
+      placeholder: |
+        1. Go to...
+        2. Type command...
+        3. See error...
+      value: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen
+      placeholder: Describe what should have happened...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened instead
+      placeholder: Describe what actually happened...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs
+      description: Please include any relevant error messages or logs
+      placeholder: Paste error logs here...
+      render: text
+
+  - type: dropdown
+    id: version
+    attributes:
+      label: Bot Version
+      description: Which version of the bot are you using?
+      options:
+        - Latest (main branch)
+        - v1.0.0
+        - v0.9.x
+        - Other (specify in additional context)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: python-version
+    attributes:
+      label: Python Version
+      description: Which Python version are you using?
+      options:
+        - Python 3.11
+        - Python 3.12
+        - Python 3.13
+        - Other (specify in additional context)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: Which operating system are you using?
+      options:
+        - Ubuntu/Debian
+        - CentOS/RHEL/Fedora
+        - Windows
+        - macOS
+        - Docker
+        - Other (specify in additional context)
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Details
+      description: Additional environment information
+      placeholder: |
+        - Discord.py version: 
+        - Installation method (pip, git clone, etc.):
+        - Virtual environment: yes/no
+        - Any special configuration:
+      value: |
+        - Discord.py version: 
+        - Installation method: 
+        - Virtual environment: 
+        - Special configuration: 
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration (Redacted)
+      description: |
+        Please share your configuration (with sensitive information removed)
+        Include relevant environment variables, but remove tokens and IDs
+      placeholder: |
+        CHECK_INTERVAL=300
+        CIRCUIT_BREAKER_ENABLED=true
+        # etc...
+      render: text
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here
+      placeholder: |
+        - Screenshots
+        - Related issues
+        - Possible solutions you've tried
+        - Any other relevant information
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

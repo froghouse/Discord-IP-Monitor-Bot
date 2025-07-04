@@ -402,7 +402,7 @@ class TestApiHandler:
 
     async def test_test_single_api_text_success(self, api_handler, mock_api_endpoint):
         """Test _test_single_api with text response success."""
-        mock_api_endpoint.response_format = ResponseFormat.TEXT
+        mock_api_endpoint.response_format = ResponseFormat.PLAIN_TEXT
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_response = MagicMock()

@@ -1,21 +1,72 @@
+# Pre-commit hooks for code quality
 repos:
--   repo: https://github.com/pycqa/isort
-    rev: 5.12.0
+  # Ruff for fast Python linting and formatting (updated version)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.5
     hooks:
-    -   id: isort
-        name: isort (python)
-
--   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.6
-    hooks:
-    -   id: ruff
+      # Run the linter
+      - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
-    -   id: ruff-format
+      # Run the formatter
+      - id: ruff-format
 
--   repo: https://github.com/pre-commit/pre-commit-hooks
+  # isort for import sorting (updated version)
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort (python)
+        args: [--profile, black, --line-length, "88"]
+
+  # Enhanced pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
-    -   id: trailing-whitespace
-    -   id: end-of-file-fixer
-    -   id: check-yaml
-    -   id: check-added-large-files
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: debug-statements
+      - id: check-docstring-first
+      - id: check-ast
+      - id: name-tests-test
+
+  # Security check with Bandit
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.7.6
+    hooks:
+      - id: bandit
+        args: [-r, ip_monitor/, -f, txt]
+        exclude: ^tests/
+
+  # Check for common security issues
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: |
+          (?x)^(
+            .*\.lock|
+            .*\.log|
+            htmlcov/.*|
+            \.coverage|
+            coverage\.xml
+          )$
+
+# Configuration for pre-commit.ci
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false

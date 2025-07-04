@@ -2,12 +2,12 @@
 Configuration and management for custom IP detection APIs.
 """
 
+from dataclasses import asdict, dataclass
+from enum import Enum
 import json
 import logging
 import time
-from dataclasses import asdict, dataclass
-from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -29,10 +29,10 @@ class IPAPIEndpoint:
     name: str  # Human-readable name
     url: str  # API endpoint URL
     response_format: ResponseFormat = ResponseFormat.AUTO
-    json_field: Optional[str] = (
+    json_field: str | None = (
         None  # Field name for JSON responses (e.g., "ip", "origin")
     )
-    headers: Optional[Dict[str, str]] = None  # Custom headers
+    headers: dict[str, str] | None = None  # Custom headers
     timeout: float = 10.0  # Request timeout in seconds
     enabled: bool = True  # Whether this API is enabled
     priority: int = 1  # Priority (1=highest, higher numbers = lower priority)
@@ -41,8 +41,8 @@ class IPAPIEndpoint:
     success_count: int = 0
     failure_count: int = 0
     avg_response_time: float = 0.0
-    last_success: Optional[float] = None
-    last_failure: Optional[float] = None
+    last_success: float | None = None
+    last_failure: float | None = None
 
     def __post_init__(self):
         """Validate the endpoint configuration."""
@@ -110,14 +110,14 @@ class IPAPIEndpoint:
 
         return max(0, score)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         data = asdict(self)
         data["response_format"] = self.response_format.value
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "IPAPIEndpoint":
+    def from_dict(cls, data: dict[str, Any]) -> "IPAPIEndpoint":
         """Create from dictionary after JSON deserialization."""
         data["response_format"] = ResponseFormat(data["response_format"])
         return cls(**data)
@@ -134,7 +134,7 @@ class IPAPIManager:
             config_file: Path to the API configuration file
         """
         self.config_file = config_file
-        self.endpoints: Dict[str, IPAPIEndpoint] = {}
+        self.endpoints: dict[str, IPAPIEndpoint] = {}
         self.load_apis()
 
     def add_api(self, endpoint: IPAPIEndpoint) -> bool:
@@ -173,11 +173,11 @@ class IPAPIManager:
         logger.info(f"Removed custom IP API: {endpoint.name} ({api_id})")
         return True
 
-    def get_api(self, api_id: str) -> Optional[IPAPIEndpoint]:
+    def get_api(self, api_id: str) -> IPAPIEndpoint | None:
         """Get an API endpoint by ID."""
         return self.endpoints.get(api_id)
 
-    def list_apis(self, enabled_only: bool = False) -> List[IPAPIEndpoint]:
+    def list_apis(self, enabled_only: bool = False) -> list[IPAPIEndpoint]:
         """
         List all API endpoints.
 
@@ -223,7 +223,7 @@ class IPAPIManager:
         self.save_apis()
         return True
 
-    def get_api_urls(self, enabled_only: bool = True) -> List[str]:
+    def get_api_urls(self, enabled_only: bool = True) -> list[str]:
         """
         Get list of API URLs for use by IPService.
 
@@ -259,7 +259,7 @@ class IPAPIManager:
         """Load API configuration from file."""
         try:
             try:
-                with open(self.config_file, "r") as f:
+                with open(self.config_file) as f:
                     data = json.load(f)
             except FileNotFoundError:
                 # Initialize with default APIs

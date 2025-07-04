@@ -1,0 +1,244 @@
+name: Security & Dependency Scan
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  push:
+    branches: [ main ]
+    paths:
+      - 'requirements*.txt'
+      - '.github/workflows/security.yml'
+  pull_request:
+    paths:
+      - 'requirements*.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  dependency-scan:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+        cache-dependency-path: requirements.txt
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install safety pip-audit
+        
+    - name: Run Safety check for known vulnerabilities
+      run: |
+        safety check --json --output safety-report.json || true
+        safety check --short-report
+        
+    - name: Run pip-audit for dependency vulnerabilities
+      run: |
+        pip-audit --format=json --output=pip-audit-report.json || true
+        pip-audit --desc
+        
+    - name: Upload vulnerability reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: vulnerability-reports
+        path: |
+          safety-report.json
+          pip-audit-report.json
+        retention-days: 30
+
+  codeql-analysis:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'python' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-and-quality
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v4
+      with:
+        fail-on-severity: moderate
+        allow-ghsas: GHSA-xxxx-xxxx-xxxx  # Example: allow specific advisories if needed
+        
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+        cache-dependency-path: requirements.txt
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pip-licenses
+        
+    - name: Check licenses
+      run: |
+        echo "Checking licenses for compliance..."
+        pip-licenses --format=json --output-file=licenses.json
+        pip-licenses --format=markdown --output-file=licenses.md
+        
+        # Check for problematic licenses
+        PROBLEMATIC_LICENSES="GPL-3.0 AGPL-3.0 SSPL-1.0"
+        for license in $PROBLEMATIC_LICENSES; do
+          if pip-licenses | grep -i "$license"; then
+            echo "⚠️  Warning: Found potentially problematic license: $license"
+            echo "Please review license compatibility"
+          fi
+        done
+        
+        echo "✅ License check completed"
+        
+    - name: Upload license report
+      uses: actions/upload-artifact@v4
+      with:
+        name: license-report
+        path: |
+          licenses.json
+          licenses.md
+        retention-days: 30
+
+  outdated-dependencies:
+    name: Check for Outdated Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+        cache-dependency-path: requirements.txt
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pip-outdated
+        
+    - name: Check for outdated packages
+      run: |
+        echo "Checking for outdated packages..."
+        pip list --outdated --format=json > outdated-packages.json || true
+        
+        if [ -s outdated-packages.json ] && [ "$(cat outdated-packages.json)" != "[]" ]; then
+          echo "📦 Outdated packages found:"
+          pip list --outdated
+          echo ""
+          echo "Consider updating these packages in requirements.txt"
+        else
+          echo "✅ All packages are up to date"
+        fi
+        
+    - name: Create issue for outdated dependencies
+      if: github.event_name == 'schedule'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          try {
+            const outdated = JSON.parse(fs.readFileSync('outdated-packages.json', 'utf8'));
+            
+            if (outdated.length > 0) {
+              const packageList = outdated.map(pkg => 
+                `- **${pkg.name}**: ${pkg.version} → ${pkg.latest_version}`
+              ).join('\n');
+              
+              const body = `## 📦 Outdated Dependencies Report
+              
+The following packages have newer versions available:
+
+${packageList}
+
+### Recommendations:
+- Review changelog for each package before updating
+- Test thoroughly after updates
+- Update requirements.txt with new versions
+- Consider security implications of not updating
+
+*This issue was automatically created by the security workflow.*`;
+
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🔍 Outdated Dependencies - ${new Date().toISOString().split('T')[0]}`,
+                body: body,
+                labels: ['dependencies', 'maintenance', 'automated']
+              });
+            }
+          } catch (error) {
+            console.log('No outdated packages file found or empty');
+          }
+        
+    - name: Upload outdated packages report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: outdated-packages-report
+        path: outdated-packages.json
+        retention-days: 7

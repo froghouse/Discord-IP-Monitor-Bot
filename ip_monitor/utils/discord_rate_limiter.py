@@ -3,10 +3,11 @@ Discord API rate limiting with exponential backoff implementation.
 """
 
 import asyncio
+from collections.abc import Awaitable, Callable
 import logging
-import random
+import secrets
 import time
-from typing import Any, Awaitable, Callable, Dict, Optional, TypeVar
+from typing import Any, TypeVar
 
 import discord
 
@@ -51,11 +52,11 @@ class DiscordRateLimiter:
         self.jitter = jitter
 
         # Track rate limit buckets and their reset times
-        self.rate_limit_buckets: Dict[str, float] = {}
-        self.global_rate_limit_reset: Optional[float] = None
+        self.rate_limit_buckets: dict[str, float] = {}
+        self.global_rate_limit_reset: float | None = None
 
     def _calculate_delay(
-        self, attempt: int, retry_after: Optional[float] = None
+        self, attempt: int, retry_after: float | None = None
     ) -> float:
         """
         Calculate delay for exponential backoff.
@@ -78,7 +79,8 @@ class DiscordRateLimiter:
 
         # Add jitter to prevent thundering herd
         if self.jitter:
-            delay *= 0.5 + random.random() * 0.5  # 50-100% of calculated delay
+            jitter = secrets.SystemRandom().uniform(0.5, 1.0)
+            delay *= jitter  # 50-100% of calculated delay
 
         return delay
 
@@ -119,7 +121,7 @@ class DiscordRateLimiter:
         return False
 
     def _update_rate_limits(
-        self, response_headers: Dict[str, str], bucket_key: str
+        self, response_headers: dict[str, str], bucket_key: str
     ) -> None:
         """
         Update rate limit information from Discord response headers.
@@ -150,7 +152,7 @@ class DiscordRateLimiter:
         func: Callable[[], Awaitable[T]],
         endpoint: str = "unknown",
         method: str = "POST",
-    ) -> Optional[T]:
+    ) -> T | None:
         """
         Execute a Discord API call with exponential backoff.
 
@@ -210,13 +212,12 @@ class DiscordRateLimiter:
                         )
                         await asyncio.sleep(delay)
                         continue
-                    else:
-                        logger.error(
-                            f"Rate limited and max retries ({self.max_retries}) exceeded"
-                        )
-                        raise
+                    logger.error(
+                        f"Rate limited and max retries ({self.max_retries}) exceeded"
+                    )
+                    raise
 
-                elif e.status >= 500:  # Server errors
+                if e.status >= 500:  # Server errors
                     if attempt < self.max_retries:
                         delay = self._calculate_delay(attempt)
                         logger.warning(
@@ -225,15 +226,13 @@ class DiscordRateLimiter:
                         )
                         await asyncio.sleep(delay)
                         continue
-                    else:
-                        logger.error(
-                            f"Server error and max retries ({self.max_retries}) exceeded"
-                        )
-                        raise
-                else:
-                    # Other HTTP errors (4xx) - don't retry
-                    logger.error(f"HTTP error {e.status}: {e}")
+                    logger.error(
+                        f"Server error and max retries ({self.max_retries}) exceeded"
+                    )
                     raise
+                # Other HTTP errors (4xx) - don't retry
+                logger.error(f"HTTP error {e.status}: {e}")
+                raise
 
             except discord.DiscordException as e:
                 # Other Discord exceptions
@@ -245,11 +244,10 @@ class DiscordRateLimiter:
                     )
                     await asyncio.sleep(delay)
                     continue
-                else:
-                    logger.error(
-                        f"Discord exception and max retries ({self.max_retries}) exceeded: {e}"
-                    )
-                    raise
+                logger.error(
+                    f"Discord exception and max retries ({self.max_retries}) exceeded: {e}"
+                )
+                raise
 
             except Exception as e:
                 # Unexpected errors - don't retry
@@ -262,7 +260,7 @@ class DiscordRateLimiter:
 
     async def send_message_with_backoff(
         self, channel: discord.TextChannel, content: str, **kwargs: Any
-    ) -> Optional[discord.Message]:
+    ) -> discord.Message | None:
         """
         Send a message to a Discord channel with rate limiting and backoff.
 
@@ -284,7 +282,7 @@ class DiscordRateLimiter:
 
     async def edit_message_with_backoff(
         self, message: discord.Message, content: str, **kwargs: Any
-    ) -> Optional[discord.Message]:
+    ) -> discord.Message | None:
         """
         Edit a Discord message with rate limiting and backoff.
 
@@ -328,7 +326,7 @@ class DiscordRateLimiter:
 
         return result is not None
 
-    def get_rate_limit_info(self) -> Dict[str, Any]:
+    def get_rate_limit_info(self) -> dict[str, Any]:
         """
         Get current rate limit information.
 

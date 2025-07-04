@@ -1,4 +1,3 @@
-import asyncio
 import os
 import sys
 from unittest.mock import AsyncMock, Mock
@@ -179,13 +178,6 @@ def sample_ip_history():
         {"ip": "192.168.1.3", "timestamp": "2023-01-01T14:00:00Z"},
     ]
 
-
-@pytest.fixture
-def event_loop():
-    """Create an event loop for async tests."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest.fixture

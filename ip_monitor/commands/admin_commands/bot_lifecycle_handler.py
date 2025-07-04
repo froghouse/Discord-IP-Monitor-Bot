@@ -2,8 +2,9 @@
 Bot lifecycle handler for admin commands.
 """
 
+from collections.abc import Callable, Coroutine
 import logging
-from typing import Any, Callable, Coroutine, Union
+from typing import Any
 
 import discord
 
@@ -25,7 +26,7 @@ class BotLifecycleHandler(BaseHandler):
         self,
         client: discord.Client,
         ip_service: IPService,
-        storage: Union[IPStorage, SQLiteIPStorage],
+        storage: IPStorage | SQLiteIPStorage,
         stop_callback: Callable[[], Coroutine[Any, Any, None]],
         config: AppConfig,
     ) -> None:

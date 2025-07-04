@@ -3,10 +3,11 @@ Circuit breaker implementation for IP API calls.
 """
 
 import asyncio
+from collections.abc import Awaitable, Callable
+from enum import Enum
 import logging
 import time
-from enum import Enum
-from typing import Any, Awaitable, Callable, Optional, TypeVar
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,6 @@ class CircuitBreakerState(Enum):
 class CircuitBreakerError(Exception):
     """Raised when circuit breaker is open."""
 
-    pass
 
 
 class CircuitBreaker:
@@ -82,7 +82,7 @@ class CircuitBreaker:
 
         if self.state == CircuitBreakerState.CLOSED:
             return True
-        elif self.state == CircuitBreakerState.OPEN:
+        if self.state == CircuitBreakerState.OPEN:
             # Check if we should transition to half-open
             if current_time - self.last_failure_time >= self.recovery_timeout:
                 logger.info("Circuit breaker transitioning from OPEN to HALF_OPEN")
@@ -90,7 +90,7 @@ class CircuitBreaker:
                 self.success_count = 0
                 return True
             return False
-        elif self.state == CircuitBreakerState.HALF_OPEN:
+        if self.state == CircuitBreakerState.HALF_OPEN:
             return True
 
         return False
@@ -166,7 +166,7 @@ class CircuitBreaker:
 
             return result
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(
                 f"Circuit breaker call timed out after {self.timeout} seconds"
             )
@@ -286,8 +286,8 @@ class IPServiceCircuitBreaker(CircuitBreaker):
         )
 
     async def get_ip_with_circuit_breaker(
-        self, ip_fetch_func: Callable[[], Awaitable[Optional[str]]]
-    ) -> Optional[str]:
+        self, ip_fetch_func: Callable[[], Awaitable[str | None]]
+    ) -> str | None:
         """
         Get IP address through circuit breaker with proper error handling.
 
@@ -317,9 +317,9 @@ class IPServiceCircuitBreaker(CircuitBreaker):
 
     async def get_ip_with_fallback_cache(
         self,
-        ip_fetch_func: Callable[[], Awaitable[Optional[str]]],
-        cached_ip: Optional[str] = None,
-    ) -> Optional[str]:
+        ip_fetch_func: Callable[[], Awaitable[str | None]],
+        cached_ip: str | None = None,
+    ) -> str | None:
         """
         Get IP address with circuit breaker and fallback to cached IP.
 
@@ -331,7 +331,7 @@ class IPServiceCircuitBreaker(CircuitBreaker):
             IP address, cached IP, or None
         """
 
-        async def fallback_func() -> Optional[str]:
+        async def fallback_func() -> str | None:
             if cached_ip:
                 logger.info(f"Using cached IP address as fallback: {cached_ip}")
                 return cached_ip

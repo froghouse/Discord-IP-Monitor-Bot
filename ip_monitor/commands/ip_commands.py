@@ -3,9 +3,8 @@ IP-related commands for the IP Monitor Bot.
 """
 
 import asyncio
-import logging
 from datetime import datetime
-from typing import Union
+import logging
 
 import discord
 
@@ -28,7 +27,7 @@ class IPCommands:
         self,
         channel_id: int,
         ip_service: IPService,
-        storage: Union[IPStorage, SQLiteIPStorage],
+        storage: IPStorage | SQLiteIPStorage,
         rate_limiter: AsyncRateLimiter,
     ) -> None:
         """
@@ -115,9 +114,8 @@ class IPCommands:
                             f"Message queued with ID {message_id} (priority: {priority.name})"
                         )
                         return True
-                    else:
-                        logger.error("Failed to queue message")
-                        return False
+                    logger.error("Failed to queue message")
+                    return False
                 except Exception as queue_error:
                     logger.error(f"Error accessing message queue: {queue_error}")
                     service_health.record_failure(

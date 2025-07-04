@@ -2,11 +2,11 @@
 Configuration management for the IP Monitor Bot.
 """
 
+from dataclasses import asdict, dataclass
 import json
 import logging
 import os
-from dataclasses import asdict, dataclass
-from typing import Any, ClassVar, Dict
+from typing import Any, ClassVar
 
 from dotenv import load_dotenv
 
@@ -260,7 +260,7 @@ class AppConfig:
 
         return config
 
-    def get_runtime_configurable_fields(self) -> Dict[str, Dict[str, Any]]:
+    def get_runtime_configurable_fields(self) -> dict[str, dict[str, Any]]:
         """
         Get fields that can be modified at runtime.
 
@@ -451,7 +451,7 @@ class AppConfig:
         }
         return configurable_fields
 
-    def get_field_info(self, field_name: str) -> Dict[str, Any]:
+    def get_field_info(self, field_name: str) -> dict[str, Any]:
         """
         Get information about a specific configuration field.
 
@@ -464,7 +464,7 @@ class AppConfig:
         configurable_fields = self.get_runtime_configurable_fields()
         return configurable_fields.get(field_name, {})
 
-    def validate_config_value(self, field_name: str, value: str) -> Dict[str, Any]:
+    def validate_config_value(self, field_name: str, value: str) -> dict[str, Any]:
         """
         Validate a configuration value.
 
@@ -537,7 +537,7 @@ class AppConfig:
         except ValueError as e:
             return {
                 "valid": False,
-                "error": f"Invalid {field_type} value: '{value}' ({str(e)})",
+                "error": f"Invalid {field_type} value: '{value}' ({e!s})",
                 "converted_value": None,
             }
 
@@ -557,7 +557,7 @@ class AppConfig:
             return True
         return False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert configuration to dictionary.
 
@@ -612,7 +612,7 @@ class AppConfig:
             return base_config
 
         try:
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 overrides = json.load(f)
 
             # Apply overrides to base config

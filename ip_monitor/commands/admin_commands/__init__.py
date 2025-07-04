@@ -12,10 +12,10 @@ from .queue_handler import QueueHandler
 
 __all__ = [
     "AdminCommandRouter",
+    "ApiHandler",
     "BaseHandler",
     "BotLifecycleHandler",
+    "CacheHandler",
     "ConfigHandler",
     "QueueHandler",
-    "ApiHandler",
-    "CacheHandler",
 ]

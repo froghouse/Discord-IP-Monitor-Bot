@@ -4,7 +4,6 @@ Rate limiting implementation for the IP Monitor Bot.
 
 import threading
 import time
-from typing import Tuple
 
 
 class RateLimiter:
@@ -25,7 +24,7 @@ class RateLimiter:
         self.calls: list[float] = []  # List of timestamps
         self.lock = threading.Lock()  # Reentrant lock for thread safety
 
-    def is_limited(self) -> Tuple[bool, int]:
+    def is_limited(self) -> tuple[bool, int]:
         """
         Check if the rate limit is reached.
 
