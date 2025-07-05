@@ -257,6 +257,13 @@ class IPService:
             if "json" in api:
                 try:
                     ip = response.json()["ip"]
+                    # Ensure IP is a string, reject numeric IPs
+                    if not isinstance(ip, str):
+                        logger.warning(f"API {api} returned non-string IP: {ip} (type: {type(ip).__name__})")
+                        service_health.record_failure(
+                            "ip_service", f"Non-string IP from {api}: {ip}", "fetch_ip"
+                        )
+                        return None
                 except (json.JSONDecodeError, KeyError) as e:
                     logger.warning(f"Failed to parse JSON from {api}: {e}")
                     service_health.record_failure(
