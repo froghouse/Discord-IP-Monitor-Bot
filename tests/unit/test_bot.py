@@ -1777,3 +1777,335 @@ class TestIPMonitorBot:
         # Verify cleanup completes without errors
         mock_message_queue.stop_processing.assert_called_once()
         mock_client.close.assert_called_once()
+
+    # Test Scheduled IP Check Task - Critical Missing Functionality
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_scheduled_ip_check_normal_operation(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands_class,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage_class,
+        mock_ip_service_class,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test scheduled IP check in normal operation mode."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_bot_class.return_value = mock_client
+
+        mock_service_health.is_fallback_active.return_value = False
+        mock_service_health.record_success = AsyncMock()
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        mock_ip_commands = AsyncMock()
+        mock_ip_commands.check_ip_once = AsyncMock()
+        mock_ip_commands_class.return_value = mock_ip_commands
+
+        mock_ip_service = AsyncMock()
+        mock_ip_service_class.return_value = mock_ip_service
+
+        mock_storage = AsyncMock()
+        mock_storage_class.return_value = mock_storage
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Create and simulate task execution
+        task = bot._create_check_ip_task()
+        
+        # Access the inner coroutine function directly
+        check_ip_func = task.coro
+
+        # Simulate task execution
+        await check_ip_func()
+
+        # Verify normal operation
+        mock_ip_commands.check_ip_once.assert_called_once_with(mock_client, user_requested=False)
+        mock_service_health.record_success.assert_called_once_with("discord_api", "scheduled_task")
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_scheduled_ip_check_silent_monitoring_mode(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands_class,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage_class,
+        mock_ip_service_class,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test scheduled IP check in silent monitoring mode."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_bot_class.return_value = mock_client
+
+        mock_service_health.is_fallback_active.side_effect = lambda mode: mode == "silent_monitoring"
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        mock_ip_service = AsyncMock()
+        mock_ip_service.get_public_ip.return_value = "192.168.1.1"
+        mock_ip_service_class.return_value = mock_ip_service
+
+        mock_storage = AsyncMock()
+        mock_storage.save_current_ip = AsyncMock()
+        mock_storage_class.return_value = mock_storage
+
+        mock_ip_commands = AsyncMock()
+        mock_ip_commands_class.return_value = mock_ip_commands
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Create and simulate task execution
+        task = bot._create_check_ip_task()
+        check_ip_func = task.coro
+
+        # Simulate task execution
+        await check_ip_func()
+
+        # Verify silent operation
+        mock_ip_service.get_public_ip.assert_called_once()
+        mock_storage.save_current_ip.assert_called_once_with("192.168.1.1")
+        mock_ip_commands.check_ip_once.assert_not_called()
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_scheduled_ip_check_read_only_mode(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands_class,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage_class,
+        mock_ip_service_class,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test scheduled IP check in read-only mode (no storage)."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_bot_class.return_value = mock_client
+
+        def fallback_active(mode):
+            return mode in ["silent_monitoring", "read_only_mode"]
+        
+        mock_service_health.is_fallback_active.side_effect = fallback_active
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        mock_ip_service = AsyncMock()
+        mock_ip_service.get_public_ip.return_value = "192.168.1.1"
+        mock_ip_service_class.return_value = mock_ip_service
+
+        mock_storage = AsyncMock()
+        mock_storage_class.return_value = mock_storage
+
+        mock_ip_commands = AsyncMock()
+        mock_ip_commands_class.return_value = mock_ip_commands
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Create and simulate task execution
+        task = bot._create_check_ip_task()
+        check_ip_func = task.coro
+
+        # Simulate task execution
+        await check_ip_func()
+
+        # Verify read-only operation
+        mock_ip_service.get_public_ip.assert_called_once()
+        mock_storage.save_current_ip.assert_not_called()
+        mock_ip_commands.check_ip_once.assert_not_called()
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_scheduled_ip_check_discord_exception(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands_class,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage_class,
+        mock_ip_service_class,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test scheduled IP check handling Discord exception."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_bot_class.return_value = mock_client
+
+        mock_service_health.is_fallback_active.return_value = False
+        mock_service_health.record_failure = AsyncMock()
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        mock_ip_commands = AsyncMock()
+        mock_ip_commands.check_ip_once = AsyncMock()
+        mock_ip_commands.check_ip_once.side_effect = discord.DiscordException("API Error")
+        mock_ip_commands_class.return_value = mock_ip_commands
+
+        mock_ip_service = AsyncMock()
+        mock_ip_service_class.return_value = mock_ip_service
+
+        mock_storage = AsyncMock()
+        mock_storage_class.return_value = mock_storage
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Create and simulate task execution
+        task = bot._create_check_ip_task()
+        check_ip_func = task.coro
+
+        # Simulate task execution
+        await check_ip_func()
+
+        # Verify error handling
+        mock_service_health.record_failure.assert_called_once()
+        call_args = mock_service_health.record_failure.call_args[0]
+        assert call_args[0] == "discord_api"
+        assert "Discord error in scheduled task" in call_args[1]
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_scheduled_ip_check_unexpected_exception(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands_class,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage_class,
+        mock_ip_service_class,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test scheduled IP check handling unexpected exception."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_bot_class.return_value = mock_client
+
+        mock_service_health.is_fallback_active.return_value = False
+        mock_service_health.record_failure = AsyncMock()
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        mock_ip_commands = AsyncMock()
+        mock_ip_commands.check_ip_once = AsyncMock()
+        mock_ip_commands.check_ip_once.side_effect = Exception("Unexpected error")
+        mock_ip_commands_class.return_value = mock_ip_commands
+
+        mock_ip_service = AsyncMock()
+        mock_ip_service_class.return_value = mock_ip_service
+
+        mock_storage = AsyncMock()
+        mock_storage_class.return_value = mock_storage
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Create and simulate task execution
+        task = bot._create_check_ip_task()
+        check_ip_func = task.coro
+
+        # Simulate task execution
+        await check_ip_func()
+
+        # Verify error handling
+        mock_service_health.record_failure.assert_called_once()
+        call_args = mock_service_health.record_failure.call_args[0]
+        assert call_args[0] == "discord_api"
+        assert "Unexpected error in scheduled task" in call_args[1]
+
+    # Additional Bot Functionality Tests
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_cache_cleanup_task_creation(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage,
+        mock_ip_service,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test cache cleanup task is created properly."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_bot_class.return_value = mock_client
+
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Verify cache cleanup task is initialized to None
+        assert bot.cache_cleanup_task is None
