@@ -58,6 +58,7 @@ Examples:
     $0 -v                                       # Run all tests verbosely
     $0 -q                                       # Quick test run without coverage
     $0 -t tests/unit/bot/                      # Run only bot tests
+    $0 -t tests/unit/config/                   # Run only configuration tests
     $0 -t tests/unit/test_storage.py          # Run specific test file
     $0 -c html --threshold 85                 # Generate HTML coverage report with 85% threshold
     $0 -p 4 -v                                 # Run with 4 parallel workers, verbose output
@@ -252,6 +253,12 @@ run_test_categories() {
         pytest tests/unit/bot/ -v --tb=short
     fi
     
+    # Configuration tests (refactored modular structure)
+    if [[ -d "tests/unit/config" ]]; then
+        print_status "Running configuration tests..."
+        pytest tests/unit/config/ -v --tb=short
+    fi
+    
     # Admin command tests
     if [[ -d "tests/unit/commands/admin_commands" ]]; then
         print_status "Running admin command tests..."
@@ -327,7 +334,18 @@ main() {
     # Run tests based on mode
     if [[ "$QUICK_MODE" == "true" ]]; then
         print_status "Quick mode: Running basic unit tests only..."
-        pytest tests/unit/ -x --tb=short
+        local test_path="${SPECIFIC_TEST:-tests/unit/}"
+        local pytest_args=("$test_path" "-x" "--tb=short")
+        
+        # Disable coverage in quick mode by overriding pytest.ini
+        pytest_args+=("--override-ini=addopts=")
+        
+        # Add verbosity if requested
+        if [[ "$VERBOSE" == "true" ]]; then
+            pytest_args+=("-v")
+        fi
+        
+        pytest "${pytest_args[@]}"
     else
         # Full test suite
         run_unit_tests
