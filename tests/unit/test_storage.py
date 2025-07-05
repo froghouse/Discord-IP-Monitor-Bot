@@ -989,6 +989,9 @@ class TestStorageIntegration:
         for thread in threads:
             thread.join()
 
+        # Ensure storage cleanup
+        storage.close()
+
         # Verify no errors occurred
         assert len(errors) == 0
         assert len(results) == 50  # 5 workers * 10 operations each
@@ -1003,11 +1006,13 @@ class TestStorageIntegration:
         storage1 = SQLiteIPStorage(str(db_file), 10)
         storage1.save_current_ip(test_ip)
         storage1.save_current_ip("192.168.1.201")  # Add to history
+        storage1.close()  # Ensure cleanup
 
         # Create second storage instance and verify data
         storage2 = SQLiteIPStorage(str(db_file), 10)
         loaded_ip = storage2.load_last_ip()
         loaded_history = storage2.load_ip_history()
+        storage2.close()  # Ensure cleanup
 
         assert loaded_ip == "192.168.1.201"
         assert len(loaded_history) == 2

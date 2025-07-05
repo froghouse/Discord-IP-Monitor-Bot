@@ -33,6 +33,23 @@ class SQLiteIPStorage:
         self.history_size = history_size
         self._init_database()
 
+    def __enter__(self):
+        """Enter the context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context manager."""
+        # SQLiteIPStorage uses context managers for all operations,
+        # so there are no persistent connections to close.
+        return False
+
+    def close(self):
+        """Close any resources and clean up connections."""
+        # SQLiteIPStorage uses context managers for all operations,
+        # so there are no persistent connections to close.
+        # This method is provided for API compatibility.
+        pass
+
     def _init_database(self) -> None:
         """Initialize the SQLite database with required tables."""
         # Create directory if it doesn't exist

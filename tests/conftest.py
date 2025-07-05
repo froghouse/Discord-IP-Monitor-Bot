@@ -301,7 +301,7 @@ def temp_db_path():
         os.unlink(temp_path)
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def temp_db_connection(temp_db_path):
     """Create a temporary SQLite database connection with test schema."""
     conn = sqlite3.connect(temp_db_path)
@@ -335,17 +335,29 @@ def temp_db_connection(temp_db_path):
     
     yield conn
     
-    conn.close()
+    # Ensure connection is properly closed
+    try:
+        conn.close()
+    except Exception:
+        pass  # Connection might already be closed
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def sqlite_storage(temp_db_path):
     """Create a SQLiteIPStorage instance with temporary database."""
     from ip_monitor.storage import SQLiteIPStorage
-    return SQLiteIPStorage(temp_db_path, history_size=10)
+    storage = SQLiteIPStorage(temp_db_path, history_size=10)
+    
+    yield storage
+    
+    # Ensure proper cleanup of any lingering connections
+    try:
+        storage.close()
+    except Exception:
+        pass
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def sqlite_storage_with_data(sqlite_storage):
     """Create a SQLiteIPStorage instance with test data."""
     # Insert test data
@@ -373,7 +385,9 @@ def sqlite_storage_with_data(sqlite_storage):
         
         conn.commit()
     
-    return sqlite_storage
+    yield sqlite_storage
+    
+    # Cleanup is handled by the parent sqlite_storage fixture
 
 
 # HTTP Mock Server Fixtures
