@@ -26,7 +26,6 @@ class CircuitBreakerError(Exception):
     """Raised when circuit breaker is open."""
 
 
-
 class CircuitBreaker:
     """
     Circuit breaker implementation for IP API calls.

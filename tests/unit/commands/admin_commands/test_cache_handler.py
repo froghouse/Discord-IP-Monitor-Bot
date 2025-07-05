@@ -214,9 +214,7 @@ class TestCacheHandler:
         """Test cache stats when cache is enabled."""
         cache_handler.ip_service.get_cache_info.return_value = mock_cache_info
 
-        with patch(
-            "ip_monitor.utils.cache.get_cache"
-        ) as mock_get_cache:
+        with patch("ip_monitor.utils.cache.get_cache") as mock_get_cache:
             mock_get_cache.return_value = MagicMock(
                 max_memory_size=100,
                 memory_cache={
@@ -251,9 +249,7 @@ class TestCacheHandler:
         """Test cache stats with import error for cache module."""
         cache_handler.ip_service.get_cache_info.return_value = mock_cache_info
 
-        with patch(
-            "ip_monitor.utils.cache.get_cache"
-        ) as mock_get_cache:
+        with patch("ip_monitor.utils.cache.get_cache") as mock_get_cache:
             mock_get_cache.side_effect = ImportError("Cannot import cache")
 
             result = await cache_handler._handle_cache_stats(mock_message, ["stats"])
@@ -265,9 +261,7 @@ class TestCacheHandler:
         """Test cache cleanup when cache is enabled."""
         cache_handler.ip_service.get_cache_info.return_value = mock_cache_info
 
-        with patch(
-            "ip_monitor.utils.cache.get_cache"
-        ) as mock_get_cache:
+        with patch("ip_monitor.utils.cache.get_cache") as mock_get_cache:
             mock_get_cache.return_value = mock_cache_instance
 
             result = await cache_handler._handle_cache_cleanup(
@@ -382,9 +376,7 @@ class TestCacheHandler:
             # We can't easily test the actual efficiency rating in the output
             # without mocking the entire response, but we can verify the method runs
             async def test_efficiency():
-                with patch(
-                    "ip_monitor.utils.cache.get_cache"
-                ) as mock_get_cache:
+                with patch("ip_monitor.utils.cache.get_cache") as mock_get_cache:
                     mock_get_cache.return_value = MagicMock(
                         max_memory_size=100, memory_cache={}
                     )

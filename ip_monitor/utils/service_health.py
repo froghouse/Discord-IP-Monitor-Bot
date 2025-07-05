@@ -169,9 +169,7 @@ class ServiceHealthMonitor:
             f"Registered service: {name} with capabilities: {list(capabilities.keys())}"
         )
 
-    def record_success(
-        self, service_name: str, operation: str | None = None
-    ) -> None:
+    def record_success(self, service_name: str, operation: str | None = None) -> None:
         """
         Record a successful operation for a service.
 

@@ -55,9 +55,7 @@ class DiscordRateLimiter:
         self.rate_limit_buckets: dict[str, float] = {}
         self.global_rate_limit_reset: float | None = None
 
-    def _calculate_delay(
-        self, attempt: int, retry_after: float | None = None
-    ) -> float:
+    def _calculate_delay(self, attempt: int, retry_after: float | None = None) -> float:
         """
         Calculate delay for exponential backoff.
 

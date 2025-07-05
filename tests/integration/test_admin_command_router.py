@@ -178,9 +178,7 @@ class TestAdminCommandRouterIntegration:
 
             result = await admin_router.handle_config_command(mock_admin_message)
             assert result is True
-            mock_handle.assert_called_once_with(
-                mock_admin_message, ["show", "field"]
-            )
+            mock_handle.assert_called_once_with(mock_admin_message, ["show", "field"])
 
     async def test_handle_config_command_no_args(
         self, admin_router, mock_admin_message

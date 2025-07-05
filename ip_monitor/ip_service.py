@@ -136,9 +136,7 @@ class IPService:
             custom_urls = ip_api_manager.get_api_urls(enabled_only=True)
             if custom_urls:
                 return custom_urls
-            logger.warning(
-                "No custom APIs configured, falling back to default APIs"
-            )
+            logger.warning("No custom APIs configured, falling back to default APIs")
 
         # Fall back to legacy/default APIs
         return self.legacy_apis
@@ -261,7 +259,9 @@ class IPService:
                     ip = response.json()["ip"]
                     # Ensure IP is a string, reject numeric IPs
                     if not isinstance(ip, str):
-                        logger.warning(f"API {api} returned non-string IP: {ip} (type: {type(ip).__name__})")
+                        logger.warning(
+                            f"API {api} returned non-string IP: {ip} (type: {type(ip).__name__})"
+                        )
                         service_health.record_failure(
                             "ip_service", f"Non-string IP from {api}: {ip}", "fetch_ip"
                         )

@@ -48,7 +48,6 @@ class SQLiteIPStorage:
         # SQLiteIPStorage uses context managers for all operations,
         # so there are no persistent connections to close.
         # This method is provided for API compatibility.
-        pass
 
     def _init_database(self) -> None:
         """Initialize the SQLite database with required tables."""
