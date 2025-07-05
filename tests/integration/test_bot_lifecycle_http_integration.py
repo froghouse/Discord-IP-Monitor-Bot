@@ -40,7 +40,7 @@ class TestBotLifecycleHTTPIntegration:
     @pytest.fixture
     def mock_config(self, temp_db_path):
         """Create mock configuration."""
-        config = Mock(spec=Config)
+        config = Mock(spec=AppConfig)
         config.bot_token = "test_token"
         config.channel_id = 12345
         config.db_file = temp_db_path
