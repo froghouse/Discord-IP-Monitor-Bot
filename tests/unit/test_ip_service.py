@@ -497,6 +497,7 @@ class TestLegacyAPIFetching:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.text = "203.0.113.1"
+        mock_response.headers = {"content-type": "text/plain"}
         mock_response.raise_for_status = Mock()
         
         service_with_mock_client.client.get.return_value = mock_response
@@ -577,6 +578,7 @@ class TestLegacyAPIFetching:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.text = "  203.0.113.1  \n"
+        mock_response.headers = {"content-type": "text/plain"}
         mock_response.raise_for_status = Mock()
         
         service_with_mock_client.client.get.return_value = mock_response
@@ -594,6 +596,14 @@ class TestConcurrentAPIChecking:
     def service_with_mock_client(self):
         """Create an IPService with concurrent checking enabled."""
         service = IPService(use_concurrent_checks=True)
+        service.client = AsyncMock()
+        service._client_initialized = True
+        return service
+
+    @pytest.fixture
+    def service_with_legacy_apis(self):
+        """Create an IPService with concurrent checking and legacy APIs only."""
+        service = IPService(use_concurrent_checks=True, use_custom_apis=False)
         service.client = AsyncMock()
         service._client_initialized = True
         return service
@@ -622,11 +632,8 @@ class TestConcurrentAPIChecking:
         assert result == "203.0.113.1"  # First successful result
         mock_api_manager.list_apis.assert_called_once_with(enabled_only=True)
 
-    @patch('ip_monitor.ip_service.ip_api_manager')
-    async def test_get_ip_without_circuit_breaker_concurrent_legacy_apis(self, mock_api_manager, service_with_mock_client):
+    async def test_get_ip_without_circuit_breaker_concurrent_legacy_apis(self, service_with_legacy_apis):
         """Test concurrent checking with legacy APIs."""
-        # No custom APIs available
-        mock_api_manager.list_apis.return_value = []
         
         # Mock legacy API responses based on the URL
         async def mock_fetch_api(api_url):
@@ -638,31 +645,24 @@ class TestConcurrentAPIChecking:
             else:
                 return None
         
-        with patch.object(service_with_mock_client, 'fetch_ip_from_api', side_effect=mock_fetch_api):
-            result = await service_with_mock_client._get_ip_without_circuit_breaker()
+        with patch.object(service_with_legacy_apis, 'fetch_ip_from_api', side_effect=mock_fetch_api):
+            result = await service_with_legacy_apis._get_ip_without_circuit_breaker()
         
         assert result == "203.0.113.1"  # First successful result
 
-    @patch('ip_monitor.ip_service.ip_api_manager')
-    async def test_get_ip_without_circuit_breaker_concurrent_all_fail(self, mock_api_manager, service_with_mock_client):
+    async def test_get_ip_without_circuit_breaker_concurrent_all_fail(self, service_with_legacy_apis):
         """Test concurrent checking when all APIs fail."""
-        service_with_mock_client.max_retries = 2
-        service_with_mock_client.retry_delay = 0.1  # Short delay for testing
-        
-        # No custom APIs available
-        mock_api_manager.list_apis.return_value = []
+        service_with_legacy_apis.max_retries = 2
+        service_with_legacy_apis.retry_delay = 0.1  # Short delay for testing
         
         # Mock all API responses to fail
-        with patch.object(service_with_mock_client, 'fetch_ip_from_api', return_value=None):
-            result = await service_with_mock_client._get_ip_without_circuit_breaker()
+        with patch.object(service_with_legacy_apis, 'fetch_ip_from_api', return_value=None):
+            result = await service_with_legacy_apis._get_ip_without_circuit_breaker()
         
         assert result is None
 
-    @patch('ip_monitor.ip_service.ip_api_manager')
-    async def test_get_ip_without_circuit_breaker_concurrent_with_exception(self, mock_api_manager, service_with_mock_client):
+    async def test_get_ip_without_circuit_breaker_concurrent_with_exception(self, service_with_legacy_apis):
         """Test concurrent checking with exceptions in gather."""
-        # No custom APIs available
-        mock_api_manager.list_apis.return_value = []
         
         # Mock API responses with exceptions and success based on URL
         async def mock_fetch_api_with_exceptions(api_url):
@@ -676,20 +676,16 @@ class TestConcurrentAPIChecking:
             else:
                 return None
         
-        with patch.object(service_with_mock_client, 'fetch_ip_from_api', side_effect=mock_fetch_api_with_exceptions):
-            result = await service_with_mock_client._get_ip_without_circuit_breaker()
+        with patch.object(service_with_legacy_apis, 'fetch_ip_from_api', side_effect=mock_fetch_api_with_exceptions):
+            result = await service_with_legacy_apis._get_ip_without_circuit_breaker()
         
         assert result == "203.0.113.1"  # Should get the successful result
 
-    @patch('ip_monitor.ip_service.ip_api_manager')
-    async def test_get_ip_without_circuit_breaker_concurrent_with_cache(self, mock_api_manager, service_with_mock_client):
+    async def test_get_ip_without_circuit_breaker_concurrent_with_cache(self, service_with_legacy_apis):
         """Test concurrent checking with cache enabled."""
         # Enable cache
-        service_with_mock_client.cache_enabled = True
-        service_with_mock_client.cache = Mock()
-        
-        # No custom APIs available
-        mock_api_manager.list_apis.return_value = []
+        service_with_legacy_apis.cache_enabled = True
+        service_with_legacy_apis.cache = Mock()
         
         # Mock API responses - first API returns IP, others return None
         async def mock_fetch_api_with_cache(api_url):
@@ -698,12 +694,12 @@ class TestConcurrentAPIChecking:
             else:
                 return None
         
-        with patch.object(service_with_mock_client, 'fetch_ip_from_api', side_effect=mock_fetch_api_with_cache):
-            result = await service_with_mock_client._get_ip_without_circuit_breaker()
+        with patch.object(service_with_legacy_apis, 'fetch_ip_from_api', side_effect=mock_fetch_api_with_cache):
+            result = await service_with_legacy_apis._get_ip_without_circuit_breaker()
         
         assert result == "203.0.113.1"
         # Verify cache was called
-        service_with_mock_client.cache.set.assert_called_once()
+        service_with_legacy_apis.cache.set.assert_called_once()
 
     @patch('ip_monitor.ip_service.ip_api_manager')
     async def test_get_ip_without_circuit_breaker_concurrent_api_save(self, mock_api_manager, service_with_mock_client):
@@ -733,6 +729,14 @@ class TestSequentialAPIChecking:
         service._client_initialized = True
         return service
 
+    @pytest.fixture
+    def service_with_legacy_apis(self):
+        """Create an IPService with sequential checking and legacy APIs only."""
+        service = IPService(use_concurrent_checks=False, use_custom_apis=False)
+        service.client = AsyncMock()
+        service._client_initialized = True
+        return service
+
     @patch('ip_monitor.ip_service.ip_api_manager')
     async def test_get_ip_without_circuit_breaker_sequential_custom_apis(self, mock_api_manager, service_with_mock_client):
         """Test sequential checking with custom APIs."""
@@ -752,21 +756,18 @@ class TestSequentialAPIChecking:
         assert result == "203.0.113.1"
         mock_api_manager.list_apis.assert_called_once_with(enabled_only=True)
 
-    @patch('ip_monitor.ip_service.ip_api_manager')
-    async def test_get_ip_without_circuit_breaker_sequential_legacy_apis(self, mock_api_manager, service_with_mock_client):
+    async def test_get_ip_without_circuit_breaker_sequential_legacy_apis(self, service_with_legacy_apis):
         """Test sequential checking with legacy APIs."""
-        # No custom APIs available
-        mock_api_manager.list_apis.return_value = []
         
         # Mock legacy API responses - first two fail, third succeeds
-        with patch.object(service_with_mock_client, 'fetch_ip_from_api', side_effect=[
+        with patch.object(service_with_legacy_apis, 'fetch_ip_from_api', side_effect=[
             None,  # First API fails
             None,  # Second API fails
             "203.0.113.1",  # Third API succeeds
             None,  # Fourth API would fail but not called
             None   # Fifth API would fail but not called
         ]):
-            result = await service_with_mock_client._get_ip_without_circuit_breaker()
+            result = await service_with_legacy_apis._get_ip_without_circuit_breaker()
         
         assert result == "203.0.113.1"
 
@@ -1244,18 +1245,16 @@ class TestErrorHandlingAndRetryLogic:
         service = IPService(
             max_retries=3,
             retry_delay=0.1,  # Short delay for testing
-            use_concurrent_checks=False
+            use_concurrent_checks=False,
+            use_custom_apis=False
         )
         service.client = AsyncMock()
         service._client_initialized = True
         return service
 
-    @patch('ip_monitor.ip_service.ip_api_manager')
     @patch('ip_monitor.ip_service.asyncio.sleep')
-    async def test_retry_logic_all_apis_fail(self, mock_sleep, mock_api_manager, service_with_retries):
+    async def test_retry_logic_all_apis_fail(self, mock_sleep, service_with_retries):
         """Test retry logic when all APIs fail."""
-        # No custom APIs available
-        mock_api_manager.list_apis.return_value = []
         
         # Mock all API calls to fail
         with patch.object(service_with_retries, 'fetch_ip_from_api', return_value=None):
@@ -1265,12 +1264,9 @@ class TestErrorHandlingAndRetryLogic:
         # Should have slept between retries (max_retries - 1 times)
         assert mock_sleep.call_count == 2
 
-    @patch('ip_monitor.ip_service.ip_api_manager')
     @patch('ip_monitor.ip_service.asyncio.sleep')
-    async def test_retry_logic_eventual_success(self, mock_sleep, mock_api_manager, service_with_retries):
+    async def test_retry_logic_eventual_success(self, mock_sleep, service_with_retries):
         """Test retry logic with eventual success."""
-        # No custom APIs available
-        mock_api_manager.list_apis.return_value = []
         
         # Mock API to fail twice, then succeed
         call_count = 0
@@ -1320,8 +1316,7 @@ class TestErrorHandlingAndRetryLogic:
         
         assert result is None
 
-    @patch('ip_monitor.ip_service.ip_api_manager')
-    async def test_get_ip_without_circuit_breaker_exception(self, mock_api_manager, service_with_retries):
+    async def test_get_ip_without_circuit_breaker_exception(self, service_with_retries):
         """Test handling of exceptions in _get_ip_without_circuit_breaker."""
         # Simulate exception during client initialization
         service_with_retries.client = None
@@ -1376,6 +1371,7 @@ class TestServiceHealthIntegration:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.text = "203.0.113.1"
+        mock_response.headers = {"content-type": "text/plain"}
         mock_response.raise_for_status = Mock()
         
         service_with_mock_client.client.get.return_value = mock_response
@@ -1405,6 +1401,7 @@ class TestServiceHealthIntegration:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.text = "not.an.ip"
+        mock_response.headers = {"content-type": "text/plain"}
         mock_response.raise_for_status = Mock()
         
         service_with_mock_client.client.get.return_value = mock_response
@@ -1537,6 +1534,7 @@ class TestEdgeCasesAndRobustness:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.text = "203.0.113.1"
+            mock_response.headers = {"content-type": "text/plain"}
             mock_response.raise_for_status = Mock()
             return mock_response
         
@@ -1585,7 +1583,8 @@ class TestIntegrationWithMockServer:
         return IPService(
             use_concurrent_checks=False,
             circuit_breaker_enabled=False,
-            cache_enabled=False
+            cache_enabled=False,
+            use_custom_apis=False
         )
 
     async def test_fetch_ip_from_json_endpoint(self, mock_ip_api_server, service_for_integration):
@@ -1632,8 +1631,7 @@ class TestIntegrationWithMockServer:
         
         await service_for_integration.close()
 
-    @patch('ip_monitor.ip_service.ip_api_manager')
-    async def test_full_ip_check_integration(self, mock_api_manager, mock_ip_api_server, service_for_integration):
+    async def test_full_ip_check_integration(self, mock_ip_api_server, service_for_integration):
         """Test full IP check integration with mock server."""
         # Configure service to use mock server endpoints
         service_for_integration.legacy_apis = [
@@ -1641,9 +1639,6 @@ class TestIntegrationWithMockServer:
             mock_ip_api_server["endpoints"]["json"],   # This will succeed
             mock_ip_api_server["endpoints"]["text"],   # Won't be called
         ]
-        
-        # Disable custom APIs
-        mock_api_manager.list_apis.return_value = []
         
         result = await service_for_integration._get_ip_without_circuit_breaker()
         
@@ -1664,22 +1659,24 @@ class TestPerformanceCharacteristics:
             max_retries=1,
             retry_delay=0.01,
             circuit_breaker_enabled=False,
-            cache_enabled=False
+            cache_enabled=False,
+            use_custom_apis=False
         )
 
     async def test_concurrent_performance(self, performance_service):
         """Test performance of concurrent API checking."""
-        # Mock multiple successful API responses
-        mock_responses = [AsyncMock() for _ in range(5)]
-        for i, mock_response in enumerate(mock_responses):
-            mock_response.return_value = f"203.0.113.{i+1}"
+        # Mock API responses - return the first successful result
+        async def mock_fetch_api(api_url):
+            if "api.ipify.org?format=json" in api_url:
+                return "203.0.113.1"
+            return None
         
         performance_service.client = AsyncMock()
         performance_service._client_initialized = True
         
         start_time = time.time()
         
-        with patch.object(performance_service, 'fetch_ip_from_api', side_effect=mock_responses):
+        with patch.object(performance_service, 'fetch_ip_from_api', side_effect=mock_fetch_api):
             result = await performance_service._get_ip_without_circuit_breaker()
         
         elapsed_time = time.time() - start_time

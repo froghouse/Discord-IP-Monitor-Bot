@@ -254,7 +254,9 @@ class IPService:
             response = await client.get(api)
             response.raise_for_status()
 
-            if "json" in api:
+            # Check for JSON content by URL pattern or Content-Type header
+            content_type = response.headers.get("content-type", "").lower()
+            if "json" in api or content_type.startswith("application/json"):
                 try:
                     ip = response.json()["ip"]
                     # Ensure IP is a string, reject numeric IPs
@@ -303,11 +305,10 @@ class IPService:
         Returns:
             IP address string or None if unsuccessful
         """
-        # Initialize the client if it doesn't exist
-        if self.client is None:
-            await self._initialize_client()
-
         try:
+            # Initialize the client if it doesn't exist
+            if self.client is None:
+                await self._initialize_client()
             for attempt in range(self.max_retries):
                 # Get APIs to use (custom or legacy)
                 if self.use_custom_apis:
