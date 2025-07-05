@@ -2507,3 +2507,533 @@ class TestIPMonitorBot:
 
         # Verify cache cleanup task is initialized to None
         assert bot.cache_cleanup_task is None
+
+
+class TestTaskScheduling:
+    """Test task scheduling functionality."""
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_create_check_ip_task(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage,
+        mock_ip_service,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test creation of IP check task."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_bot_class.return_value = mock_client
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Create task
+        task = bot._create_check_ip_task()
+
+        # Verify task properties
+        assert task is not None
+        assert hasattr(task, 'start')
+        assert hasattr(task, 'stop')
+        assert hasattr(task, 'restart')
+        assert hasattr(task, 'cancel')
+        assert hasattr(task, 'is_running')
+        
+        # Verify interval was set correctly
+        mock_service_health.get_adjusted_interval.assert_called_once_with(mock_config.check_interval)
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_task_lifecycle_management(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage,
+        mock_ip_service,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test task lifecycle management (start, stop, restart)."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_bot_class.return_value = mock_client
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Create task
+        task = bot._create_check_ip_task()
+
+        # Test that task is not initially running
+        assert not task.is_running()
+
+        # Start the task
+        task.start()
+        assert task.is_running()
+
+        # Stop the task
+        task.stop()
+        # Note: The task may still be "running" immediately after stop() is called
+        # since it needs time to process the cancellation
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_task_interval_adjustment(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage,
+        mock_ip_service,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test task interval adjustment for degradation."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_bot_class.return_value = mock_client
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Create and start task
+        task = bot._create_check_ip_task()
+        task.start()
+        bot.check_ip_task = task
+
+        # Simulate interval adjustment
+        mock_service_health.get_adjusted_interval.return_value = 10.0
+
+        # Call adjustment method
+        bot._adjust_check_interval_for_degradation()
+
+        # Verify new task was created with adjusted interval
+        assert bot.check_ip_task is not None
+        # The task should be recreated with new interval
+        mock_service_health.get_adjusted_interval.assert_called()
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_task_before_loop_hook(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage,
+        mock_ip_service,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test task before loop hook functionality."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_client.wait_until_ready = AsyncMock()
+        mock_bot_class.return_value = mock_client
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Create task
+        task = bot._create_check_ip_task()
+
+        # Access the before_loop hook
+        before_loop_func = task._before_loop
+
+        # Execute the before_loop hook
+        if before_loop_func:
+            await before_loop_func()
+
+        # Verify wait_until_ready was called
+        mock_client.wait_until_ready.assert_called_once()
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_task_before_loop_error_handling(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage,
+        mock_ip_service,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test task before loop error handling."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_client.wait_until_ready = AsyncMock()
+        mock_client.wait_until_ready.side_effect = Exception("Wait error")
+        mock_client.close = AsyncMock()
+        mock_bot_class.return_value = mock_client
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Create task
+        task = bot._create_check_ip_task()
+
+        # Access the before_loop hook
+        before_loop_func = task._before_loop
+
+        # Execute the before_loop hook (should handle error)
+        if before_loop_func:
+            await before_loop_func()
+
+        # Verify error handling (close was called)
+        mock_client.close.assert_called_once()
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_task_error_handler(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage,
+        mock_ip_service,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test task error handler functionality."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_channel = AsyncMock()
+        mock_client.get_channel.return_value = mock_channel
+        mock_bot_class.return_value = mock_client
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        mock_discord_rate_limiter_instance = AsyncMock()
+        mock_discord_rate_limiter.return_value = mock_discord_rate_limiter_instance
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Replace the discord rate limiter instance with our mock
+        bot.discord_rate_limiter = mock_discord_rate_limiter_instance
+
+        # Create task
+        task = bot._create_check_ip_task()
+
+        # Access the error handler
+        error_handler = task._error
+
+        # Execute the error handler
+        if error_handler:
+            test_error = Exception("Test error")
+            await error_handler(test_error)
+
+        # Verify error notification was sent
+        mock_client.get_channel.assert_called_once_with(mock_config.channel_id)
+        mock_discord_rate_limiter_instance.send_message_with_backoff.assert_called_once()
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_task_error_handler_exception_handling(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage,
+        mock_ip_service,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test task error handler handles exceptions gracefully."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_client.get_channel.side_effect = Exception("Channel error")
+        mock_bot_class.return_value = mock_client
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        mock_discord_rate_limiter_instance = AsyncMock()
+        mock_discord_rate_limiter.return_value = mock_discord_rate_limiter_instance
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Replace the discord rate limiter instance with our mock
+        bot.discord_rate_limiter = mock_discord_rate_limiter_instance
+
+        # Create task
+        task = bot._create_check_ip_task()
+
+        # Access the error handler
+        error_handler = task._error
+
+        # Execute the error handler (should not crash despite exception)
+        if error_handler:
+            test_error = Exception("Test error")
+            await error_handler(test_error)
+
+        # Verify get_channel was called
+        mock_client.get_channel.assert_called_once_with(mock_config.channel_id)
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_task_error_handler_restart_running_task(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage,
+        mock_ip_service,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test task error handler restarts running task."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_client.get_channel.return_value = None
+        mock_bot_class.return_value = mock_client
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Create task and start it
+        task = bot._create_check_ip_task()
+        task.start()
+
+        # Access the error handler
+        error_handler = task._error
+
+        # Execute the error handler
+        if error_handler:
+            test_error = Exception("Test error")
+            await error_handler(test_error)
+
+        # Verify task was restarted (it should still be running)
+        assert task.is_running()
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_task_error_handler_start_stopped_task(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage,
+        mock_ip_service,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test task error handler starts stopped task."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_client.get_channel.return_value = None
+        mock_bot_class.return_value = mock_client
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Create task but don't start it
+        task = bot._create_check_ip_task()
+
+        # Access the error handler
+        error_handler = task._error
+
+        # Execute the error handler
+        if error_handler:
+            test_error = Exception("Test error")
+            await error_handler(test_error)
+
+        # Verify task was started
+        assert task.is_running()
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_adjust_check_interval_no_change(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage,
+        mock_ip_service,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test interval adjustment when no significant change."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_bot_class.return_value = mock_client
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Create and start task
+        task = bot._create_check_ip_task()
+        task.start()
+        bot.check_ip_task = task
+        original_task = bot.check_ip_task
+
+        # Simulate no significant interval change
+        mock_service_health.get_adjusted_interval.return_value = 5.05  # Very small change
+
+        # Call adjustment method
+        bot._adjust_check_interval_for_degradation()
+
+        # Verify task was not recreated (same task instance)
+        assert bot.check_ip_task is original_task
+
+    @patch("ip_monitor.bot.commands.Bot")
+    @patch("ip_monitor.bot.discord.Intents")
+    @patch("ip_monitor.bot.IPService")
+    @patch("ip_monitor.bot.SQLiteIPStorage")
+    @patch("ip_monitor.bot.AsyncRateLimiter")
+    @patch("ip_monitor.bot.DiscordRateLimiter")
+    @patch("ip_monitor.bot.IPCommands")
+    @patch("ip_monitor.bot.AdminCommandRouter")
+    @patch("ip_monitor.bot.service_health")
+    async def test_adjust_check_interval_no_task(
+        self,
+        mock_service_health,
+        mock_admin_router,
+        mock_ip_commands,
+        mock_discord_rate_limiter,
+        mock_async_rate_limiter,
+        mock_storage,
+        mock_ip_service,
+        mock_intents,
+        mock_bot_class,
+        mock_config,
+    ):
+        """Test interval adjustment when no task exists."""
+        # Setup mocks
+        mock_intents.default.return_value = mock_intents
+        mock_client = AsyncMock()
+        mock_bot_class.return_value = mock_client
+        mock_service_health.get_adjusted_interval.return_value = 5.0
+
+        # Initialize bot
+        bot = IPMonitorBot(mock_config)
+
+        # Ensure no task exists
+        bot.check_ip_task = None
+
+        # Call adjustment method (should not crash)
+        bot._adjust_check_interval_for_degradation()
+
+        # Verify no task was created
+        assert bot.check_ip_task is None
