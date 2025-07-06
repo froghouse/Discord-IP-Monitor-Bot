@@ -982,7 +982,7 @@ class TestQueueProcessing:
             channel_id=123456789,
             content="Test message",
             priority=MessagePriority.HIGH,
-            max_retries=1,
+            max_retries=2,  # Allow 2 retries so we can test multiple failures
         )
 
         # Mock failed delivery
@@ -995,8 +995,17 @@ class TestQueueProcessing:
             mock_rate_limiter = mock_rate_limiter_class.return_value
             mock_rate_limiter.send_message_with_backoff = AsyncMock(return_value=None)
 
-            # Process the message twice (should fail permanently after max retries)
-            await queue._process_message(queue.queue[0])
+            # Process the message once (should fail and stay in queue for retry)
+            message = queue.queue[0]
+            await queue._process_message(message)
+
+            # Verify message is still in queue with updated retry count
+            assert len(queue.queue) == 1
+            assert queue.queue[0].retry_count == 1
+            assert queue.queue[0].status == MessageStatus.PENDING
+
+            # Process the message again (should fail permanently and be removed)
+            # retry_count will be 2, which equals max_retries, so should_retry() returns False
             await queue._process_message(queue.queue[0])
 
             # Verify message was failed and removed from queue
