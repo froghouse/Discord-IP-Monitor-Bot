@@ -316,13 +316,15 @@ class DiscordRateLimiter:
         async def delete_func() -> None:
             await message.delete()
 
-        result = await self.execute_with_backoff(
-            delete_func,
-            endpoint=f"channels/{message.channel.id}/messages/{message.id}",
-            method="DELETE",
-        )
-
-        return result is not None
+        try:
+            await self.execute_with_backoff(
+                delete_func,
+                endpoint=f"channels/{message.channel.id}/messages/{message.id}",
+                method="DELETE",
+            )
+            return True
+        except Exception:
+            return False
 
     def get_rate_limit_info(self) -> dict[str, Any]:
         """

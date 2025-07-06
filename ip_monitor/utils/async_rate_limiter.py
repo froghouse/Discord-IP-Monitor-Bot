@@ -147,7 +147,7 @@ class AsyncRateLimiter:
             active_calls = [t for t in self.calls if t > cutoff_time]
 
             is_limited, wait_time = False, 0
-            if len(active_calls) >= self.max_calls:
+            if len(active_calls) >= self.max_calls and self.max_calls > 0:
                 oldest_call = min(active_calls)
                 wait_time = int(self.period - (current_time - oldest_call))
                 is_limited = True
@@ -201,9 +201,11 @@ class TokenBucketRateLimiter:
         current_time = time.time()
         elapsed = current_time - self.last_refill
 
-        # Add tokens based on elapsed time
-        tokens_to_add = elapsed * self.rate
-        self.tokens = min(self.capacity, self.tokens + tokens_to_add)
+        # Only add tokens if time has actually passed (handle clock adjustments)
+        if elapsed > 0:
+            tokens_to_add = elapsed * self.rate
+            self.tokens = min(self.capacity, self.tokens + tokens_to_add)
+        
         self.last_refill = current_time
 
     async def try_acquire(self, tokens: int = 1) -> bool:

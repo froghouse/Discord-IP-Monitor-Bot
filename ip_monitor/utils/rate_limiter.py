@@ -39,6 +39,10 @@ class RateLimiter:
 
             # Check if we've reached the maximum number of calls
             if len(self.calls) >= self.max_calls:
+                if self.max_calls == 0:
+                    # Zero max_calls means always limited
+                    return True, 1
+                
                 # Calculate when the oldest call will expire
                 oldest_call = min(self.calls)
                 seconds_to_wait = int(self.period - (current_time - oldest_call))
