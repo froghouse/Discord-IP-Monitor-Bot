@@ -159,10 +159,19 @@ class AsyncMessageQueue:
         self.is_processing = False
         if self.process_task:
             try:
-                self.process_task.cancel()
-                await self.process_task
+                # Check if the event loop is still running before cancelling
+                loop = asyncio.get_running_loop()
+                if loop.is_running():
+                    self.process_task.cancel()
+                    await self.process_task
             except asyncio.CancelledError:
                 pass
+            except RuntimeError as e:
+                # Handle event loop closure gracefully
+                if "Event loop is closed" in str(e):
+                    logger.debug("Event loop closed during task cancellation")
+                else:
+                    logger.error(f"Error during task cancellation: {e}")
             self.process_task = None
         logger.info("Message queue processing stopped")
 
