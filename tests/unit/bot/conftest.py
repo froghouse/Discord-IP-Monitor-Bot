@@ -127,6 +127,8 @@ def mock_discord_client():
     # HTTP session
     client.http = Mock()
     client.http.close = AsyncMock()
+    client.http.session = Mock()
+    client.http.session.close = AsyncMock()
 
     return client
 
@@ -190,6 +192,7 @@ def mock_bot_ip_service():
 
     # Cleanup
     service.cleanup = AsyncMock()
+    service.close = AsyncMock()
 
     return service
 
@@ -290,6 +293,7 @@ def mock_bot_service_health():
     # Degradation management
     health.is_degraded = Mock(return_value=False)
     health.get_degradation_level = Mock(return_value=0)
+    health.get_adjusted_interval = Mock(return_value=5.0)
 
     return health
 
@@ -332,6 +336,7 @@ def mock_bot_discord_rate_limiter():
     limiter.acquire_send_message = AsyncMock()
     limiter.acquire_channel_operation = AsyncMock()
     limiter.acquire_guild_operation = AsyncMock()
+    limiter.send_message_with_backoff = AsyncMock()
 
     # Status reporting
     limiter.get_status = Mock(

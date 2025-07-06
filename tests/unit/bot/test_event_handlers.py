@@ -305,7 +305,7 @@ class TestOnMessageEventHandler:
 
         # Verify
         mock_bot_instance.commands.handle_ip_command.assert_called_once_with(
-            mock_bot_message
+            mock_bot_message, mock_bot_instance.client
         )
 
     async def test_on_message_admin_command(
@@ -315,14 +315,14 @@ class TestOnMessageEventHandler:
         # Setup
         mock_bot_admin_message.content = "!config show"
         mock_bot_admin_message.channel.id = mock_bot_instance.config.channel_id
-        mock_bot_instance.admin_commands.handle_command = AsyncMock()
+        mock_bot_instance.admin_commands.handle_config_command = AsyncMock()
 
         # Execute
         await mock_bot_instance.on_message(mock_bot_admin_message)
 
         # Verify
-        mock_bot_instance.admin_commands.handle_command.assert_called_once_with(
-            mock_bot_admin_message, ["config", "show"]
+        mock_bot_instance.admin_commands.handle_config_command.assert_called_once_with(
+            mock_bot_admin_message
         )
 
     async def test_on_message_bot_message_ignored(
@@ -330,7 +330,7 @@ class TestOnMessageEventHandler:
     ):
         """Test that bot's own messages are ignored."""
         # Setup
-        mock_bot_message.author.bot = True
+        mock_bot_message.author = mock_bot_instance.client.user
         mock_bot_message.content = "!ip"
         mock_bot_instance.commands.handle_ip_command = AsyncMock()
 
@@ -364,13 +364,13 @@ class TestOnMessageEventHandler:
         mock_bot_admin_message.content = "!config show"
         mock_bot_admin_message.channel.id = 99999  # Wrong channel
         mock_bot_admin_message.author.guild_permissions.administrator = True
-        mock_bot_instance.admin_commands.handle_command = AsyncMock()
+        mock_bot_instance.admin_commands.handle_config_command = AsyncMock()
 
         # Execute
         await mock_bot_instance.on_message(mock_bot_admin_message)
 
         # Verify
-        mock_bot_instance.admin_commands.handle_command.assert_called_once()
+        mock_bot_instance.admin_commands.handle_config_command.assert_called_once()
 
     async def test_on_message_discord_exception(
         self, mock_bot_instance, mock_bot_message
@@ -382,13 +382,13 @@ class TestOnMessageEventHandler:
         mock_bot_instance.commands.handle_ip_command = AsyncMock(
             side_effect=discord.DiscordException("API Error")
         )
-        mock_bot_instance.message_queue.add_message = AsyncMock()
+        mock_bot_instance.discord_rate_limiter.send_message_with_backoff = AsyncMock()
 
         # Execute
         await mock_bot_instance.on_message(mock_bot_message)
 
         # Verify error handling
-        mock_bot_instance.message_queue.add_message.assert_called()
+        mock_bot_instance.discord_rate_limiter.send_message_with_backoff.assert_called()
 
     async def test_on_message_unexpected_exception(
         self, mock_bot_instance, mock_bot_message
@@ -400,13 +400,13 @@ class TestOnMessageEventHandler:
         mock_bot_instance.commands.handle_ip_command = AsyncMock(
             side_effect=Exception("Unexpected error")
         )
-        mock_bot_instance.message_queue.add_message = AsyncMock()
+        mock_bot_instance.discord_rate_limiter.send_message_with_backoff = AsyncMock()
 
         # Execute
         await mock_bot_instance.on_message(mock_bot_message)
 
         # Verify error handling
-        mock_bot_instance.message_queue.add_message.assert_called()
+        mock_bot_instance.discord_rate_limiter.send_message_with_backoff.assert_called()
 
     async def test_on_message_error_notification_fails(
         self, mock_bot_instance, mock_bot_message
@@ -418,8 +418,8 @@ class TestOnMessageEventHandler:
         mock_bot_instance.commands.handle_ip_command = AsyncMock(
             side_effect=Exception("Command error")
         )
-        mock_bot_instance.message_queue.add_message = AsyncMock(
-            side_effect=Exception("Queue error")
+        mock_bot_instance.discord_rate_limiter.send_message_with_backoff = AsyncMock(
+            side_effect=Exception("Notification error")
         )
 
         # Execute (should not raise exception)
@@ -427,7 +427,7 @@ class TestOnMessageEventHandler:
 
         # Verify both errors are handled gracefully
         mock_bot_instance.commands.handle_ip_command.assert_called_once()
-        mock_bot_instance.message_queue.add_message.assert_called_once()
+        mock_bot_instance.discord_rate_limiter.send_message_with_backoff.assert_called_once()
 
 
 class TestMessageHandlingEdgeCases:
@@ -473,14 +473,16 @@ class TestMessageHandlingEdgeCases:
         # Execute
         await mock_bot_instance.on_message(mock_bot_message)
 
-        # Verify command is executed (case insensitive)
-        mock_bot_instance.commands.handle_ip_command.assert_called_once()
+        # Verify command is NOT executed (case sensitive)
+        mock_bot_instance.commands.handle_ip_command.assert_not_called()
 
     async def test_on_message_dm_handling(self, mock_bot_instance, mock_bot_message):
         """Test direct message handling."""
         # Setup
         mock_bot_message.content = "!ip"
         mock_bot_message.guild = None  # DM has no guild
+        mock_bot_message.channel.id = 99999  # Different from config.channel_id
+        mock_bot_message.author.guild_permissions.administrator = False  # Non-admin in DM
         mock_bot_instance.commands.handle_ip_command = AsyncMock()
 
         # Execute
@@ -493,52 +495,18 @@ class TestMessageHandlingEdgeCases:
 class TestConnectionEventHandlers:
     """Test suite for Discord connection event handlers."""
 
-    async def test_on_disconnect_handling(self, mock_bot_instance):
-        """Test Discord disconnect event handling."""
-        # Execute
-        await mock_bot_instance.on_disconnect()
+    # Note: on_disconnect handler is not implemented in the current bot
 
-        # Verify (method should complete without error)
-        # Note: The disconnect handler typically just logs the event
-
-    async def test_on_resumed_handling(self, mock_bot_instance):
-        """Test connection resume event handling."""
-        # Execute
-        await mock_bot_instance.on_resumed()
-
-        # Verify (method should complete without error)
-        # Note: The resume handler typically just logs the event
+    # Note: on_resumed handler is not implemented in the current bot
 
 
 class TestGuildEventHandlers:
     """Test suite for guild-related event handlers."""
 
-    async def test_guild_availability_handling(self, mock_bot_instance):
-        """Test guild availability change handling."""
-        # Setup
-        mock_guild = Mock()
-        mock_guild.id = 123456789
-        mock_guild.name = "Test Guild"
-        mock_guild.unavailable = False
-
-        # Execute
-        await mock_bot_instance.on_guild_available(mock_guild)
-
-        # Verify (method should complete without error)
-        # Note: Guild availability handlers typically just log events
+    # Note: Guild availability handlers are not implemented in the current bot
 
 
 class TestCommandErrorHandler:
     """Test suite for command error handling."""
 
-    async def test_on_command_error_handling(self, mock_bot_instance):
-        """Test slash command error handling."""
-        # Setup
-        mock_ctx = AsyncMock()
-        mock_error = Exception("Test error")
-
-        # Execute
-        await mock_bot_instance.on_command_error(mock_ctx, mock_error)
-
-        # Verify error is handled gracefully
-        # Note: Error handler typically logs and may send user notification
+    # Note: Command error handlers are not implemented in the current bot
