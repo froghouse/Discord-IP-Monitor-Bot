@@ -482,7 +482,9 @@ class TestMessageHandlingEdgeCases:
         mock_bot_message.content = "!ip"
         mock_bot_message.guild = None  # DM has no guild
         mock_bot_message.channel.id = 99999  # Different from config.channel_id
-        mock_bot_message.author.guild_permissions.administrator = False  # Non-admin in DM
+        mock_bot_message.author.guild_permissions.administrator = (
+            False  # Non-admin in DM
+        )
         mock_bot_instance.commands.handle_ip_command = AsyncMock()
 
         # Execute

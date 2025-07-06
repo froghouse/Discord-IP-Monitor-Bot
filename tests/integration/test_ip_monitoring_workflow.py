@@ -35,10 +35,9 @@ class TestIPChangeDetection:
             temp_db_path = temp_db.name
 
         # Mock environment to prevent loading real env vars
-        with patch.dict(os.environ, {
-            "DISCORD_BOT_TOKEN": "test_token",
-            "CHANNEL_ID": "123456789"
-        }):
+        with patch.dict(
+            os.environ, {"DISCORD_BOT_TOKEN": "test_token", "CHANNEL_ID": "123456789"}
+        ):
             config = AppConfig.load_from_env()
             config.db_file = temp_db_path
             config.testing_mode = True
@@ -311,10 +310,9 @@ class TestNotificationDelivery:
     @pytest.fixture
     async def bot_with_mocked_discord(self):
         """Create bot with mocked Discord client."""
-        with patch.dict(os.environ, {
-            "DISCORD_BOT_TOKEN": "test_token", 
-            "CHANNEL_ID": "123456789"
-        }):
+        with patch.dict(
+            os.environ, {"DISCORD_BOT_TOKEN": "test_token", "CHANNEL_ID": "123456789"}
+        ):
             config = AppConfig.load_from_env()
             config.testing_mode = True
 

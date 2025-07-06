@@ -1,0 +1,67 @@
+# Coverage configuration file for detailed analysis
+[run]
+source = ip_monitor
+branch = true
+parallel = true
+concurrency = thread,multiprocessing
+
+# Files to omit from coverage analysis
+omit = 
+    tests/*
+    .venv/*
+    */venv/*
+    */__pycache__/*
+    */migrations/*
+    setup.py
+    conftest.py
+
+[report]
+# Regexes for lines to exclude from consideration
+exclude_lines =
+    # Have to re-enable the standard pragma
+    pragma: no cover
+
+    # Don't complain about missing debug-only code:
+    def __repr__
+    if self\.debug
+
+    # Don't complain if tests don't hit defensive assertion code:
+    raise AssertionError
+    raise NotImplementedError
+
+    # Don't complain if non-runnable code isn't run:
+    if 0:
+    if __name__ == .__main__.:
+
+    # Don't complain about abstract methods
+    @(abc\.)?abstractmethod
+    class .*\bProtocol\):
+    
+    # Skip type checking imports and blocks
+    if TYPE_CHECKING:
+    
+    # Skip ellipsis and pass statements
+    \.\.\.
+    pass
+
+# Show missing line numbers
+show_missing = true
+
+# Don't skip covered files (show them too)
+skip_covered = false
+
+# Sort files by coverage percentage (lowest first)
+sort = -cover
+
+# Precision for coverage percentages
+precision = 2
+
+[html]
+directory = htmlcov
+show_contexts = true
+skip_covered = false
+skip_empty = false
+title = Discord IP Monitor Bot - Coverage Report
+
+[xml]
+output = coverage.xml

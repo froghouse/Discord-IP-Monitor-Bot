@@ -31,10 +31,9 @@ class TestNetworkFailureRecovery:
     @pytest.fixture
     async def bot_with_network_mocking(self):
         """Create bot with network operation mocking."""
-        with patch.dict(os.environ, {
-            "DISCORD_BOT_TOKEN": "test_token",
-            "CHANNEL_ID": "123456789"
-        }):
+        with patch.dict(
+            os.environ, {"DISCORD_BOT_TOKEN": "test_token", "CHANNEL_ID": "123456789"}
+        ):
             config = AppConfig.load_from_env()
             config.testing_mode = True
 
@@ -396,10 +395,9 @@ class TestDiscordAPIOutageRecovery:
     @pytest.fixture
     async def bot_with_discord_mocking(self):
         """Create bot with Discord API mocking."""
-        with patch.dict(os.environ, {
-            "DISCORD_BOT_TOKEN": "test_token",
-            "CHANNEL_ID": "123456789"
-        }):
+        with patch.dict(
+            os.environ, {"DISCORD_BOT_TOKEN": "test_token", "CHANNEL_ID": "123456789"}
+        ):
             config = AppConfig.load_from_env()
             config.message_queue_enabled = True
 

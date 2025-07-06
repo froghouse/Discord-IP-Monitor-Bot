@@ -26,7 +26,7 @@ class TestCircuitBreaker:
             failure_threshold=3,
             recovery_timeout=60.0,
             success_threshold=2,
-            timeout=10.0,
+            timeout=0.5,  # Reduced from 10.0 to 0.5 for faster testing
         )
 
     @pytest.fixture
@@ -46,7 +46,7 @@ class TestCircuitBreaker:
         """Create a mock async function that times out."""
 
         async def timeout_func():
-            await asyncio.sleep(20)  # Will timeout with 10s timeout
+            await asyncio.sleep(1.0)  # Will timeout with 0.5s timeout (reduced from 20s)
 
         return timeout_func
 

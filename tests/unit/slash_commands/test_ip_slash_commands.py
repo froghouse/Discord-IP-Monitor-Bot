@@ -384,7 +384,9 @@ class TestHistorySlashCommand:
 
     async def test_history_slash_success(self, ip_slash_commands, mock_interaction):
         """Test successful history retrieval."""
-        await ip_slash_commands.history_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.history_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
         mock_interaction.response.defer.assert_called_once()
         ip_slash_commands.storage.load_ip_history.assert_called_once()
@@ -399,7 +401,9 @@ class TestHistorySlashCommand:
         """Test history slash command with no history."""
         ip_slash_commands.storage.load_ip_history.return_value = []
 
-        await ip_slash_commands.history_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.history_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
         mock_interaction.followup.send.assert_called_once()
         call_args = mock_interaction.followup.send.call_args[0][0]
@@ -418,7 +422,9 @@ class TestHistorySlashCommand:
 
         ip_slash_commands.storage.load_ip_history.return_value = large_history
 
-        await ip_slash_commands.history_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.history_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
         mock_interaction.followup.send.assert_called_once()
         call_args = mock_interaction.followup.send.call_args[0][0]
@@ -433,7 +439,9 @@ class TestHistorySlashCommand:
             {"ip": "203.0.113.0", "timestamp": "invalid-timestamp"}
         ]
 
-        await ip_slash_commands.history_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.history_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
         mock_interaction.followup.send.assert_called_once()
         call_args = mock_interaction.followup.send.call_args[0][0]
@@ -449,7 +457,9 @@ class TestHistorySlashCommand:
             {"timestamp": "2024-01-01T12:00:00"},  # Missing IP
         ]
 
-        await ip_slash_commands.history_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.history_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
         mock_interaction.followup.send.assert_called_once()
         call_args = mock_interaction.followup.send.call_args[0][0]
@@ -461,7 +471,9 @@ class TestHistorySlashCommand:
         """Test history slash command exception handling."""
         ip_slash_commands.storage.load_ip_history.side_effect = Exception("Test error")
 
-        await ip_slash_commands.history_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.history_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
         mock_interaction.followup.send.assert_called_once()
         call_args = mock_interaction.followup.send.call_args[0][0]
@@ -477,7 +489,9 @@ class TestHistorySlashCommand:
         )
 
         # Should not raise exception
-        await ip_slash_commands.history_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.history_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
 
 class TestStatusSlashCommand:
@@ -579,7 +593,9 @@ class TestStatusSlashCommand:
             "system_capabilities": {"active_fallbacks": []},
         }
 
-        await ip_slash_commands.status_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.status_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
         mock_interaction.response.defer.assert_called_once()
         mock_interaction.followup.send.assert_called_once()
@@ -609,7 +625,9 @@ class TestStatusSlashCommand:
             "system_capabilities": {"active_fallbacks": ["read_only_mode"]},
         }
 
-        await ip_slash_commands.status_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.status_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
         mock_interaction.followup.send.assert_called_once()
         call_args = mock_interaction.followup.send.call_args[0][0]
@@ -636,7 +654,9 @@ class TestStatusSlashCommand:
             "last_known_ip": "203.0.113.1",
         }
 
-        await ip_slash_commands.status_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.status_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
         mock_interaction.followup.send.assert_called_once()
         call_args = mock_interaction.followup.send.call_args[0][0]
@@ -660,7 +680,9 @@ class TestStatusSlashCommand:
             "state": "closed",
         }
 
-        await ip_slash_commands.status_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.status_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
         mock_interaction.followup.send.assert_called_once()
         call_args = mock_interaction.followup.send.call_args[0][0]
@@ -682,7 +704,9 @@ class TestStatusSlashCommand:
             "stats": {},
         }
 
-        await ip_slash_commands.status_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.status_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
         mock_interaction.followup.send.assert_called_once()
         call_args = mock_interaction.followup.send.call_args[0][0]
@@ -701,7 +725,9 @@ class TestStatusSlashCommand:
 
         ip_slash_commands.rate_limiter.is_limited.return_value = (True, 25)
 
-        await ip_slash_commands.status_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.status_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
         mock_interaction.followup.send.assert_called_once()
         call_args = mock_interaction.followup.send.call_args[0][0]
@@ -731,7 +757,9 @@ class TestStatusSlashCommand:
             "statistics": {"total_delivered": 50, "total_failed": 2},
         }
 
-        await ip_slash_commands.status_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.status_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
         mock_interaction.followup.send.assert_called_once()
         call_args = mock_interaction.followup.send.call_args[0][0]
@@ -746,7 +774,9 @@ class TestStatusSlashCommand:
         """Test status slash command exception handling."""
         mock_service_health.get_system_health.side_effect = Exception("Test error")
 
-        await ip_slash_commands.status_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.status_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
         mock_interaction.followup.send.assert_called_once()
         call_args = mock_interaction.followup.send.call_args[0][0]
@@ -763,7 +793,9 @@ class TestStatusSlashCommand:
         )
 
         # Should not raise exception
-        await ip_slash_commands.status_slash.callback(ip_slash_commands, mock_interaction)
+        await ip_slash_commands.status_slash.callback(
+            ip_slash_commands, mock_interaction
+        )
 
 
 class TestHelpSlashCommand:

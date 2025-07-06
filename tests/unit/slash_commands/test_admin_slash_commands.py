@@ -172,7 +172,9 @@ class TestStopSlashCommand:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test successful bot stop command."""
-        await admin_slash_commands.stop_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.stop_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.response.send_message.assert_called_once()
         call_args = mock_interaction_admin.response.send_message.call_args[0][0]
@@ -191,7 +193,9 @@ class TestStopSlashCommand:
         self, admin_slash_commands, mock_interaction_non_admin
     ):
         """Test stop command with insufficient permissions."""
-        await admin_slash_commands.stop_slash.callback(admin_slash_commands, mock_interaction_non_admin)
+        await admin_slash_commands.stop_slash.callback(
+            admin_slash_commands, mock_interaction_non_admin
+        )
 
         mock_interaction_non_admin.response.send_message.assert_called_once()
         call_args = mock_interaction_non_admin.response.send_message.call_args[0][0]
@@ -206,7 +210,9 @@ class TestStopSlashCommand:
         """Test stop command exception handling."""
         admin_slash_commands.stop_callback.side_effect = Exception("Test error")
 
-        await admin_slash_commands.stop_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.stop_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         # Should send error message
         assert mock_interaction_admin.response.send_message.call_count == 2
@@ -222,7 +228,9 @@ class TestStopSlashCommand:
         ]
 
         # Should not raise exception
-        await admin_slash_commands.stop_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.stop_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
 
 class TestConfigSlashCommands:
@@ -310,7 +318,9 @@ class TestConfigSlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test successful config show command."""
-        await admin_slash_commands.config_show_slash.callback(admin_slash_commands, mock_interaction_admin, None)
+        await admin_slash_commands.config_show_slash.callback(
+            admin_slash_commands, mock_interaction_admin, None
+        )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
         mock_interaction_admin.followup.send.assert_called_once()
@@ -321,8 +331,8 @@ class TestConfigSlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test config show command with specific field."""
-        await admin_slash_commands.config_show_slash.callback(admin_slash_commands, 
-            mock_interaction_admin, "check_interval"
+        await admin_slash_commands.config_show_slash.callback(
+            admin_slash_commands, mock_interaction_admin, "check_interval"
         )
 
         config_handler = (
@@ -341,7 +351,9 @@ class TestConfigSlashCommands:
         self, admin_slash_commands, mock_interaction_non_admin
     ):
         """Test config show command with insufficient permissions."""
-        await admin_slash_commands.config_show_slash.callback(admin_slash_commands, mock_interaction_non_admin, None)
+        await admin_slash_commands.config_show_slash.callback(
+            admin_slash_commands, mock_interaction_non_admin, None
+        )
 
         mock_interaction_non_admin.response.send_message.assert_called_once()
         call_args = mock_interaction_non_admin.response.send_message.call_args[0][0]
@@ -358,7 +370,9 @@ class TestConfigSlashCommands:
         )
         config_handler._handle_config_show.return_value = False
 
-        await admin_slash_commands.config_show_slash.callback(admin_slash_commands, mock_interaction_admin, None)
+        await admin_slash_commands.config_show_slash.callback(
+            admin_slash_commands, mock_interaction_admin, None
+        )
 
         mock_interaction_admin.followup.send.assert_called_once()
         call_args = mock_interaction_admin.followup.send.call_args[0][0]
@@ -370,7 +384,9 @@ class TestConfigSlashCommands:
         """Test config show command when no handler is found."""
         admin_slash_commands.admin_commands_handler.get_handler_for_command.return_value = None
 
-        await admin_slash_commands.config_show_slash.callback(admin_slash_commands, mock_interaction_admin, None)
+        await admin_slash_commands.config_show_slash.callback(
+            admin_slash_commands, mock_interaction_admin, None
+        )
 
         mock_interaction_admin.followup.send.assert_called_once()
         call_args = mock_interaction_admin.followup.send.call_args[0][0]
@@ -380,8 +396,8 @@ class TestConfigSlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test successful config set command."""
-        await admin_slash_commands.config_set_slash.callback(admin_slash_commands, 
-            mock_interaction_admin, "check_interval", "60"
+        await admin_slash_commands.config_set_slash.callback(
+            admin_slash_commands, mock_interaction_admin, "check_interval", "60"
         )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
@@ -393,8 +409,8 @@ class TestConfigSlashCommands:
         self, admin_slash_commands, mock_interaction_non_admin
     ):
         """Test config set command with insufficient permissions."""
-        await admin_slash_commands.config_set_slash.callback(admin_slash_commands, 
-            mock_interaction_non_admin, "field", "value"
+        await admin_slash_commands.config_set_slash.callback(
+            admin_slash_commands, mock_interaction_non_admin, "field", "value"
         )
 
         mock_interaction_non_admin.response.send_message.assert_called_once()
@@ -412,8 +428,8 @@ class TestConfigSlashCommands:
         )
         config_handler._handle_config_set.return_value = False
 
-        await admin_slash_commands.config_set_slash.callback(admin_slash_commands, 
-            mock_interaction_admin, "field", "value"
+        await admin_slash_commands.config_set_slash.callback(
+            admin_slash_commands, mock_interaction_admin, "field", "value"
         )
 
         mock_interaction_admin.followup.send.assert_called_once()
@@ -424,7 +440,9 @@ class TestConfigSlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test successful config list command."""
-        await admin_slash_commands.config_list_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.config_list_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
         mock_interaction_admin.followup.send.assert_called_once()
@@ -435,7 +453,9 @@ class TestConfigSlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test successful config save command."""
-        await admin_slash_commands.config_save_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.config_save_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
         mock_interaction_admin.followup.send.assert_called_once()
@@ -446,7 +466,9 @@ class TestConfigSlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test successful config reload command."""
-        await admin_slash_commands.config_reload_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.config_reload_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
         mock_interaction_admin.followup.send.assert_called_once()
@@ -464,7 +486,9 @@ class TestConfigSlashCommands:
         )
         config_handler._handle_config_show.side_effect = Exception("Test error")
 
-        await admin_slash_commands.config_show_slash.callback(admin_slash_commands, mock_interaction_admin, None)
+        await admin_slash_commands.config_show_slash.callback(
+            admin_slash_commands, mock_interaction_admin, None
+        )
 
         mock_interaction_admin.followup.send.assert_called_once()
         call_args = mock_interaction_admin.followup.send.call_args[0][0]
@@ -485,7 +509,9 @@ class TestConfigSlashCommands:
         )
 
         # Should not raise exception
-        await admin_slash_commands.config_show_slash.callback(admin_slash_commands, mock_interaction_admin, None)
+        await admin_slash_commands.config_show_slash.callback(
+            admin_slash_commands, mock_interaction_admin, None
+        )
 
 
 class TestAPISlashCommands:
@@ -567,7 +593,9 @@ class TestAPISlashCommands:
 
     async def test_api_list_success(self, admin_slash_commands, mock_interaction_admin):
         """Test successful API list command."""
-        await admin_slash_commands.api_list_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.api_list_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
         mock_interaction_admin.followup.send.assert_called_once()
@@ -578,7 +606,9 @@ class TestAPISlashCommands:
         self, admin_slash_commands, mock_interaction_non_admin
     ):
         """Test API list command with insufficient permissions."""
-        await admin_slash_commands.api_list_slash.callback(admin_slash_commands, mock_interaction_non_admin)
+        await admin_slash_commands.api_list_slash.callback(
+            admin_slash_commands, mock_interaction_non_admin
+        )
 
         mock_interaction_non_admin.response.send_message.assert_called_once()
         call_args = mock_interaction_non_admin.response.send_message.call_args[0][0]
@@ -586,8 +616,13 @@ class TestAPISlashCommands:
 
     async def test_api_add_success(self, admin_slash_commands, mock_interaction_admin):
         """Test successful API add command."""
-        await admin_slash_commands.api_add_slash.callback(admin_slash_commands, 
-            mock_interaction_admin, "TestAPI", "https://test.example.com", "json", "ip"
+        await admin_slash_commands.api_add_slash.callback(
+            admin_slash_commands,
+            mock_interaction_admin,
+            "TestAPI",
+            "https://test.example.com",
+            "json",
+            "ip",
         )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
@@ -614,8 +649,13 @@ class TestAPISlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test API add command with auto format."""
-        await admin_slash_commands.api_add_slash.callback(admin_slash_commands, 
-            mock_interaction_admin, "TestAPI", "https://test.example.com", "auto", None
+        await admin_slash_commands.api_add_slash.callback(
+            admin_slash_commands,
+            mock_interaction_admin,
+            "TestAPI",
+            "https://test.example.com",
+            "auto",
+            None,
         )
 
         # Check that handler was called without format when auto
@@ -629,8 +669,13 @@ class TestAPISlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test API add command with text format."""
-        await admin_slash_commands.api_add_slash.callback(admin_slash_commands, 
-            mock_interaction_admin, "TestAPI", "https://test.example.com", "text", None
+        await admin_slash_commands.api_add_slash.callback(
+            admin_slash_commands,
+            mock_interaction_admin,
+            "TestAPI",
+            "https://test.example.com",
+            "text",
+            None,
         )
 
         # Check that handler was called with text format
@@ -650,7 +695,9 @@ class TestAPISlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test successful API remove command."""
-        await admin_slash_commands.api_remove_slash.callback(admin_slash_commands, mock_interaction_admin, "test_api")
+        await admin_slash_commands.api_remove_slash.callback(
+            admin_slash_commands, mock_interaction_admin, "test_api"
+        )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
         mock_interaction_admin.followup.send.assert_called_once()
@@ -661,8 +708,8 @@ class TestAPISlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test successful API enable command."""
-        await admin_slash_commands.api_toggle_slash.callback(admin_slash_commands, 
-            mock_interaction_admin, "test_api", "enable"
+        await admin_slash_commands.api_toggle_slash.callback(
+            admin_slash_commands, mock_interaction_admin, "test_api", "enable"
         )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
@@ -674,8 +721,8 @@ class TestAPISlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test successful API disable command."""
-        await admin_slash_commands.api_toggle_slash.callback(admin_slash_commands, 
-            mock_interaction_admin, "test_api", "disable"
+        await admin_slash_commands.api_toggle_slash.callback(
+            admin_slash_commands, mock_interaction_admin, "test_api", "disable"
         )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
@@ -685,7 +732,9 @@ class TestAPISlashCommands:
 
     async def test_api_test_success(self, admin_slash_commands, mock_interaction_admin):
         """Test successful API test command."""
-        await admin_slash_commands.api_test_slash.callback(admin_slash_commands, mock_interaction_admin, "test_api")
+        await admin_slash_commands.api_test_slash.callback(
+            admin_slash_commands, mock_interaction_admin, "test_api"
+        )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
         mock_interaction_admin.followup.send.assert_called_once()
@@ -696,7 +745,9 @@ class TestAPISlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test successful API stats command."""
-        await admin_slash_commands.api_stats_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.api_stats_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
         mock_interaction_admin.followup.send.assert_called_once()
@@ -712,7 +763,9 @@ class TestAPISlashCommands:
         )
         api_handler.handle_command.return_value = False
 
-        await admin_slash_commands.api_list_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.api_list_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.followup.send.assert_called_once()
         call_args = mock_interaction_admin.followup.send.call_args[0][0]
@@ -722,7 +775,9 @@ class TestAPISlashCommands:
         """Test API command when no handler is found."""
         admin_slash_commands.admin_commands_handler.get_handler_for_command.return_value = None
 
-        await admin_slash_commands.api_list_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.api_list_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.followup.send.assert_called_once()
         call_args = mock_interaction_admin.followup.send.call_args[0][0]
@@ -737,7 +792,9 @@ class TestAPISlashCommands:
         )
         api_handler.handle_command.side_effect = Exception("Test error")
 
-        await admin_slash_commands.api_list_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.api_list_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.followup.send.assert_called_once()
         call_args = mock_interaction_admin.followup.send.call_args[0][0]
@@ -756,7 +813,9 @@ class TestAPISlashCommands:
         )
 
         # Should not raise exception
-        await admin_slash_commands.api_list_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.api_list_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
 
 class TestCacheSlashCommands:
@@ -840,7 +899,9 @@ class TestCacheSlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test successful cache show command."""
-        await admin_slash_commands.cache_show_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.cache_show_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
         mock_interaction_admin.followup.send.assert_called_once()
@@ -851,7 +912,9 @@ class TestCacheSlashCommands:
         self, admin_slash_commands, mock_interaction_non_admin
     ):
         """Test cache show command with insufficient permissions."""
-        await admin_slash_commands.cache_show_slash.callback(admin_slash_commands, mock_interaction_non_admin)
+        await admin_slash_commands.cache_show_slash.callback(
+            admin_slash_commands, mock_interaction_non_admin
+        )
 
         mock_interaction_non_admin.response.send_message.assert_called_once()
         call_args = mock_interaction_non_admin.response.send_message.call_args[0][0]
@@ -861,7 +924,9 @@ class TestCacheSlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test successful cache clear all command."""
-        await admin_slash_commands.cache_clear_slash.callback(admin_slash_commands, mock_interaction_admin, None)
+        await admin_slash_commands.cache_clear_slash.callback(
+            admin_slash_commands, mock_interaction_admin, None
+        )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
         mock_interaction_admin.followup.send.assert_called_once()
@@ -880,7 +945,9 @@ class TestCacheSlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test successful cache clear namespace command."""
-        await admin_slash_commands.cache_clear_slash.callback(admin_slash_commands, mock_interaction_admin, "ip_check")
+        await admin_slash_commands.cache_clear_slash.callback(
+            admin_slash_commands, mock_interaction_admin, "ip_check"
+        )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
         mock_interaction_admin.followup.send.assert_called_once()
@@ -904,7 +971,9 @@ class TestCacheSlashCommands:
         )
         cache_handler.handle_command.return_value = False
 
-        await admin_slash_commands.cache_show_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.cache_show_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.followup.send.assert_called_once()
         call_args = mock_interaction_admin.followup.send.call_args[0][0]
@@ -914,7 +983,9 @@ class TestCacheSlashCommands:
         """Test cache command when no handler is found."""
         admin_slash_commands.admin_commands_handler.get_handler_for_command.return_value = None
 
-        await admin_slash_commands.cache_show_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.cache_show_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.followup.send.assert_called_once()
         call_args = mock_interaction_admin.followup.send.call_args[0][0]
@@ -929,7 +1000,9 @@ class TestCacheSlashCommands:
         )
         cache_handler.handle_command.side_effect = Exception("Test error")
 
-        await admin_slash_commands.cache_show_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.cache_show_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.followup.send.assert_called_once()
         call_args = mock_interaction_admin.followup.send.call_args[0][0]
@@ -948,7 +1021,9 @@ class TestCacheSlashCommands:
         )
 
         # Should not raise exception
-        await admin_slash_commands.cache_show_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.cache_show_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
 
 class TestQueueSlashCommands:
@@ -1032,7 +1107,9 @@ class TestQueueSlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test successful queue status command."""
-        await admin_slash_commands.queue_status_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.queue_status_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
         mock_interaction_admin.followup.send.assert_called_once()
@@ -1051,7 +1128,9 @@ class TestQueueSlashCommands:
         self, admin_slash_commands, mock_interaction_non_admin
     ):
         """Test queue status command with insufficient permissions."""
-        await admin_slash_commands.queue_status_slash.callback(admin_slash_commands, mock_interaction_non_admin)
+        await admin_slash_commands.queue_status_slash.callback(
+            admin_slash_commands, mock_interaction_non_admin
+        )
 
         mock_interaction_non_admin.response.send_message.assert_called_once()
         call_args = mock_interaction_non_admin.response.send_message.call_args[0][0]
@@ -1061,7 +1140,9 @@ class TestQueueSlashCommands:
         self, admin_slash_commands, mock_interaction_admin
     ):
         """Test successful queue clear command."""
-        await admin_slash_commands.queue_clear_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.queue_clear_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.response.defer.assert_called_once_with(ephemeral=True)
         mock_interaction_admin.followup.send.assert_called_once()
@@ -1085,7 +1166,9 @@ class TestQueueSlashCommands:
         )
         queue_handler.handle_command.return_value = False
 
-        await admin_slash_commands.queue_status_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.queue_status_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.followup.send.assert_called_once()
         call_args = mock_interaction_admin.followup.send.call_args[0][0]
@@ -1095,7 +1178,9 @@ class TestQueueSlashCommands:
         """Test queue command when no handler is found."""
         admin_slash_commands.admin_commands_handler.get_handler_for_command.return_value = None
 
-        await admin_slash_commands.queue_status_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.queue_status_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.followup.send.assert_called_once()
         call_args = mock_interaction_admin.followup.send.call_args[0][0]
@@ -1110,7 +1195,9 @@ class TestQueueSlashCommands:
         )
         queue_handler.handle_command.side_effect = Exception("Test error")
 
-        await admin_slash_commands.queue_status_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.queue_status_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )
 
         mock_interaction_admin.followup.send.assert_called_once()
         call_args = mock_interaction_admin.followup.send.call_args[0][0]
@@ -1129,4 +1216,6 @@ class TestQueueSlashCommands:
         )
 
         # Should not raise exception
-        await admin_slash_commands.queue_status_slash.callback(admin_slash_commands, mock_interaction_admin)
+        await admin_slash_commands.queue_status_slash.callback(
+            admin_slash_commands, mock_interaction_admin
+        )

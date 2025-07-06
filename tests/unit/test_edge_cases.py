@@ -366,8 +366,8 @@ class TestDatabaseCorruption:
         conn1 = sqlite3.connect(temp_db_file)
         conn1.execute("BEGIN EXCLUSIVE")
         
-        # Try to access with another connection
-        conn2 = sqlite3.connect(temp_db_file)
+        # Try to access with another connection (with shorter timeout for testing)
+        conn2 = sqlite3.connect(temp_db_file, timeout=0.1)  # 0.1 second timeout instead of default 5 seconds
         with pytest.raises(sqlite3.OperationalError):
             conn2.execute("SELECT * FROM sqlite_master")
         

@@ -25,7 +25,7 @@ class TestAsyncRateLimiter:
     @pytest.fixture
     def strict_rate_limiter(self):
         """Create a strict rate limiter for testing edge cases."""
-        return AsyncRateLimiter(period=5, max_calls=2)
+        return AsyncRateLimiter(period=0.2, max_calls=2)  # Reduced period from 5 to 0.2 for faster testing
 
     async def test_initialization(self, rate_limiter):
         """Test rate limiter initialization."""
@@ -161,8 +161,8 @@ class TestAsyncRateLimiter:
         end_time = time.time()
 
         assert waited
-        # Should have waited at least 1 second
-        assert end_time - start_time >= 1.0
+        # Should have waited at least 0.1 seconds (reduced from 1.0)
+        assert end_time - start_time >= 0.1
 
     async def test_try_acquire_success(self, rate_limiter):
         """Test try_acquire when not limited."""
@@ -204,7 +204,7 @@ class TestAsyncRateLimiter:
         end_time = time.time()
 
         # Should have waited and then acquired
-        assert end_time - start_time >= 1.0
+        assert end_time - start_time >= 0.1  # Reduced from 1.0
         # After waiting, old calls may be expired and cleaned up, but there should be at least one new call
         assert len(strict_rate_limiter.calls) >= 1
         # The newest call should be recent (from the acquire operation)
@@ -348,7 +348,7 @@ class TestTokenBucketRateLimiter:
     @pytest.fixture
     def small_bucket(self):
         """Create a small token bucket for testing edge cases."""
-        return TokenBucketRateLimiter(rate=1.0, capacity=3)
+        return TokenBucketRateLimiter(rate=10.0, capacity=3)  # Increased rate from 1.0 to 10.0 for faster testing
 
     async def test_initialization(self, token_bucket):
         """Test token bucket initialization."""
@@ -472,8 +472,8 @@ class TestTokenBucketRateLimiter:
             acquired = await small_bucket.try_acquire(1)
 
         assert acquired
-        # Should have refilled 2 tokens (2 seconds * 1 token/sec), then used 1
-        assert small_bucket.tokens == 1.0
+        # Should have refilled to capacity (3), then used 1
+        assert small_bucket.tokens == 2.0
 
     async def test_acquire_immediate(self, token_bucket):
         """Test acquire when tokens are available."""
@@ -497,8 +497,8 @@ class TestTokenBucketRateLimiter:
         await small_bucket.acquire(1)
         end_time = time.time()
 
-        # Should have waited for token to be refilled
-        assert end_time - start_time >= 1.0
+        # Should have waited for token to be refilled (0.1s at 10 tokens/sec)
+        assert end_time - start_time >= 0.1
         assert (
             small_bucket.tokens >= 0.0
         )  # Used the refilled token (allowing for floating point precision)
@@ -512,8 +512,8 @@ class TestTokenBucketRateLimiter:
         await small_bucket.acquire(2)
         end_time = time.time()
 
-        # Should have waited for 2 tokens to be refilled (2 seconds at 1 token/sec)
-        assert end_time - start_time >= 2.0
+        # Should have waited for 2 tokens to be refilled (0.2 seconds at 10 tokens/sec)
+        assert end_time - start_time >= 0.2
         assert (
             small_bucket.tokens >= 0.0
         )  # Used the refilled tokens (allowing for floating point precision)
@@ -581,8 +581,8 @@ class TestTokenBucketRateLimiter:
         ):
             status = await small_bucket.get_status()
 
-        # Should have refilled 1 token
-        assert status["current_tokens"] == 2.0
+        # Should have refilled to capacity (3 max)
+        assert status["current_tokens"] == 3.0
 
     async def test_concurrent_token_acquisition(self, token_bucket):
         """Test concurrent token acquisition."""

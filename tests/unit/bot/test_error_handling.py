@@ -130,8 +130,12 @@ class TestErrorHandling:
         # Verify degraded operation
         # The last call should be to read_only_mode, but we still need to verify both calls
         assert mock_bot_instance.service_health.is_fallback_active.call_count == 2
-        mock_bot_instance.service_health.is_fallback_active.assert_any_call("silent_monitoring")
-        mock_bot_instance.service_health.is_fallback_active.assert_any_call("read_only_mode")
+        mock_bot_instance.service_health.is_fallback_active.assert_any_call(
+            "silent_monitoring"
+        )
+        mock_bot_instance.service_health.is_fallback_active.assert_any_call(
+            "read_only_mode"
+        )
         mock_bot_instance.ip_service.get_public_ip.assert_called_once()
         mock_bot_instance.storage.save_current_ip.assert_called_once_with("192.168.1.1")
 
@@ -162,21 +166,21 @@ class TestErrorHandling:
     async def test_exception_during_cleanup(self, mock_bot_instance):
         """Test handling of exceptions during cleanup."""
         from unittest.mock import patch
-        
+
         # Setup
         mock_bot_instance.check_ip_task = AsyncMock()
         mock_bot_instance.check_ip_task.is_running.return_value = True
         mock_bot_instance.check_ip_task.cancel.side_effect = Exception("Cancel failed")
         mock_bot_instance.client.close = AsyncMock()
-        
+
         # Mock the ip_service.close method to be async
         mock_bot_instance.ip_service.close = AsyncMock()
-        
+
         # Mock the HTTP session close method to be async
         mock_bot_instance.client.http = Mock()
         mock_bot_instance.client.http.session = Mock()
         mock_bot_instance.client.http.session.close = AsyncMock()
-        
+
         # Mock the global message_queue used in cleanup
         mock_message_queue = AsyncMock()
         mock_message_queue.stop_processing = AsyncMock()
@@ -246,7 +250,9 @@ class TestServiceHealthIntegration:
             await mock_bot_instance.ip_commands.check_ip_once(
                 mock_bot_instance.client, user_requested=False
             )
-            mock_bot_instance.service_health.record_success("discord_api", "scheduled_task")
+            mock_bot_instance.service_health.record_success(
+                "discord_api", "scheduled_task"
+            )
 
         # Verify health is checked and normal operation proceeds
         mock_bot_instance.service_health.is_fallback_active.assert_called()
@@ -324,7 +330,9 @@ class TestMessageQueueErrorHandling:
             await mock_bot_instance.ip_commands.check_ip_once(
                 mock_bot_instance.client, user_requested=False
             )
-            mock_bot_instance.service_health.record_success("discord_api", "scheduled_task")
+            mock_bot_instance.service_health.record_success(
+                "discord_api", "scheduled_task"
+            )
 
         # Verify operation works without message queue
         mock_bot_instance.ip_commands.check_ip_once.assert_called_once()

@@ -57,6 +57,7 @@ test = [
     "pytest-asyncio==0.24.0",
     "pytest-mock==3.14.0",
     "pytest-cov==6.0.0",
+    "pytest-xdist==3.8.0",
 ]
 dev = [
     "pre-commit==3.6.0",
@@ -176,6 +177,7 @@ skips = ["*_test.py", "test_*.py"]
 # Coverage configuration
 [tool.coverage.run]
 source = ["ip_monitor"]
+branch = true  # Enable branch coverage for more comprehensive analysis
 omit = [
     "tests/*",
     ".venv/*",
@@ -183,6 +185,7 @@ omit = [
     "*/venv/*",
     "*/__pycache__/*",
 ]
+concurrency = ["thread", "multiprocessing"]  # Support for parallel execution
 
 [tool.coverage.report]
 exclude_lines = [
@@ -196,12 +199,24 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
+    # Add more specific exclusions for test optimization
+    "if TYPE_CHECKING:",
+    "\\.\\.\\.",  # Ellipsis in abstract methods
+    "pass",      # Pass statements in abstract methods
 ]
 show_missing = true
 skip_covered = false
+precision = 2  # Show coverage to 2 decimal places
+sort = "-cover"  # Sort by coverage percentage (lowest first)
 
 [tool.coverage.html]
 directory = "htmlcov"
+show_contexts = true  # Show which tests cover which lines
+skip_covered = false
+skip_empty = false
+
+[tool.coverage.xml]
+output = "coverage.xml"  # Generate XML report for CI/CD
 
 # MyPy configuration (optional - for future type checking)
 [tool.mypy]

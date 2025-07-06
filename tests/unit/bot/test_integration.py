@@ -145,7 +145,7 @@ class TestTaskIntegration:
     async def test_task_lifecycle_integration(self, mock_bot_instance):
         """Test task lifecycle integrates with bot lifecycle."""
         from unittest.mock import patch
-        
+
         # Setup
         mock_task = AsyncMock()
         mock_task.is_running.return_value = True
@@ -153,7 +153,7 @@ class TestTaskIntegration:
         mock_bot_instance.check_ip_task = mock_task
 
         # Execute cleanup with mocked message queue
-        with patch('ip_monitor.bot.message_queue.stop_processing', new=AsyncMock()):
+        with patch("ip_monitor.bot.message_queue.stop_processing", new=AsyncMock()):
             await mock_bot_instance.cleanup()
 
         # Verify task is properly cleaned up
@@ -162,12 +162,12 @@ class TestTaskIntegration:
     async def test_no_task_cleanup_integration(self, mock_bot_instance):
         """Test cleanup works when no task exists."""
         from unittest.mock import patch, AsyncMock
-        
+
         # Setup
         mock_bot_instance.check_ip_task = None
 
         # Execute (should not raise exception) with mocked message queue
-        with patch('ip_monitor.bot.message_queue.stop_processing', new=AsyncMock()):
+        with patch("ip_monitor.bot.message_queue.stop_processing", new=AsyncMock()):
             await mock_bot_instance.cleanup()
 
         # Verify cleanup completes successfully
@@ -261,7 +261,7 @@ class TestServiceHealthIntegration:
         # Note: The scheduled IP check method is internal to the tasks.loop
         # and not exposed as a public method on the bot class.
         # Service health integration is verified through configuration.
-        
+
         # Verify service health is available for degradation checks
         assert mock_bot_instance.service_health is not None
         assert hasattr(mock_bot_instance.service_health, "is_degraded")

@@ -29,10 +29,9 @@ class TestConfigurationChangeWorkflow:
     @pytest.fixture
     async def admin_router_with_config(self):
         """Create admin router with test configuration."""
-        with patch.dict(os.environ, {
-            "DISCORD_BOT_TOKEN": "test_token",
-            "CHANNEL_ID": "123456789"
-        }):
+        with patch.dict(
+            os.environ, {"DISCORD_BOT_TOKEN": "test_token", "CHANNEL_ID": "123456789"}
+        ):
             config = AppConfig.load_from_env()
 
         with patch("discord.ext.commands.Bot") as mock_bot_class:
@@ -218,10 +217,9 @@ class TestAPIManagementWorkflow:
     @pytest.fixture
     async def admin_router_with_api_manager(self):
         """Create admin router with API manager."""
-        with patch.dict(os.environ, {
-            "DISCORD_BOT_TOKEN": "test_token",
-            "CHANNEL_ID": "123456789"
-        }):
+        with patch.dict(
+            os.environ, {"DISCORD_BOT_TOKEN": "test_token", "CHANNEL_ID": "123456789"}
+        ):
             config = AppConfig.load_from_env()
 
         with patch("discord.ext.commands.Bot") as mock_bot_class:
@@ -410,10 +408,9 @@ class TestSystemDiagnosticsWorkflow:
     @pytest.fixture
     async def admin_router_with_diagnostics(self):
         """Create admin router with diagnostic capabilities."""
-        with patch.dict(os.environ, {
-            "DISCORD_BOT_TOKEN": "test_token",
-            "CHANNEL_ID": "123456789"
-        }):
+        with patch.dict(
+            os.environ, {"DISCORD_BOT_TOKEN": "test_token", "CHANNEL_ID": "123456789"}
+        ):
             config = AppConfig.load_from_env()
 
         with patch("discord.ext.commands.Bot") as mock_bot_class:

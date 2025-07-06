@@ -23,8 +23,8 @@ class TestDiscordRateLimiter:
         """Create a Discord rate limiter for testing."""
         return DiscordRateLimiter(
             max_retries=3,
-            base_delay=1.0,
-            max_delay=30.0,
+            base_delay=0.1,  # Reduced from 1.0 to 0.1 for faster testing
+            max_delay=1.0,   # Reduced from 30.0 to 1.0 for faster testing
             backoff_factor=2.0,
             jitter=True,
         )
@@ -34,8 +34,8 @@ class TestDiscordRateLimiter:
         """Create a rate limiter without jitter for predictable testing."""
         return DiscordRateLimiter(
             max_retries=2,
-            base_delay=2.0,
-            max_delay=10.0,
+            base_delay=0.1,  # Reduced from 2.0 to 0.1 for faster testing
+            max_delay=0.5,   # Reduced from 10.0 to 0.5 for faster testing
             backoff_factor=2.0,
             jitter=False,
         )
@@ -445,16 +445,16 @@ class TestDiscordRateLimiter:
 
     async def test_rate_limit_header_parsing_with_response(self, rate_limiter):
         """Test rate limit header parsing from Discord response."""
-        # Create a mock 429 exception with response headers
+        # Create a mock 429 exception with response headers (use shorter time for testing)
         response = Mock()
         response.status = 429
         response.headers = {
             "x-ratelimit-remaining": "0",
-            "x-ratelimit-reset-after": "45.0",
+            "x-ratelimit-reset-after": "0.1",  # Reduced from 45.0 to 0.1 for faster testing
         }
 
         http_exception = discord.HTTPException(response, "Rate limited")
-        http_exception.retry_after = 45.0
+        http_exception.retry_after = 0.1  # Reduced from 45.0 to 0.1 for faster testing
         http_exception.response = response
 
         mock_func = AsyncMock(side_effect=[http_exception, "success"])
