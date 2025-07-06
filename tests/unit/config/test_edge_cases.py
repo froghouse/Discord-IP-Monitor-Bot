@@ -363,9 +363,10 @@ class TestAppConfigEdgeCases:
         os.environ["DISCORD_BOT_TOKEN"] = "test_token"
         os.environ["CHANNEL_ID"] = "123456789"
 
-        # Should raise exception when dotenv fails
-        with pytest.raises(Exception, match="Failed to load .env"):
-            AppConfig.load_from_env()
+        # Should still work even if dotenv fails (graceful degradation)
+        config = AppConfig.load_from_env()
+        assert config.discord_token == "test_token"
+        assert config.channel_id == 123456789
 
     @patch("ip_monitor.config.load_dotenv")
     def test_load_from_env_with_unicode_values(self, mock_load_dotenv):

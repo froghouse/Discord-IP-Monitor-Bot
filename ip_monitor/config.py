@@ -2,6 +2,7 @@
 Configuration management for the IP Monitor Bot.
 """
 
+import contextlib
 import json
 import logging
 import os
@@ -106,7 +107,8 @@ class AppConfig:
             ValueError: If required configuration is missing or invalid
         """
         # Load environment variables from .env file
-        load_dotenv()
+        with contextlib.suppress(Exception):
+            load_dotenv()
 
         # Required settings
         token = os.getenv("DISCORD_BOT_TOKEN")
