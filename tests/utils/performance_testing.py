@@ -11,12 +11,12 @@ of various bot components including:
 """
 
 import asyncio
-from collections.abc import Callable
-from contextlib import asynccontextmanager
-from dataclasses import dataclass
 import logging
 import statistics
 import time
+from collections.abc import Callable
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import Any
 
 

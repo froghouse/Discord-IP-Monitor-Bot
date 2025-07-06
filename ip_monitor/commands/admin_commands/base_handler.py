@@ -2,9 +2,9 @@
 Base handler class for admin commands.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Coroutine
-import logging
 from typing import Any
 
 import discord

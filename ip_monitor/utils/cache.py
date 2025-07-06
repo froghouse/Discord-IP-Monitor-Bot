@@ -5,14 +5,14 @@ This module provides a comprehensive caching layer that reduces API calls
 through intelligent TTL management, cache invalidation, and persistence.
 """
 
-from dataclasses import dataclass
-from enum import Enum
 import hashlib
 import json
 import logging
+import time
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from threading import Lock
-import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -138,7 +138,7 @@ class IntelligentCache:
         """Generate a unique cache key."""
         combined = f"{namespace}:{identifier}"
         return hashlib.sha256(combined.encode()).hexdigest()
-    
+
     def _get_original_key(self, namespace: str, identifier: str) -> str:
         """Get the original namespace:identifier key."""
         return f"{namespace}:{identifier}"

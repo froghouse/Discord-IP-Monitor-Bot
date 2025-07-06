@@ -2,8 +2,9 @@
 Tests for IPMonitorBot lifecycle management (run, cleanup, stop).
 """
 
-import discord
 from unittest.mock import AsyncMock, Mock, patch
+
+import discord
 import pytest
 
 from ip_monitor.bot import IPMonitorBot
@@ -455,14 +456,18 @@ class TestBotLifecycle:
         mock_bot_class.return_value = mock_client
 
         mock_ip_service = AsyncMock()
-        mock_ip_service.close = AsyncMock(side_effect=Exception("Service cleanup failed"))
+        mock_ip_service.close = AsyncMock(
+            side_effect=Exception("Service cleanup failed")
+        )
         mock_ip_service_class.return_value = mock_ip_service
 
         mock_task = AsyncMock()
         mock_task.is_running.return_value = True
         mock_task.cancel = AsyncMock(side_effect=Exception("Task cancel failed"))
 
-        mock_message_queue.stop_processing = AsyncMock(side_effect=Exception("Queue stop failed"))
+        mock_message_queue.stop_processing = AsyncMock(
+            side_effect=Exception("Queue stop failed")
+        )
 
         # Initialize bot
         bot = IPMonitorBot(mock_bot_config)
@@ -507,7 +512,9 @@ class TestBotLifecycle:
         mock_client = AsyncMock()
         mock_client.http = Mock()
         mock_client.http.session = AsyncMock()
-        mock_client.close = AsyncMock(side_effect=discord.DiscordException("Connection error"))
+        mock_client.close = AsyncMock(
+            side_effect=discord.DiscordException("Connection error")
+        )
         mock_bot_class.return_value = mock_client
 
         mock_ip_service = AsyncMock()
@@ -659,15 +666,15 @@ class TestBotLifecycle:
 
         # Initialize bot
         bot = IPMonitorBot(mock_bot_config)
-        
+
         # Mock the cleanup method to verify order
         cleanup_calls = []
         original_cleanup = bot.cleanup
-        
+
         async def mock_cleanup():
             cleanup_calls.append("cleanup")
             await original_cleanup()
-        
+
         bot.cleanup = mock_cleanup
 
         # Stop bot

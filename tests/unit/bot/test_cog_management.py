@@ -3,8 +3,9 @@ Tests for IPMonitorBot cog management functionality.
 """
 
 from unittest.mock import AsyncMock, Mock, patch
-import pytest
+
 import discord
+import pytest
 from discord.ext import commands
 
 from ip_monitor.bot import IPMonitorBot
@@ -86,7 +87,9 @@ class TestCogManagement:
         # Verify cogs were registered
         assert mock_bot_instance.client.add_cog.call_count == 2
         mock_bot_instance.client.add_cog.assert_any_call(mock_bot_instance.ip_slash_cog)
-        mock_bot_instance.client.add_cog.assert_any_call(mock_bot_instance.admin_slash_cog)
+        mock_bot_instance.client.add_cog.assert_any_call(
+            mock_bot_instance.admin_slash_cog
+        )
 
     async def test_cog_registration_failure(self, mock_bot_instance, caplog):
         """Test handling of cog registration failures."""
@@ -158,28 +161,29 @@ class TestCogManagement:
         mock_bot_instance.client.http = Mock()
         mock_bot_instance.client.http.session = Mock()
         mock_bot_instance.client.http.session.close = AsyncMock()
-        
+
         # Mock the ip_service close method
         mock_bot_instance.ip_service.close = AsyncMock()
-        
+
         # Mock the check_ip_task
         mock_bot_instance.check_ip_task = Mock()
         mock_bot_instance.check_ip_task.is_running = Mock(return_value=False)
-        
+
         # Mock the message queue and service health which are global imports
         from unittest.mock import patch
+
         with patch("ip_monitor.bot.message_queue") as mock_message_queue:
             mock_message_queue.stop_processing = AsyncMock()
-            
+
             # Call cleanup
             await mock_bot_instance.cleanup()
-            
+
             # Verify message queue was stopped
             mock_message_queue.stop_processing.assert_called_once()
-            
+
             # Verify ip_service was closed
             mock_bot_instance.ip_service.close.assert_called_once()
-            
+
             # Verify client was closed (which handles cog cleanup)
             mock_bot_instance.client.close.assert_called_once()
 
@@ -187,7 +191,9 @@ class TestCogManagement:
 class TestCogErrorHandling:
     """Test error handling in cog management operations."""
 
-    async def test_cog_registration_with_discord_exception(self, mock_bot_instance, caplog):
+    async def test_cog_registration_with_discord_exception(
+        self, mock_bot_instance, caplog
+    ):
         """Test handling of Discord-specific exceptions during cog registration."""
         # Setup mocks
         mock_bot_instance.client.add_cog = AsyncMock(
@@ -201,7 +207,9 @@ class TestCogErrorHandling:
         # Verify error was logged
         assert "Failed to register slash command cogs" in caplog.text
 
-    async def test_cog_registration_with_command_registration_error(self, mock_bot_instance, caplog):
+    async def test_cog_registration_with_command_registration_error(
+        self, mock_bot_instance, caplog
+    ):
         """Test handling of command registration errors."""
         # Setup mocks
         mock_bot_instance.client.add_cog = AsyncMock(
@@ -215,7 +223,9 @@ class TestCogErrorHandling:
         # Verify error was logged
         assert "Failed to register slash command cogs" in caplog.text
 
-    async def test_slash_command_sync_with_forbidden_error(self, mock_bot_instance, caplog):
+    async def test_slash_command_sync_with_forbidden_error(
+        self, mock_bot_instance, caplog
+    ):
         """Test handling of permission errors during command sync."""
         # Setup mocks
         mock_bot_instance.client.add_cog = AsyncMock()
@@ -229,7 +239,9 @@ class TestCogErrorHandling:
         # Verify error was logged
         assert "Failed to sync slash commands" in caplog.text
 
-    async def test_slash_command_sync_with_rate_limit_error(self, mock_bot_instance, caplog):
+    async def test_slash_command_sync_with_rate_limit_error(
+        self, mock_bot_instance, caplog
+    ):
         """Test handling of rate limit errors during command sync."""
         # Setup mocks
         mock_bot_instance.client.add_cog = AsyncMock()
@@ -250,8 +262,8 @@ class TestCogLifecycle:
     async def test_cog_availability_after_initialization(self, mock_bot_instance):
         """Test that cogs are available after bot initialization."""
         # Verify cogs are accessible
-        assert hasattr(mock_bot_instance, 'ip_slash_cog')
-        assert hasattr(mock_bot_instance, 'admin_slash_cog')
+        assert hasattr(mock_bot_instance, "ip_slash_cog")
+        assert hasattr(mock_bot_instance, "admin_slash_cog")
         assert mock_bot_instance.ip_slash_cog is not None
         assert mock_bot_instance.admin_slash_cog is not None
 
@@ -259,11 +271,11 @@ class TestCogLifecycle:
         """Test cog state during the registration process."""
         # Setup mocks
         registration_calls = []
-        
+
         def track_registration(cog):
             registration_calls.append(cog)
             return AsyncMock()
-        
+
         mock_bot_instance.client.add_cog = AsyncMock(side_effect=track_registration)
         mock_bot_instance.client.tree.sync = AsyncMock(return_value=[])
 
@@ -296,14 +308,14 @@ class TestCogLifecycle:
         """Test that cogs are registered in the correct order."""
         # Setup mocks to track registration order
         registration_order = []
-        
+
         def track_order(cog):
             if cog == mock_bot_instance.ip_slash_cog:
-                registration_order.append('ip')
+                registration_order.append("ip")
             elif cog == mock_bot_instance.admin_slash_cog:
-                registration_order.append('admin')
+                registration_order.append("admin")
             return AsyncMock()
-        
+
         mock_bot_instance.client.add_cog = AsyncMock(side_effect=track_order)
         mock_bot_instance.client.tree.sync = AsyncMock(return_value=[])
 
@@ -311,7 +323,7 @@ class TestCogLifecycle:
         await mock_bot_instance.on_ready()
 
         # Verify registration order (IP commands first, then admin commands)
-        assert registration_order == ['ip', 'admin']
+        assert registration_order == ["ip", "admin"]
 
 
 class TestCogIntegration:
@@ -321,10 +333,14 @@ class TestCogIntegration:
         """Test that cogs can access bot services properly."""
         # Verify that the bot has all necessary services for cog operations
         required_services = [
-            'ip_service', 'storage', 'config', 'rate_limiter', 
-            'ip_commands', 'admin_commands'
+            "ip_service",
+            "storage",
+            "config",
+            "rate_limiter",
+            "ip_commands",
+            "admin_commands",
         ]
-        
+
         for service in required_services:
             assert hasattr(mock_bot_instance, service)
             assert getattr(mock_bot_instance, service) is not None
@@ -346,7 +362,7 @@ class TestCogIntegration:
         """Test integration with Discord's command tree."""
         # Setup mocks
         mock_bot_instance.client.add_cog = AsyncMock()
-        mock_commands = [Mock(name='ip'), Mock(name='history'), Mock(name='status')]
+        mock_commands = [Mock(name="ip"), Mock(name="history"), Mock(name="status")]
         mock_bot_instance.client.tree.sync = AsyncMock(return_value=mock_commands)
 
         # Call on_ready

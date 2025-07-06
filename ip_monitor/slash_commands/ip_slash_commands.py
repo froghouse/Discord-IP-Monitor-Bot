@@ -2,8 +2,8 @@
 Slash command implementations for IP-related commands.
 """
 
-from datetime import datetime
 import logging
+from datetime import datetime
 
 import discord
 from discord import app_commands

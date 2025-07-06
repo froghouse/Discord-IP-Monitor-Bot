@@ -6,6 +6,7 @@ focusing on task creation, lifecycle management, error handling, and interval ad
 """
 
 from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
 
 from ip_monitor.bot import IPMonitorBot
@@ -51,14 +52,16 @@ class TestTaskScheduling:
 
         # Verify task properties
         assert task is not None
-        assert hasattr(task, 'start')
-        assert hasattr(task, 'stop')
-        assert hasattr(task, 'restart')
-        assert hasattr(task, 'cancel')
-        assert hasattr(task, 'is_running')
-        
+        assert hasattr(task, "start")
+        assert hasattr(task, "stop")
+        assert hasattr(task, "restart")
+        assert hasattr(task, "cancel")
+        assert hasattr(task, "is_running")
+
         # Verify interval was set correctly
-        mock_service_health.get_adjusted_interval.assert_called_once_with(mock_bot_config.check_interval)
+        mock_service_health.get_adjusted_interval.assert_called_once_with(
+            mock_bot_config.check_interval
+        )
 
     @patch("ip_monitor.bot.commands.Bot")
     @patch("ip_monitor.bot.discord.Intents")
@@ -134,7 +137,9 @@ class TestTaskScheduling:
         mock_intents.default.return_value = mock_intents
         mock_client = AsyncMock()
         mock_bot_class.return_value = mock_client
-        mock_service_health.get_adjusted_interval.return_value = 10.0  # Different interval
+        mock_service_health.get_adjusted_interval.return_value = (
+            10.0  # Different interval
+        )
 
         # Initialize bot
         bot = IPMonitorBot(mock_bot_config)
@@ -143,7 +148,9 @@ class TestTaskScheduling:
         task = bot._create_check_ip_task()
 
         # Verify adjusted interval was used
-        mock_service_health.get_adjusted_interval.assert_called_once_with(mock_bot_config.check_interval)
+        mock_service_health.get_adjusted_interval.assert_called_once_with(
+            mock_bot_config.check_interval
+        )
         assert task is not None
 
     @patch("ip_monitor.bot.commands.Bot")
@@ -183,7 +190,7 @@ class TestTaskScheduling:
         task = bot._create_check_ip_task()
 
         # Verify task has before_loop hook
-        assert hasattr(task, 'before_loop')
+        assert hasattr(task, "before_loop")
 
     @patch("ip_monitor.bot.commands.Bot")
     @patch("ip_monitor.bot.discord.Intents")
@@ -211,7 +218,9 @@ class TestTaskScheduling:
         # Setup mocks
         mock_intents.default.return_value = mock_intents
         mock_client = AsyncMock()
-        mock_client.wait_until_ready = AsyncMock(side_effect=Exception("Client not ready"))
+        mock_client.wait_until_ready = AsyncMock(
+            side_effect=Exception("Client not ready")
+        )
         mock_bot_class.return_value = mock_client
         mock_service_health.get_adjusted_interval.return_value = 5.0
 
@@ -260,7 +269,7 @@ class TestTaskScheduling:
         task = bot._create_check_ip_task()
 
         # Verify task has error handler
-        assert hasattr(task, 'error')
+        assert hasattr(task, "error")
 
     @patch("ip_monitor.bot.commands.Bot")
     @patch("ip_monitor.bot.discord.Intents")

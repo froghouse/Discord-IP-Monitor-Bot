@@ -2,8 +2,9 @@
 Tests for IPMonitorBot Discord event handlers.
 """
 
-import discord
 from unittest.mock import AsyncMock, Mock, patch
+
+import discord
 import pytest
 
 from ip_monitor.bot import IPMonitorBot
@@ -303,9 +304,13 @@ class TestOnMessageEventHandler:
         await mock_bot_instance.on_message(mock_bot_message)
 
         # Verify
-        mock_bot_instance.commands.handle_ip_command.assert_called_once_with(mock_bot_message)
+        mock_bot_instance.commands.handle_ip_command.assert_called_once_with(
+            mock_bot_message
+        )
 
-    async def test_on_message_admin_command(self, mock_bot_instance, mock_bot_admin_message):
+    async def test_on_message_admin_command(
+        self, mock_bot_instance, mock_bot_admin_message
+    ):
         """Test admin command routing via on_message."""
         # Setup
         mock_bot_admin_message.content = "!config show"
@@ -320,7 +325,9 @@ class TestOnMessageEventHandler:
             mock_bot_admin_message, ["config", "show"]
         )
 
-    async def test_on_message_bot_message_ignored(self, mock_bot_instance, mock_bot_message):
+    async def test_on_message_bot_message_ignored(
+        self, mock_bot_instance, mock_bot_message
+    ):
         """Test that bot's own messages are ignored."""
         # Setup
         mock_bot_message.author.bot = True
@@ -333,7 +340,9 @@ class TestOnMessageEventHandler:
         # Verify
         mock_bot_instance.commands.handle_ip_command.assert_not_called()
 
-    async def test_on_message_wrong_channel_non_admin(self, mock_bot_instance, mock_bot_message):
+    async def test_on_message_wrong_channel_non_admin(
+        self, mock_bot_instance, mock_bot_message
+    ):
         """Test non-admin users restricted to correct channel."""
         # Setup
         mock_bot_message.content = "!ip"
@@ -347,7 +356,9 @@ class TestOnMessageEventHandler:
         # Verify
         mock_bot_instance.commands.handle_ip_command.assert_not_called()
 
-    async def test_on_message_wrong_channel_admin_allowed(self, mock_bot_instance, mock_bot_admin_message):
+    async def test_on_message_wrong_channel_admin_allowed(
+        self, mock_bot_instance, mock_bot_admin_message
+    ):
         """Test admin users can use commands in any channel."""
         # Setup
         mock_bot_admin_message.content = "!config show"
@@ -361,7 +372,9 @@ class TestOnMessageEventHandler:
         # Verify
         mock_bot_instance.admin_commands.handle_command.assert_called_once()
 
-    async def test_on_message_discord_exception(self, mock_bot_instance, mock_bot_message):
+    async def test_on_message_discord_exception(
+        self, mock_bot_instance, mock_bot_message
+    ):
         """Test Discord exception handling in on_message."""
         # Setup
         mock_bot_message.content = "!ip"
@@ -377,7 +390,9 @@ class TestOnMessageEventHandler:
         # Verify error handling
         mock_bot_instance.message_queue.add_message.assert_called()
 
-    async def test_on_message_unexpected_exception(self, mock_bot_instance, mock_bot_message):
+    async def test_on_message_unexpected_exception(
+        self, mock_bot_instance, mock_bot_message
+    ):
         """Test unexpected exception handling in on_message."""
         # Setup
         mock_bot_message.content = "!ip"
@@ -393,7 +408,9 @@ class TestOnMessageEventHandler:
         # Verify error handling
         mock_bot_instance.message_queue.add_message.assert_called()
 
-    async def test_on_message_error_notification_fails(self, mock_bot_instance, mock_bot_message):
+    async def test_on_message_error_notification_fails(
+        self, mock_bot_instance, mock_bot_message
+    ):
         """Test when error notification itself fails."""
         # Setup
         mock_bot_message.content = "!ip"
@@ -429,7 +446,9 @@ class TestMessageHandlingEdgeCases:
         # Verify no command is executed
         mock_bot_instance.commands.handle_ip_command.assert_not_called()
 
-    async def test_on_message_unknown_command(self, mock_bot_instance, mock_bot_message):
+    async def test_on_message_unknown_command(
+        self, mock_bot_instance, mock_bot_message
+    ):
         """Test handling of unknown commands."""
         # Setup
         mock_bot_message.content = "!unknown"
@@ -442,7 +461,9 @@ class TestMessageHandlingEdgeCases:
         # Verify no command is executed
         mock_bot_instance.commands.handle_ip_command.assert_not_called()
 
-    async def test_on_message_case_sensitivity(self, mock_bot_instance, mock_bot_message):
+    async def test_on_message_case_sensitivity(
+        self, mock_bot_instance, mock_bot_message
+    ):
         """Test command case sensitivity."""
         # Setup
         mock_bot_message.content = "!IP"  # Uppercase

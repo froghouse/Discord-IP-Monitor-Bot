@@ -8,8 +8,8 @@ that use real HTTP server mocks.
 import asyncio
 import logging
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pytest
 

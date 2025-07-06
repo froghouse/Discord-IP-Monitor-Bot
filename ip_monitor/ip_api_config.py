@@ -2,11 +2,11 @@
 Configuration and management for custom IP detection APIs.
 """
 
-from dataclasses import asdict, dataclass
-from enum import Enum
 import json
 import logging
 import time
+from dataclasses import asdict, dataclass
+from enum import Enum
 from typing import Any
 from urllib.parse import urlparse
 

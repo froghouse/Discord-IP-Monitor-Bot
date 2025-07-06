@@ -205,7 +205,7 @@ class TokenBucketRateLimiter:
         if elapsed > 0:
             tokens_to_add = elapsed * self.rate
             self.tokens = min(self.capacity, self.tokens + tokens_to_add)
-        
+
         self.last_refill = current_time
 
     async def try_acquire(self, tokens: int = 1) -> bool:

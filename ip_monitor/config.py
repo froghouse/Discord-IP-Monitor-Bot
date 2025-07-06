@@ -2,10 +2,10 @@
 Configuration management for the IP Monitor Bot.
 """
 
-from dataclasses import asdict, dataclass
 import json
 import logging
 import os
+from dataclasses import asdict, dataclass
 from typing import Any, ClassVar
 
 from dotenv import load_dotenv

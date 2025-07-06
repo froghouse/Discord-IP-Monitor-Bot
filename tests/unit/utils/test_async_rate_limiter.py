@@ -6,9 +6,10 @@ functionality used throughout the IP Monitor Bot.
 """
 
 import asyncio
-import pytest
 import time
 from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from ip_monitor.utils.async_rate_limiter import AsyncRateLimiter, TokenBucketRateLimiter
 
@@ -51,7 +52,7 @@ class TestAsyncRateLimiter:
         # Add some calls but stay under limit
         current_time = time.time()
         rate_limiter.calls = [current_time - 1, current_time - 2, current_time - 3]
-        
+
         is_limited, wait_time = await rate_limiter.is_limited()
         assert not is_limited
         assert wait_time == 0
@@ -61,7 +62,7 @@ class TestAsyncRateLimiter:
         # Add exactly max_calls within period
         current_time = time.time()
         rate_limiter.calls = [current_time - i for i in range(5)]
-        
+
         is_limited, wait_time = await rate_limiter.is_limited()
         assert is_limited
         assert wait_time >= 1  # Should wait at least 1 second
@@ -71,7 +72,7 @@ class TestAsyncRateLimiter:
         # Add more than max_calls within period
         current_time = time.time()
         rate_limiter.calls = [current_time - i for i in range(7)]
-        
+
         is_limited, wait_time = await rate_limiter.is_limited()
         assert is_limited
         assert wait_time >= 1
@@ -83,10 +84,10 @@ class TestAsyncRateLimiter:
         rate_limiter.calls = [
             current_time - 15,  # Expired (> 10 seconds)
             current_time - 12,  # Expired
-            current_time - 2,   # Active
-            current_time - 1,   # Active
+            current_time - 2,  # Active
+            current_time - 1,  # Active
         ]
-        
+
         is_limited, wait_time = await rate_limiter.is_limited()
         assert not is_limited
         assert wait_time == 0
@@ -95,7 +96,7 @@ class TestAsyncRateLimiter:
         """Test recording a call."""
         initial_count = len(rate_limiter.calls)
         await rate_limiter.record_call()
-        
+
         assert len(rate_limiter.calls) == initial_count + 1
         assert rate_limiter.calls[-1] <= time.time()
 
@@ -104,10 +105,10 @@ class TestAsyncRateLimiter:
         # Add 9 calls to trigger cleanup on 10th call
         current_time = time.time()
         rate_limiter.calls = [current_time - i for i in range(9)]
-        
+
         # Add one more call to trigger cleanup (10 % 10 == 0)
         await rate_limiter.record_call()
-        
+
         # Should have cleaned up expired calls
         assert len(rate_limiter.calls) == 10
 
@@ -120,7 +121,7 @@ class TestAsyncRateLimiter:
         """Test get_remaining_calls with active calls."""
         current_time = time.time()
         rate_limiter.calls = [current_time - 1, current_time - 2]
-        
+
         remaining = await rate_limiter.get_remaining_calls()
         assert remaining == 3
 
@@ -130,9 +131,9 @@ class TestAsyncRateLimiter:
         rate_limiter.calls = [
             current_time - 15,  # Expired
             current_time - 12,  # Expired
-            current_time - 2,   # Active
+            current_time - 2,  # Active
         ]
-        
+
         remaining = await rate_limiter.get_remaining_calls()
         assert remaining == 4
 
@@ -140,7 +141,7 @@ class TestAsyncRateLimiter:
         """Test get_remaining_calls when at limit."""
         current_time = time.time()
         rate_limiter.calls = [current_time - i for i in range(5)]
-        
+
         remaining = await rate_limiter.get_remaining_calls()
         assert remaining == 0
 
@@ -154,11 +155,11 @@ class TestAsyncRateLimiter:
         # Fill up the rate limiter
         current_time = time.time()
         strict_rate_limiter.calls = [current_time - i for i in range(2)]
-        
+
         start_time = time.time()
         waited = await strict_rate_limiter.wait_if_limited()
         end_time = time.time()
-        
+
         assert waited
         # Should have waited at least 1 second
         assert end_time - start_time >= 1.0
@@ -166,9 +167,9 @@ class TestAsyncRateLimiter:
     async def test_try_acquire_success(self, rate_limiter):
         """Test try_acquire when not limited."""
         initial_count = len(rate_limiter.calls)
-        
+
         acquired = await rate_limiter.try_acquire()
-        
+
         assert acquired
         assert len(rate_limiter.calls) == initial_count + 1
 
@@ -177,9 +178,9 @@ class TestAsyncRateLimiter:
         # Fill up the rate limiter
         current_time = time.time()
         strict_rate_limiter.calls = [current_time - i for i in range(2)]
-        
+
         acquired = await strict_rate_limiter.try_acquire()
-        
+
         assert not acquired
         # Should not have recorded a call
         assert len(strict_rate_limiter.calls) == 2
@@ -187,9 +188,9 @@ class TestAsyncRateLimiter:
     async def test_acquire_immediate(self, rate_limiter):
         """Test acquire when not limited."""
         initial_count = len(rate_limiter.calls)
-        
+
         await rate_limiter.acquire()
-        
+
         assert len(rate_limiter.calls) == initial_count + 1
 
     async def test_acquire_with_wait(self, strict_rate_limiter):
@@ -197,11 +198,11 @@ class TestAsyncRateLimiter:
         # Fill up the rate limiter
         current_time = time.time()
         strict_rate_limiter.calls = [current_time - i for i in range(2)]
-        
+
         start_time = time.time()
         await strict_rate_limiter.acquire()
         end_time = time.time()
-        
+
         # Should have waited and then acquired
         assert end_time - start_time >= 1.0
         # After waiting, old calls may be expired and cleaned up, but there should be at least one new call
@@ -212,7 +213,7 @@ class TestAsyncRateLimiter:
     async def test_get_status_empty(self, rate_limiter):
         """Test get_status with no calls."""
         status = await rate_limiter.get_status()
-        
+
         expected = {
             "period": 10,
             "max_calls": 5,
@@ -222,16 +223,16 @@ class TestAsyncRateLimiter:
             "wait_time": 0,
             "utilization_percent": 0.0,
         }
-        
+
         assert status == expected
 
     async def test_get_status_with_calls(self, rate_limiter):
         """Test get_status with active calls."""
         current_time = time.time()
         rate_limiter.calls = [current_time - 1, current_time - 2]
-        
+
         status = await rate_limiter.get_status()
-        
+
         assert status["period"] == 10
         assert status["max_calls"] == 5
         assert status["active_calls"] == 2
@@ -244,9 +245,9 @@ class TestAsyncRateLimiter:
         """Test get_status when at rate limit."""
         current_time = time.time()
         rate_limiter.calls = [current_time - i for i in range(5)]
-        
+
         status = await rate_limiter.get_status()
-        
+
         assert status["period"] == 10
         assert status["max_calls"] == 5
         assert status["active_calls"] == 5
@@ -260,12 +261,12 @@ class TestAsyncRateLimiter:
         current_time = time.time()
         rate_limiter.calls = [
             current_time - 15,  # Expired
-            current_time - 2,   # Active
-            current_time - 1,   # Active
+            current_time - 2,  # Active
+            current_time - 1,  # Active
         ]
-        
+
         status = await rate_limiter.get_status()
-        
+
         assert status["active_calls"] == 2
         assert status["remaining_calls"] == 3
         assert status["utilization_percent"] == 40.0
@@ -273,34 +274,36 @@ class TestAsyncRateLimiter:
     async def test_get_status_zero_max_calls(self):
         """Test get_status with zero max_calls."""
         rate_limiter = AsyncRateLimiter(period=10, max_calls=0)
-        
+
         status = await rate_limiter.get_status()
-        
+
         assert status["utilization_percent"] == 0.0
 
     async def test_concurrent_access(self, rate_limiter):
         """Test concurrent access to rate limiter."""
+
         async def make_calls():
             tasks = []
             for _ in range(10):
                 tasks.append(rate_limiter.record_call())
             await asyncio.gather(*tasks)
-        
+
         # Run concurrent calls
         await make_calls()
-        
+
         # Should have recorded all calls
         assert len(rate_limiter.calls) == 10
 
     async def test_concurrent_acquire(self, strict_rate_limiter):
         """Test concurrent acquire operations."""
+
         async def try_acquire():
             return await strict_rate_limiter.try_acquire()
-        
+
         # Try to acquire more than the limit concurrently
         tasks = [try_acquire() for _ in range(5)]
         results = await asyncio.gather(*tasks)
-        
+
         # Only 2 should succeed (max_calls = 2)
         successful = sum(1 for r in results if r)
         assert successful == 2
@@ -310,9 +313,9 @@ class TestAsyncRateLimiter:
         # Set up a scenario where calculated wait time would be < 1
         current_time = time.time()
         rate_limiter.calls = [current_time - 0.1 for _ in range(5)]
-        
+
         is_limited, wait_time = await rate_limiter.is_limited()
-        
+
         assert is_limited
         assert wait_time >= 1  # Should enforce minimum 1 second wait
 
@@ -323,12 +326,12 @@ class TestAsyncRateLimiter:
         rate_limiter.calls = [
             current_time - 15,  # Expired
             current_time - 12,  # Expired
-            current_time - 2,   # Active
-            current_time - 1,   # Active
+            current_time - 2,  # Active
+            current_time - 1,  # Active
         ]
-        
+
         await rate_limiter.is_limited()
-        
+
         # Should have cleaned up expired calls
         assert len(rate_limiter.calls) == 2
         assert all(call > current_time - 10 for call in rate_limiter.calls)
@@ -368,11 +371,14 @@ class TestTokenBucketRateLimiter:
         token_bucket.tokens = 5.0
         initial_time = 1000.0  # Use a fixed time for predictable results
         token_bucket.last_refill = initial_time
-        
+
         # Simulate time passing
-        with patch('ip_monitor.utils.async_rate_limiter.time.time', return_value=initial_time + 2.0):
+        with patch(
+            "ip_monitor.utils.async_rate_limiter.time.time",
+            return_value=initial_time + 2.0,
+        ):
             await token_bucket._refill_tokens()
-        
+
         # Should have refilled 4 tokens (2 seconds * 2 tokens/sec)
         assert token_bucket.tokens == 9.0
 
@@ -382,11 +388,14 @@ class TestTokenBucketRateLimiter:
         token_bucket.tokens = 8.0
         initial_time = 1000.0  # Use a fixed time
         token_bucket.last_refill = initial_time
-        
+
         # Simulate a lot of time passing
-        with patch('ip_monitor.utils.async_rate_limiter.time.time', return_value=initial_time + 10.0):
+        with patch(
+            "ip_monitor.utils.async_rate_limiter.time.time",
+            return_value=initial_time + 10.0,
+        ):
             await token_bucket._refill_tokens()
-        
+
         # Should be capped at capacity
         assert token_bucket.tokens == 10.0
 
@@ -396,10 +405,12 @@ class TestTokenBucketRateLimiter:
         fixed_time = 1000.0
         token_bucket.last_refill = fixed_time
         initial_tokens = token_bucket.tokens
-        
-        with patch('ip_monitor.utils.async_rate_limiter.time.time', return_value=fixed_time):
+
+        with patch(
+            "ip_monitor.utils.async_rate_limiter.time.time", return_value=fixed_time
+        ):
             acquired = await token_bucket.try_acquire(3)
-        
+
         assert acquired
         assert token_bucket.tokens == initial_tokens - 3
 
@@ -409,10 +420,12 @@ class TestTokenBucketRateLimiter:
         fixed_time = 1000.0
         token_bucket.last_refill = fixed_time
         token_bucket.tokens = 2.0
-        
-        with patch('ip_monitor.utils.async_rate_limiter.time.time', return_value=fixed_time):
+
+        with patch(
+            "ip_monitor.utils.async_rate_limiter.time.time", return_value=fixed_time
+        ):
             acquired = await token_bucket.try_acquire(5)
-        
+
         assert not acquired
         assert token_bucket.tokens == 2.0  # Should remain unchanged
 
@@ -421,10 +434,12 @@ class TestTokenBucketRateLimiter:
         fixed_time = 1000.0
         token_bucket.last_refill = fixed_time
         token_bucket.tokens = 5.0
-        
-        with patch('ip_monitor.utils.async_rate_limiter.time.time', return_value=fixed_time):
+
+        with patch(
+            "ip_monitor.utils.async_rate_limiter.time.time", return_value=fixed_time
+        ):
             acquired = await token_bucket.try_acquire(5)
-        
+
         assert acquired
         assert token_bucket.tokens == 0.0
 
@@ -433,10 +448,12 @@ class TestTokenBucketRateLimiter:
         fixed_time = 1000.0
         token_bucket.last_refill = fixed_time
         initial_tokens = token_bucket.tokens
-        
-        with patch('ip_monitor.utils.async_rate_limiter.time.time', return_value=fixed_time):
+
+        with patch(
+            "ip_monitor.utils.async_rate_limiter.time.time", return_value=fixed_time
+        ):
             acquired = await token_bucket.try_acquire()
-        
+
         assert acquired
         assert token_bucket.tokens == initial_tokens - 1
 
@@ -446,11 +463,14 @@ class TestTokenBucketRateLimiter:
         small_bucket.tokens = 0.0
         initial_time = 1000.0
         small_bucket.last_refill = initial_time
-        
+
         # Simulate time passing to refill tokens
-        with patch('ip_monitor.utils.async_rate_limiter.time.time', return_value=initial_time + 2.0):
+        with patch(
+            "ip_monitor.utils.async_rate_limiter.time.time",
+            return_value=initial_time + 2.0,
+        ):
             acquired = await small_bucket.try_acquire(1)
-        
+
         assert acquired
         # Should have refilled 2 tokens (2 seconds * 1 token/sec), then used 1
         assert small_bucket.tokens == 1.0
@@ -460,53 +480,61 @@ class TestTokenBucketRateLimiter:
         fixed_time = 1000.0
         token_bucket.last_refill = fixed_time
         initial_tokens = token_bucket.tokens
-        
-        with patch('ip_monitor.utils.async_rate_limiter.time.time', return_value=fixed_time):
+
+        with patch(
+            "ip_monitor.utils.async_rate_limiter.time.time", return_value=fixed_time
+        ):
             await token_bucket.acquire(3)
-        
+
         assert token_bucket.tokens == initial_tokens - 3
 
     async def test_acquire_with_wait(self, small_bucket):
         """Test acquire when tokens need to be refilled."""
         # Consume all tokens
         small_bucket.tokens = 0.0
-        
+
         start_time = time.time()
         await small_bucket.acquire(1)
         end_time = time.time()
-        
+
         # Should have waited for token to be refilled
         assert end_time - start_time >= 1.0
-        assert small_bucket.tokens >= 0.0  # Used the refilled token (allowing for floating point precision)
+        assert (
+            small_bucket.tokens >= 0.0
+        )  # Used the refilled token (allowing for floating point precision)
 
     async def test_acquire_multiple_tokens_with_wait(self, small_bucket):
         """Test acquire multiple tokens with wait."""
         # Start with no tokens
         small_bucket.tokens = 0.0
-        
+
         start_time = time.time()
         await small_bucket.acquire(2)
         end_time = time.time()
-        
+
         # Should have waited for 2 tokens to be refilled (2 seconds at 1 token/sec)
         assert end_time - start_time >= 2.0
-        assert small_bucket.tokens >= 0.0  # Used the refilled tokens (allowing for floating point precision)
+        assert (
+            small_bucket.tokens >= 0.0
+        )  # Used the refilled tokens (allowing for floating point precision)
 
     async def test_get_status_full_bucket(self, token_bucket):
         """Test get_status with full bucket."""
         fixed_time = 1000.0
         token_bucket.last_refill = fixed_time
-        
-        with patch('ip_monitor.utils.async_rate_limiter.time.time', return_value=fixed_time):
+
+        with patch(
+            "ip_monitor.utils.async_rate_limiter.time.time", return_value=fixed_time
+        ):
             status = await token_bucket.get_status()
-        
+
         expected = {
             "rate": 2.0,
             "capacity": 10,
             "current_tokens": 10.0,
             "utilization_percent": 0.0,
         }
-        
+
         assert status == expected
 
     async def test_get_status_partial_bucket(self, token_bucket):
@@ -514,10 +542,12 @@ class TestTokenBucketRateLimiter:
         fixed_time = 1000.0
         token_bucket.last_refill = fixed_time
         token_bucket.tokens = 6.0
-        
-        with patch('ip_monitor.utils.async_rate_limiter.time.time', return_value=fixed_time):
+
+        with patch(
+            "ip_monitor.utils.async_rate_limiter.time.time", return_value=fixed_time
+        ):
             status = await token_bucket.get_status()
-        
+
         assert status["rate"] == 2.0
         assert status["capacity"] == 10
         assert status["current_tokens"] == 6.0
@@ -528,10 +558,12 @@ class TestTokenBucketRateLimiter:
         fixed_time = 1000.0
         token_bucket.last_refill = fixed_time
         token_bucket.tokens = 0.0
-        
-        with patch('ip_monitor.utils.async_rate_limiter.time.time', return_value=fixed_time):
+
+        with patch(
+            "ip_monitor.utils.async_rate_limiter.time.time", return_value=fixed_time
+        ):
             status = await token_bucket.get_status()
-        
+
         assert status["current_tokens"] == 0.0
         assert status["utilization_percent"] == 100.0
 
@@ -541,23 +573,27 @@ class TestTokenBucketRateLimiter:
         small_bucket.tokens = 1.0
         initial_time = 1000.0
         small_bucket.last_refill = initial_time
-        
+
         # Simulate time passing
-        with patch('ip_monitor.utils.async_rate_limiter.time.time', return_value=initial_time + 1.0):
+        with patch(
+            "ip_monitor.utils.async_rate_limiter.time.time",
+            return_value=initial_time + 1.0,
+        ):
             status = await small_bucket.get_status()
-        
+
         # Should have refilled 1 token
         assert status["current_tokens"] == 2.0
 
     async def test_concurrent_token_acquisition(self, token_bucket):
         """Test concurrent token acquisition."""
+
         async def acquire_tokens():
             return await token_bucket.try_acquire(2)
-        
+
         # Try to acquire more tokens than available concurrently
         tasks = [acquire_tokens() for _ in range(6)]
         results = await asyncio.gather(*tasks)
-        
+
         # Should only succeed for 5 calls (10 tokens / 2 tokens per call)
         successful = sum(1 for r in results if r)
         assert successful == 5
@@ -568,23 +604,26 @@ class TestTokenBucketRateLimiter:
         token_bucket.tokens = 0.0
         initial_time = 1000.0
         token_bucket.last_refill = initial_time
-        
+
         # Simulate partial time passing (0.5 seconds)
-        with patch('ip_monitor.utils.async_rate_limiter.time.time', return_value=initial_time + 0.5):
+        with patch(
+            "ip_monitor.utils.async_rate_limiter.time.time",
+            return_value=initial_time + 0.5,
+        ):
             await token_bucket._refill_tokens()
-        
+
         # Should have refilled 1 token (0.5 seconds * 2 tokens/sec)
         assert token_bucket.tokens == 1.0
 
     async def test_zero_rate_edge_case(self):
         """Test edge case with zero rate."""
         bucket = TokenBucketRateLimiter(rate=0.0, capacity=5)
-        
+
         # Should not refill any tokens
         initial_time = time.time()
-        with patch('time.time', return_value=initial_time + 10.0):
+        with patch("time.time", return_value=initial_time + 10.0):
             await bucket._refill_tokens()
-        
+
         assert bucket.tokens == 5.0  # Should remain at initial capacity
 
     async def test_negative_time_edge_case(self, token_bucket):
@@ -593,11 +632,13 @@ class TestTokenBucketRateLimiter:
         current_time = 1000.0
         token_bucket.last_refill = current_time + 100
         token_bucket.tokens = 5.0
-        
+
         # Should not add negative tokens
-        with patch('ip_monitor.utils.async_rate_limiter.time.time', return_value=current_time):
+        with patch(
+            "ip_monitor.utils.async_rate_limiter.time.time", return_value=current_time
+        ):
             await token_bucket._refill_tokens()
-        
+
         assert token_bucket.tokens == 5.0
 
 
@@ -608,16 +649,16 @@ class TestRateLimiterIntegration:
         """Test realistic usage pattern for AsyncRateLimiter."""
         # Create a rate limiter: 5 calls per 2 seconds
         limiter = AsyncRateLimiter(period=2, max_calls=5)
-        
+
         # Make 5 calls quickly
         for _ in range(5):
             acquired = await limiter.try_acquire()
             assert acquired
-        
+
         # 6th call should fail
         acquired = await limiter.try_acquire()
         assert not acquired
-        
+
         # Wait for reset and try again
         await asyncio.sleep(2.1)
         acquired = await limiter.try_acquire()
@@ -627,16 +668,16 @@ class TestRateLimiterIntegration:
         """Test token bucket burst handling capability."""
         # Create bucket: 1 token/sec, capacity 5
         bucket = TokenBucketRateLimiter(rate=1.0, capacity=5)
-        
+
         # Should handle burst of 5 tokens
         for i in range(5):
             acquired = await bucket.try_acquire()
-            assert acquired, f"Failed to acquire token {i+1}"
-        
+            assert acquired, f"Failed to acquire token {i + 1}"
+
         # 6th should fail
         acquired = await bucket.try_acquire()
         assert not acquired
-        
+
         # Wait for refill and try again
         await asyncio.sleep(1.1)
         acquired = await bucket.try_acquire()
@@ -647,12 +688,12 @@ class TestRateLimiterIntegration:
         # Equivalent configurations
         async_limiter = AsyncRateLimiter(period=1, max_calls=2)
         token_bucket = TokenBucketRateLimiter(rate=2.0, capacity=2)
-        
+
         # Both should allow 2 initial calls
         for _ in range(2):
             assert await async_limiter.try_acquire()
             assert await token_bucket.try_acquire()
-        
+
         # Both should deny 3rd call
         assert not await async_limiter.try_acquire()
         assert not await token_bucket.try_acquire()

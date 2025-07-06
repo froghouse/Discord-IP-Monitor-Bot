@@ -8,8 +8,10 @@ event handling functionality.
 
 import asyncio
 from unittest.mock import AsyncMock, Mock, patch
-import pytest
+
 import discord
+import pytest
+
 from ip_monitor.bot import IPMonitorBot
 
 
@@ -955,7 +957,7 @@ class TestConnectionEventHandlers:
         assert bot.client is not None
         assert bot.ip_service is not None
         assert bot.storage is not None
-        
+
         # Bot should maintain state during disconnect/reconnect cycles
         assert bot.config == mock_config
         assert bot.check_ip_task is None  # Not started yet
@@ -994,12 +996,12 @@ class TestConnectionEventHandlers:
         # Note: Discord.py handles resume events internally
         # This test verifies that the bot can handle connection restoration
         assert bot.client is not None
-        
+
         # Tasks should continue running after resume
         mock_task = AsyncMock()
         mock_task.is_running.return_value = True
         bot.check_ip_task = mock_task
-        
+
         # Verify task state is maintained
         assert bot.check_ip_task.is_running()
 
@@ -1043,7 +1045,7 @@ class TestGuildEventHandlers:
         # Discord.py handles guild events internally, but bot should maintain state
         assert bot.client is not None
         assert bot.config.channel_id == mock_config.channel_id
-        
+
         # Channel access should work when guild is available
         channel = bot.client.get_channel(mock_config.channel_id)
         assert channel is not None
@@ -1102,11 +1104,11 @@ class TestCommandErrorHandler:
         # Note: Since on_command_error is not explicitly defined in the bot,
         # we test the default Discord.py error handling behavior
         # This test validates that error handling infrastructure is in place
-        
+
         # Verify bot initialization doesn't break error handling setup
         assert bot.client is not None
-        assert hasattr(bot.client, 'tree')  # Slash command tree
-        
+        assert hasattr(bot.client, "tree")  # Slash command tree
+
         # Verify the bot can handle command processing without breaking
         # when an error occurs (this is implicit through on_message error handling)
         test_message = AsyncMock()
@@ -1115,6 +1117,6 @@ class TestCommandErrorHandler:
         test_message.channel = Mock()
         test_message.channel.id = mock_config.channel_id
         test_message.content = "!unknown_command"
-        
+
         # This should not raise an exception
         await bot.on_message(test_message)

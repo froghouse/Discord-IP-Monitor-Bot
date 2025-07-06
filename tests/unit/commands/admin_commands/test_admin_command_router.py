@@ -6,15 +6,16 @@ and managing the overall admin command system.
 """
 
 from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
 
 from ip_monitor.commands.admin_commands.admin_command_router import AdminCommandRouter
+from ip_monitor.commands.admin_commands.api_handler import ApiHandler
 from ip_monitor.commands.admin_commands.base_handler import BaseHandler
 from ip_monitor.commands.admin_commands.bot_lifecycle_handler import BotLifecycleHandler
+from ip_monitor.commands.admin_commands.cache_handler import CacheHandler
 from ip_monitor.commands.admin_commands.config_handler import ConfigHandler
 from ip_monitor.commands.admin_commands.queue_handler import QueueHandler
-from ip_monitor.commands.admin_commands.api_handler import ApiHandler
-from ip_monitor.commands.admin_commands.cache_handler import CacheHandler
 
 
 class TestAdminCommandRouter:
@@ -87,10 +88,10 @@ class TestAdminCommandRouter:
         """Test adding a new command handler."""
         # Create a mock handler
         mock_handler = Mock(spec=BaseHandler)
-        
+
         # Add the handler
         router.add_handler("test", mock_handler)
-        
+
         # Verify it was added
         assert "test" in router.command_map
         assert router.command_map["test"] is mock_handler
@@ -118,13 +119,13 @@ class TestAdminCommandRouter:
         mock_handler = Mock(spec=BaseHandler)
         router.add_handler("test1", mock_handler)
         router.add_handler("test2", mock_handler)
-        
+
         # Remove one command - handler should remain
         router.remove_handler("test1")
         assert "test1" not in router.command_map
         assert "test2" in router.command_map
         assert mock_handler in router.handlers
-        
+
         # Remove second command - handler should be removed
         router.remove_handler("test2")
         assert "test2" not in router.command_map
@@ -148,7 +149,7 @@ class TestAdminCommandRouterPermissions:
         message.author = Mock()
         message.author.guild_permissions = Mock()
         message.author.guild_permissions.administrator = True
-        
+
         assert router.check_admin_permissions(message) is True
 
     def test_check_admin_permissions_false(self, router):
@@ -157,7 +158,7 @@ class TestAdminCommandRouterPermissions:
         message.author = Mock()
         message.author.guild_permissions = Mock()
         message.author.guild_permissions.administrator = False
-        
+
         assert router.check_admin_permissions(message) is False
 
     async def test_permission_denied_response(self, router):
@@ -168,10 +169,12 @@ class TestAdminCommandRouterPermissions:
         message.author.guild_permissions.administrator = False
         message.channel = Mock()
         message.content = "!admin stop"
-        
-        with patch.object(router.discord_rate_limiter, 'send_message_with_backoff') as mock_send:
+
+        with patch.object(
+            router.discord_rate_limiter, "send_message_with_backoff"
+        ) as mock_send:
             result = await router.handle_admin_command(message)
-            
+
             assert result is False
             mock_send.assert_called_once()
             args = mock_send.call_args[0]
@@ -203,76 +206,80 @@ class TestAdminCommandRouterRouting:
     async def test_handle_admin_command_stop(self, router, admin_message):
         """Test routing stop command."""
         admin_message.content = "!admin stop"
-        
-        with patch.object(router.command_map["stop"], 'handle_command') as mock_handle:
+
+        with patch.object(router.command_map["stop"], "handle_command") as mock_handle:
             mock_handle.return_value = True
             result = await router.handle_admin_command(admin_message)
-            
+
             assert result is True
             mock_handle.assert_called_once()
 
     async def test_handle_admin_command_config(self, router, admin_message):
         """Test routing config command."""
         admin_message.content = "!admin config show"
-        
-        with patch.object(router.command_map["config"], 'handle_command') as mock_handle:
+
+        with patch.object(
+            router.command_map["config"], "handle_command"
+        ) as mock_handle:
             mock_handle.return_value = True
             result = await router.handle_admin_command(admin_message)
-            
+
             assert result is True
             mock_handle.assert_called_once()
 
     async def test_handle_admin_command_queue(self, router, admin_message):
         """Test routing queue command."""
         admin_message.content = "!admin queue status"
-        
-        with patch.object(router.command_map["queue"], 'handle_command') as mock_handle:
+
+        with patch.object(router.command_map["queue"], "handle_command") as mock_handle:
             mock_handle.return_value = True
             result = await router.handle_admin_command(admin_message)
-            
+
             assert result is True
             mock_handle.assert_called_once()
 
     async def test_handle_admin_command_api(self, router, admin_message):
         """Test routing api command."""
         admin_message.content = "!admin api list"
-        
-        with patch.object(router.command_map["api"], 'handle_command') as mock_handle:
+
+        with patch.object(router.command_map["api"], "handle_command") as mock_handle:
             mock_handle.return_value = True
             result = await router.handle_admin_command(admin_message)
-            
+
             assert result is True
             mock_handle.assert_called_once()
 
     async def test_handle_admin_command_cache(self, router, admin_message):
         """Test routing cache command."""
         admin_message.content = "!admin cache show"
-        
-        with patch.object(router.command_map["cache"], 'handle_command') as mock_handle:
+
+        with patch.object(router.command_map["cache"], "handle_command") as mock_handle:
             mock_handle.return_value = True
             result = await router.handle_admin_command(admin_message)
-            
+
             assert result is True
             mock_handle.assert_called_once()
 
     async def test_handle_admin_command_case_insensitive(self, router, admin_message):
         """Test that command routing is case insensitive."""
         admin_message.content = "!admin STOP"
-        
-        with patch.object(router.command_map["stop"], 'handle_command') as mock_handle:
+
+        with patch.object(router.command_map["stop"], "handle_command") as mock_handle:
             mock_handle.return_value = True
             result = await router.handle_admin_command(admin_message)
-            
+
             assert result is True
             mock_handle.assert_called_once()
 
     async def test_handle_admin_command_unknown(self, router, admin_message):
         """Test handling unknown admin command."""
         admin_message.content = "!admin unknown"
-        
-        with patch.object(router.discord_rate_limiter, 'send_message_with_backoff') as mock_send:
+
+        with patch.object(
+            router.discord_rate_limiter, "send_message_with_backoff"
+        ) as mock_send:
             result = await router.handle_admin_command(admin_message)
-            
+
             assert result is False
             mock_send.assert_called_once()
             args = mock_send.call_args[0]
@@ -281,10 +288,12 @@ class TestAdminCommandRouterRouting:
     async def test_handle_admin_command_no_subcommand(self, router, admin_message):
         """Test handling admin command without subcommand."""
         admin_message.content = "!admin"
-        
-        with patch.object(router.discord_rate_limiter, 'send_message_with_backoff') as mock_send:
+
+        with patch.object(
+            router.discord_rate_limiter, "send_message_with_backoff"
+        ) as mock_send:
             result = await router.handle_admin_command(admin_message)
-            
+
             assert result is True
             mock_send.assert_called_once()
             # Should send help message
@@ -294,10 +303,12 @@ class TestAdminCommandRouterRouting:
     async def test_handle_admin_command_empty_content(self, router, admin_message):
         """Test handling admin command with empty content."""
         admin_message.content = "!"
-        
-        with patch.object(router.discord_rate_limiter, 'send_message_with_backoff') as mock_send:
+
+        with patch.object(
+            router.discord_rate_limiter, "send_message_with_backoff"
+        ) as mock_send:
             result = await router.handle_admin_command(admin_message)
-            
+
             assert result is True
             mock_send.assert_called_once()
 
@@ -326,12 +337,14 @@ class TestAdminCommandRouterErrorHandling:
 
     async def test_handler_exception_handling(self, router, admin_message):
         """Test exception handling in command handlers."""
-        with patch.object(router.command_map["stop"], 'handle_command') as mock_handle:
+        with patch.object(router.command_map["stop"], "handle_command") as mock_handle:
             mock_handle.side_effect = Exception("Test exception")
-            
-            with patch.object(router.discord_rate_limiter, 'send_message_with_backoff') as mock_send:
+
+            with patch.object(
+                router.discord_rate_limiter, "send_message_with_backoff"
+            ) as mock_send:
                 result = await router.handle_admin_command(admin_message)
-                
+
                 assert result is False
                 mock_send.assert_called_once()
                 args = mock_send.call_args[0]
@@ -339,31 +352,38 @@ class TestAdminCommandRouterErrorHandling:
 
     async def test_handler_returns_false(self, router, admin_message):
         """Test when handler returns False."""
-        with patch.object(router.command_map["stop"], 'handle_command') as mock_handle:
+        with patch.object(router.command_map["stop"], "handle_command") as mock_handle:
             mock_handle.return_value = False
-            
+
             result = await router.handle_admin_command(admin_message)
             assert result is False
 
     async def test_handler_async_exception(self, router, admin_message):
         """Test async exception handling."""
+
         async def failing_handler(*args, **kwargs):
             raise RuntimeError("Async failure")
-        
-        with patch.object(router.command_map["stop"], 'handle_command', failing_handler):
-            with patch.object(router.discord_rate_limiter, 'send_message_with_backoff') as mock_send:
+
+        with patch.object(
+            router.command_map["stop"], "handle_command", failing_handler
+        ):
+            with patch.object(
+                router.discord_rate_limiter, "send_message_with_backoff"
+            ) as mock_send:
                 result = await router.handle_admin_command(admin_message)
-                
+
                 assert result is False
                 mock_send.assert_called_once()
 
     async def test_discord_rate_limiter_exception(self, router, admin_message):
         """Test current behavior when Discord rate limiter fails."""
         admin_message.content = "!admin unknown"
-        
-        with patch.object(router.discord_rate_limiter, 'send_message_with_backoff') as mock_send:
+
+        with patch.object(
+            router.discord_rate_limiter, "send_message_with_backoff"
+        ) as mock_send:
             mock_send.side_effect = Exception("Discord API error")
-            
+
             # Current behavior: exception propagates
             with pytest.raises(Exception, match="Discord API error"):
                 await router.handle_admin_command(admin_message)
@@ -374,7 +394,7 @@ class TestAdminCommandRouterErrorHandling:
         message.author = Mock()
         message.author.guild_permissions = None  # Edge case: None permissions
         message.content = "!admin stop"
-        
+
         # Current behavior: AttributeError propagates
         with pytest.raises(AttributeError):
             await router.handle_admin_command(message)
@@ -386,18 +406,22 @@ class TestAdminCommandRouterErrorHandling:
             ("!admin stop extra args", True),  # Extra arguments
             ("!admin unknown", False),  # Unknown command
         ]
-        
+
         for content, expected_success in test_cases:
             admin_message.content = content
-            
+
             if "stop" in content:
-                with patch.object(router.command_map["stop"], 'handle_command') as mock_handle:
+                with patch.object(
+                    router.command_map["stop"], "handle_command"
+                ) as mock_handle:
                     mock_handle.return_value = expected_success
                     result = await router.handle_admin_command(admin_message)
                     assert result == expected_success
             else:
                 # Unknown command case
-                with patch.object(router.discord_rate_limiter, 'send_message_with_backoff'):
+                with patch.object(
+                    router.discord_rate_limiter, "send_message_with_backoff"
+                ):
                     result = await router.handle_admin_command(admin_message)
                     assert result == expected_success
 
@@ -423,59 +447,71 @@ class TestAdminCommandRouterBackwardCompatibility:
         message.channel = Mock()
         return message
 
-    async def test_handle_stop_command_backward_compatibility(self, router, admin_message):
+    async def test_handle_stop_command_backward_compatibility(
+        self, router, admin_message
+    ):
         """Test backward compatibility for stop command."""
-        with patch.object(router.command_map["stop"], 'handle_command') as mock_handle:
+        with patch.object(router.command_map["stop"], "handle_command") as mock_handle:
             mock_handle.return_value = True
             result = await router.handle_stop_command(admin_message)
-            
+
             assert result is True
             mock_handle.assert_called_once_with(admin_message, ["stop"])
 
-    async def test_handle_config_command_backward_compatibility(self, router, admin_message):
+    async def test_handle_config_command_backward_compatibility(
+        self, router, admin_message
+    ):
         """Test backward compatibility for config command."""
         admin_message.content = "!config show"
-        
-        with patch.object(router.command_map["config"], 'handle_command') as mock_handle:
+
+        with patch.object(
+            router.command_map["config"], "handle_command"
+        ) as mock_handle:
             mock_handle.return_value = True
             result = await router.handle_config_command(admin_message)
-            
+
             assert result is True
             # The method parses parts[1:] which excludes the command name
             mock_handle.assert_called_once_with(admin_message, ["show"])
 
-    async def test_handle_queue_command_backward_compatibility(self, router, admin_message):
+    async def test_handle_queue_command_backward_compatibility(
+        self, router, admin_message
+    ):
         """Test backward compatibility for queue command."""
         admin_message.content = "!queue status"
-        
-        with patch.object(router.command_map["queue"], 'handle_command') as mock_handle:
+
+        with patch.object(router.command_map["queue"], "handle_command") as mock_handle:
             mock_handle.return_value = True
             result = await router.handle_queue_command(admin_message)
-            
+
             assert result is True
             # The method parses parts[1:] which excludes the command name
             mock_handle.assert_called_once_with(admin_message, ["status"])
 
-    async def test_handle_api_command_backward_compatibility(self, router, admin_message):
+    async def test_handle_api_command_backward_compatibility(
+        self, router, admin_message
+    ):
         """Test backward compatibility for api command."""
         admin_message.content = "!api list"
-        
-        with patch.object(router.command_map["api"], 'handle_command') as mock_handle:
+
+        with patch.object(router.command_map["api"], "handle_command") as mock_handle:
             mock_handle.return_value = True
             result = await router.handle_api_command(admin_message)
-            
+
             assert result is True
             # The method parses parts[1:] which excludes the command name
             mock_handle.assert_called_once_with(admin_message, ["list"])
 
-    async def test_handle_cache_command_backward_compatibility(self, router, admin_message):
+    async def test_handle_cache_command_backward_compatibility(
+        self, router, admin_message
+    ):
         """Test backward compatibility for cache command."""
         admin_message.content = "!cache show"
-        
-        with patch.object(router.command_map["cache"], 'handle_command') as mock_handle:
+
+        with patch.object(router.command_map["cache"], "handle_command") as mock_handle:
             mock_handle.return_value = True
             result = await router.handle_cache_command(admin_message)
-            
+
             assert result is True
             # The method parses parts[1:] which excludes the command name
             mock_handle.assert_called_once_with(admin_message, ["show"])
@@ -483,11 +519,13 @@ class TestAdminCommandRouterBackwardCompatibility:
     async def test_backward_compatibility_empty_args(self, router, admin_message):
         """Test backward compatibility with empty arguments."""
         admin_message.content = "!config"
-        
-        with patch.object(router.command_map["config"], 'handle_command') as mock_handle:
+
+        with patch.object(
+            router.command_map["config"], "handle_command"
+        ) as mock_handle:
             mock_handle.return_value = True
             result = await router.handle_config_command(admin_message)
-            
+
             assert result is True
             mock_handle.assert_called_once_with(admin_message, ["config"])
 
@@ -508,9 +546,9 @@ class TestAdminCommandRouterHelpSystem:
         # Mock handler help text
         for handler in router.handlers:
             handler.get_help_text = Mock(return_value="Test help")
-        
+
         help_text = router._get_admin_help_text()
-        
+
         assert "Admin Commands Help" in help_text
         assert "General Information" in help_text
         assert "administrator permissions" in help_text
@@ -520,13 +558,15 @@ class TestAdminCommandRouterHelpSystem:
         """Test sending admin help message."""
         message = Mock()
         message.channel = Mock()
-        
-        with patch.object(router, '_get_admin_help_text') as mock_get_help:
+
+        with patch.object(router, "_get_admin_help_text") as mock_get_help:
             mock_get_help.return_value = "Test help text"
-            
-            with patch.object(router.discord_rate_limiter, 'send_message_with_backoff') as mock_send:
+
+            with patch.object(
+                router.discord_rate_limiter, "send_message_with_backoff"
+            ) as mock_send:
                 await router._send_admin_help(message)
-                
+
                 mock_send.assert_called_once()
                 args = mock_send.call_args[0]
                 assert args[1] == "Test help text"
@@ -535,10 +575,12 @@ class TestAdminCommandRouterHelpSystem:
         """Test sending error message."""
         message = Mock()
         message.channel = Mock()
-        
-        with patch.object(router.discord_rate_limiter, 'send_message_with_backoff') as mock_send:
+
+        with patch.object(
+            router.discord_rate_limiter, "send_message_with_backoff"
+        ) as mock_send:
             await router._send_error_message(message, "Test error")
-            
+
             mock_send.assert_called_once()
             args = mock_send.call_args[0]
             assert "❌ Test error" == args[1]
@@ -547,10 +589,12 @@ class TestAdminCommandRouterHelpSystem:
         """Test sending unknown command message."""
         message = Mock()
         message.channel = Mock()
-        
-        with patch.object(router.discord_rate_limiter, 'send_message_with_backoff') as mock_send:
+
+        with patch.object(
+            router.discord_rate_limiter, "send_message_with_backoff"
+        ) as mock_send:
             await router._send_unknown_command(message, "badcommand")
-            
+
             mock_send.assert_called_once()
             args = mock_send.call_args[0]
             assert "badcommand" in args[1]
@@ -576,12 +620,14 @@ class TestAdminCommandRouterIntegration:
         message.author.guild_permissions = Mock()
         message.author.guild_permissions.administrator = True
         message.channel = Mock()
-        
-        with patch.object(router.command_map["config"], 'handle_command') as mock_handle:
+
+        with patch.object(
+            router.command_map["config"], "handle_command"
+        ) as mock_handle:
             mock_handle.return_value = True
-            
+
             result = await router.handle_admin_command(message)
-            
+
             assert result is True
             mock_handle.assert_called_once()
             args = mock_handle.call_args[0]
@@ -596,12 +642,14 @@ class TestAdminCommandRouterIntegration:
         message.author.guild_permissions = Mock()
         message.author.guild_permissions.administrator = True
         message.channel = Mock()
-        
-        with patch.object(router.command_map["config"], 'handle_command') as mock_handle:
+
+        with patch.object(
+            router.command_map["config"], "handle_command"
+        ) as mock_handle:
             mock_handle.return_value = False
-            
+
             result = await router.handle_admin_command(message)
-            
+
             assert result is False
             mock_handle.assert_called_once()
 
@@ -613,12 +661,14 @@ class TestAdminCommandRouterIntegration:
         message.author.guild_permissions = Mock()
         message.author.guild_permissions.administrator = True
         message.channel = Mock()
-        
-        with patch.object(router.command_map["config"], 'handle_command') as mock_handle:
+
+        with patch.object(
+            router.command_map["config"], "handle_command"
+        ) as mock_handle:
             mock_handle.return_value = True
-            
+
             result = await router.handle_admin_command(message)
-            
+
             assert result is True
             mock_handle.assert_called_once()
             args = mock_handle.call_args[0]
@@ -632,20 +682,24 @@ class TestAdminCommandRouterIntegration:
         message.author.guild_permissions = Mock()
         message.author.guild_permissions.administrator = True
         message.channel = Mock()
-        
+
         # First call
-        with patch.object(router.command_map["config"], 'handle_command') as mock_handle:
+        with patch.object(
+            router.command_map["config"], "handle_command"
+        ) as mock_handle:
             mock_handle.return_value = True
             await router.handle_admin_command(message)
-            
+
             # Verify same handler instance is used
             first_handler = router.command_map["config"]
-        
+
         # Second call
-        with patch.object(router.command_map["config"], 'handle_command') as mock_handle:
+        with patch.object(
+            router.command_map["config"], "handle_command"
+        ) as mock_handle:
             mock_handle.return_value = True
             await router.handle_admin_command(message)
-            
+
             # Verify same handler instance is used
             second_handler = router.command_map["config"]
             assert first_handler is second_handler
@@ -653,7 +707,7 @@ class TestAdminCommandRouterIntegration:
     async def test_concurrent_command_handling(self, router):
         """Test handling multiple concurrent commands."""
         import asyncio
-        
+
         # Create multiple messages
         messages = []
         for i in range(3):
@@ -664,14 +718,16 @@ class TestAdminCommandRouterIntegration:
             message.author.guild_permissions.administrator = True
             message.channel = Mock()
             messages.append(message)
-        
+
         # Handle commands concurrently
-        with patch.object(router.command_map["config"], 'handle_command') as mock_handle:
+        with patch.object(
+            router.command_map["config"], "handle_command"
+        ) as mock_handle:
             mock_handle.return_value = True
-            
+
             tasks = [router.handle_admin_command(msg) for msg in messages]
             results = await asyncio.gather(*tasks)
-            
+
             # All should succeed
             assert all(results)
             assert mock_handle.call_count == 3
@@ -691,10 +747,10 @@ class TestAdminCommandRouterIntegration:
         # Create a mock handler
         mock_handler = Mock(spec=BaseHandler)
         mock_handler.handle_command = AsyncMock(return_value=True)
-        
+
         # Add handler
         router.add_handler("dynamic", mock_handler)
-        
+
         # Test using the new handler
         message = Mock()
         message.content = "!admin dynamic test"
@@ -702,19 +758,21 @@ class TestAdminCommandRouterIntegration:
         message.author.guild_permissions = Mock()
         message.author.guild_permissions.administrator = True
         message.channel = Mock()
-        
+
         result = await router.handle_admin_command(message)
-        
+
         assert result is True
         mock_handler.handle_command.assert_called_once()
-        
+
         # Remove handler
         router.remove_handler("dynamic")
-        
+
         # Test that handler is no longer available
-        with patch.object(router.discord_rate_limiter, 'send_message_with_backoff') as mock_send:
+        with patch.object(
+            router.discord_rate_limiter, "send_message_with_backoff"
+        ) as mock_send:
             result = await router.handle_admin_command(message)
-            
+
             assert result is False
             mock_send.assert_called_once()  # Should send unknown command message
 
@@ -726,18 +784,22 @@ class TestAdminCommandRouterIntegration:
         message.author.guild_permissions = Mock()
         message.author.guild_permissions.administrator = True
         message.channel = Mock()
-        
+
         # First call fails
-        with patch.object(router.command_map["config"], 'handle_command') as mock_handle:
+        with patch.object(
+            router.command_map["config"], "handle_command"
+        ) as mock_handle:
             mock_handle.side_effect = Exception("Handler failure")
-            
-            with patch.object(router.discord_rate_limiter, 'send_message_with_backoff'):
+
+            with patch.object(router.discord_rate_limiter, "send_message_with_backoff"):
                 result = await router.handle_admin_command(message)
                 assert result is False
-        
+
         # Second call should work
-        with patch.object(router.command_map["config"], 'handle_command') as mock_handle:
+        with patch.object(
+            router.command_map["config"], "handle_command"
+        ) as mock_handle:
             mock_handle.return_value = True
-            
+
             result = await router.handle_admin_command(message)
             assert result is True

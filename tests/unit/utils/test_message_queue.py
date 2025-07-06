@@ -33,7 +33,7 @@ class TestQueuedMessage:
             priority=MessagePriority.HIGH,
             created_at=time.time(),
         )
-        
+
         assert msg.id == "test-123"
         assert msg.channel_id == 123456789
         assert msg.content == "Test message"
@@ -51,9 +51,9 @@ class TestQueuedMessage:
             priority=MessagePriority.HIGH,
             created_at=time.time(),
         )
-        
+
         data = msg.to_dict()
-        
+
         assert data["id"] == "test-123"
         assert data["channel_id"] == 123456789
         assert data["content"] == "Test message"
@@ -79,9 +79,9 @@ class TestQueuedMessage:
             "dedupe_key": None,
             "last_error": None,
         }
-        
+
         msg = QueuedMessage.from_dict(data)
-        
+
         assert msg.id == "test-123"
         assert msg.channel_id == 123456789
         assert msg.content == "Test message"
@@ -91,7 +91,7 @@ class TestQueuedMessage:
     def test_queued_message_is_expired(self):
         """Test QueuedMessage expiration checking."""
         current_time = time.time()
-        
+
         # Message without expiration
         msg = QueuedMessage(
             id="test-123",
@@ -101,11 +101,11 @@ class TestQueuedMessage:
             created_at=current_time,
         )
         assert not msg.is_expired()
-        
+
         # Message with future expiration
         msg.expires_at = current_time + 3600
         assert not msg.is_expired()
-        
+
         # Message with past expiration
         msg.expires_at = current_time - 3600
         assert msg.is_expired()
@@ -113,7 +113,7 @@ class TestQueuedMessage:
     def test_queued_message_should_retry(self):
         """Test QueuedMessage retry logic."""
         current_time = time.time()
-        
+
         msg = QueuedMessage(
             id="test-123",
             channel_id=123456789,
@@ -124,19 +124,19 @@ class TestQueuedMessage:
             retry_count=1,
             max_retries=3,
         )
-        
+
         # Should retry when failed and under max retries
         assert msg.should_retry()
-        
+
         # Should not retry when max retries reached
         msg.retry_count = 3
         assert not msg.should_retry()
-        
+
         # Should not retry when expired
         msg.retry_count = 1
         msg.expires_at = current_time - 3600
         assert not msg.should_retry()
-        
+
         # Should not retry when not failed
         msg.status = MessageStatus.PENDING
         msg.expires_at = None
@@ -145,7 +145,7 @@ class TestQueuedMessage:
     def test_queued_message_can_process_now(self):
         """Test QueuedMessage scheduling logic."""
         current_time = time.time()
-        
+
         msg = QueuedMessage(
             id="test-123",
             channel_id=123456789,
@@ -153,14 +153,14 @@ class TestQueuedMessage:
             priority=MessagePriority.HIGH,
             created_at=current_time,
         )
-        
+
         # Can process when no scheduled time
         assert msg.can_process_now()
-        
+
         # Can process when scheduled time has passed
         msg.scheduled_at = current_time - 60
         assert msg.can_process_now()
-        
+
         # Cannot process when scheduled time is in future
         msg.scheduled_at = current_time + 60
         assert not msg.can_process_now()
@@ -172,7 +172,7 @@ class TestAsyncMessageQueue:
     @pytest.fixture
     def temp_queue_file(self):
         """Create a temporary queue file for testing."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_file = f.name
         yield temp_file
         # Cleanup
@@ -205,7 +205,7 @@ class TestAsyncMessageQueue:
             batch_size=5,
             process_interval=1.0,
         )
-        
+
         assert queue.queue_file == temp_queue_file
         assert queue.max_queue_size == 100
         assert queue.max_message_age_hours == 24
@@ -228,7 +228,7 @@ class TestAsyncMessageQueue:
         queue.start_processing()
         assert queue.is_processing
         assert queue.process_task is not None
-        
+
         # Stop processing
         await queue.stop_processing()
         assert not queue.is_processing
@@ -246,7 +246,7 @@ class TestMessagePersistence:
     @pytest.fixture
     def temp_queue_file(self):
         """Create a temporary queue file for testing."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_file = f.name
         yield temp_file
         # Cleanup
@@ -271,14 +271,14 @@ class TestMessagePersistence:
             channel_id=123456789,
             content="Test message",
             priority=MessagePriority.HIGH,
-            dedupe_key="test-key"
+            dedupe_key="test-key",
         )
-        
+
         assert message_id is not None
         assert len(queue.queue) == 1
         assert len(queue.dedupe_cache) == 1
         assert queue.stats["total_queued"] == 1
-        
+
         # Create a new queue instance with same file
         new_queue = AsyncMessageQueue(
             queue_file=queue.queue_file,
@@ -287,7 +287,7 @@ class TestMessagePersistence:
             batch_size=3,
             process_interval=0.1,
         )
-        
+
         # Verify queue was loaded
         assert len(new_queue.queue) == 1
         assert len(new_queue.dedupe_cache) == 1
@@ -300,14 +300,14 @@ class TestMessagePersistence:
         """Test save queue handling file errors."""
         # Make queue file path invalid
         queue.queue_file = "/invalid/path/queue.json"
-        
+
         # Add message and attempt save (should not raise exception)
         await queue.enqueue(
             channel_id=123456789,
             content="Test message",
             priority=MessagePriority.HIGH,
         )
-        
+
         # Verify queue still contains message despite save failure
         assert len(queue.queue) == 1
 
@@ -316,10 +316,10 @@ class TestMessagePersistence:
         # Remove queue file if it exists
         if os.path.exists(queue.queue_file):
             os.unlink(queue.queue_file)
-        
+
         # Load queue (should not raise exception)
         queue._load_queue()
-        
+
         # Verify queue is empty
         assert len(queue.queue) == 0
         assert len(queue.dedupe_cache) == 0
@@ -327,12 +327,12 @@ class TestMessagePersistence:
     def test_load_queue_with_invalid_json(self, temp_queue_file):
         """Test loading queue with invalid JSON."""
         # Write invalid JSON to file
-        with open(temp_queue_file, 'w') as f:
+        with open(temp_queue_file, "w") as f:
             f.write("invalid json content")
-        
+
         # Create queue (should not raise exception)
         queue = AsyncMessageQueue(queue_file=temp_queue_file)
-        
+
         # Verify queue is empty
         assert len(queue.queue) == 0
         assert len(queue.dedupe_cache) == 0
@@ -354,13 +354,13 @@ class TestMessagePersistence:
             "stats": {},
             "timestamp": time.time(),
         }
-        
-        with open(temp_queue_file, 'w') as f:
+
+        with open(temp_queue_file, "w") as f:
             json.dump(queue_data, f)
-        
+
         # Create queue (should not raise exception)
         queue = AsyncMessageQueue(queue_file=temp_queue_file)
-        
+
         # Verify invalid message was not loaded
         assert len(queue.queue) == 0
         assert len(queue.dedupe_cache) == 0
@@ -373,17 +373,17 @@ class TestMessagePersistence:
             content="Test message",
             priority=MessagePriority.HIGH,
         )
-        
+
         # Verify temporary file is not left behind
         temp_file = f"{queue.queue_file}.tmp"
         assert not os.path.exists(temp_file)
-        
+
         # Verify queue file exists and is valid
         assert os.path.exists(queue.queue_file)
-        
-        with open(queue.queue_file, 'r') as f:
+
+        with open(queue.queue_file, "r") as f:
             data = json.load(f)
-        
+
         assert "queue" in data
         assert "stats" in data
         assert "timestamp" in data
@@ -396,7 +396,7 @@ class TestPriorityHandling:
     @pytest.fixture
     def temp_queue_file(self):
         """Create a temporary queue file for testing."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_file = f.name
         yield temp_file
         # Cleanup
@@ -437,7 +437,7 @@ class TestPriorityHandling:
             content="High priority",
             priority=MessagePriority.HIGH,
         )
-        
+
         # Verify messages are sorted by priority (highest first)
         assert len(queue.queue) == 4
         assert queue.queue[0].priority == MessagePriority.CRITICAL
@@ -448,7 +448,7 @@ class TestPriorityHandling:
     async def test_priority_ordering_with_same_priority(self, queue):
         """Test that messages with same priority are ordered by creation time."""
         base_time = time.time()
-        
+
         # Add messages with same priority but different creation times
         msg1 = QueuedMessage(
             id="msg1",
@@ -471,11 +471,11 @@ class TestPriorityHandling:
             priority=MessagePriority.HIGH,
             created_at=base_time + 2,
         )
-        
+
         # Add messages to queue
         queue.queue.extend([msg2, msg3, msg1])
         queue._sort_queue()
-        
+
         # Verify messages are sorted by creation time (oldest first) for same priority
         assert queue.queue[0].id == "msg1"
         assert queue.queue[1].id == "msg2"
@@ -504,9 +504,9 @@ class TestPriorityHandling:
             content="Critical priority",
             priority=MessagePriority.CRITICAL,
         )
-        
+
         status = queue.get_queue_status()
-        
+
         assert status["priority_breakdown"]["LOW"] == 2
         assert status["priority_breakdown"]["HIGH"] == 1
         assert status["priority_breakdown"]["CRITICAL"] == 1
@@ -530,10 +530,10 @@ class TestPriorityHandling:
             content="High priority",
             priority=MessagePriority.HIGH,
         )
-        
+
         # Clear only low priority messages
         cleared_count = queue.clear_queue(priority=MessagePriority.LOW)
-        
+
         assert cleared_count == 2
         assert len(queue.queue) == 1
         assert queue.queue[0].priority == MessagePriority.HIGH
@@ -542,7 +542,7 @@ class TestPriorityHandling:
         """Test that queue size limit removes lowest priority messages first."""
         # Set very small queue size
         queue.max_queue_size = 2
-        
+
         # Add messages with different priorities
         await queue.enqueue(
             channel_id=123456789,
@@ -559,7 +559,7 @@ class TestPriorityHandling:
             content="Low priority",
             priority=MessagePriority.LOW,
         )
-        
+
         # Should only keep 2 messages (highest priority)
         assert len(queue.queue) == 2
         assert queue.queue[0].priority == MessagePriority.CRITICAL
@@ -570,7 +570,7 @@ class TestPriorityHandling:
         # Set very small queue size
         queue.max_queue_size = 2
         base_time = time.time()
-        
+
         # Add messages with same priority but different ages
         msg1 = QueuedMessage(
             id="msg1",
@@ -593,11 +593,11 @@ class TestPriorityHandling:
             priority=MessagePriority.HIGH,
             created_at=base_time + 2,
         )
-        
+
         # Add messages to queue
         queue.queue.extend([msg1, msg2, msg3])
         queue._enforce_queue_size_limit()
-        
+
         # Should keep oldest 2 messages (when same priority, remove newest first)
         assert len(queue.queue) == 2
         # Queue enforcement removes by priority (ascending) then age (descending - newest first)
@@ -614,7 +614,7 @@ class TestRetryLogic:
     @pytest.fixture
     def temp_queue_file(self):
         """Create a temporary queue file for testing."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_file = f.name
         yield temp_file
         # Cleanup
@@ -635,7 +635,7 @@ class TestRetryLogic:
     def test_retry_failed_messages(self, queue):
         """Test retrying failed messages."""
         current_time = time.time()
-        
+
         # Add failed messages with different retry states
         failed_msg1 = QueuedMessage(
             id="failed1",
@@ -667,26 +667,26 @@ class TestRetryLogic:
             retry_count=0,
             max_retries=3,
         )
-        
+
         queue.queue.extend([failed_msg1, failed_msg2, failed_msg3])
-        
+
         # Retry failed messages
         retried_count = queue.retry_failed_messages()
-        
+
         # Should retry 2 messages (failed_msg1 and failed_msg3)
         assert retried_count == 2
-        
+
         # Check that retryable messages are now pending
         assert failed_msg1.status == MessageStatus.PENDING
         assert failed_msg3.status == MessageStatus.PENDING
-        
+
         # Check that max retry message is still failed
         assert failed_msg2.status == MessageStatus.FAILED
 
     def test_exponential_backoff_retry_scheduling(self, queue):
         """Test exponential backoff for retry scheduling."""
         current_time = time.time()
-        
+
         # Create a message for testing retry scheduling
         msg = QueuedMessage(
             id="retry-test",
@@ -698,22 +698,22 @@ class TestRetryLogic:
             retry_count=2,
             max_retries=3,
         )
-        
+
         # Simulate the retry scheduling logic from _process_message
         if msg.should_retry():
             msg.status = MessageStatus.PENDING
-            delay = min(60 * (2 ** msg.retry_count), 3600)  # Max 1 hour delay
+            delay = min(60 * (2**msg.retry_count), 3600)  # Max 1 hour delay
             msg.scheduled_at = current_time + delay
-        
+
         # Verify exponential backoff calculation
-        expected_delay = min(60 * (2 ** 2), 3600)  # 60 * 4 = 240 seconds
+        expected_delay = min(60 * (2**2), 3600)  # 60 * 4 = 240 seconds
         assert msg.scheduled_at == current_time + expected_delay
         assert msg.status == MessageStatus.PENDING
 
     def test_max_retry_limit_enforcement(self, queue):
         """Test that messages are not retried after max retries."""
         current_time = time.time()
-        
+
         # Create message that has reached max retries
         msg = QueuedMessage(
             id="max-retry",
@@ -725,14 +725,14 @@ class TestRetryLogic:
             retry_count=3,
             max_retries=3,
         )
-        
+
         # Should not retry
         assert not msg.should_retry()
-        
+
         # Add to queue and attempt retry
         queue.queue.append(msg)
         retried_count = queue.retry_failed_messages()
-        
+
         # Should not retry any messages
         assert retried_count == 0
         assert msg.status == MessageStatus.FAILED
@@ -740,7 +740,7 @@ class TestRetryLogic:
     def test_expired_message_retry_prevention(self, queue):
         """Test that expired messages are not retried."""
         current_time = time.time()
-        
+
         # Create expired failed message
         msg = QueuedMessage(
             id="expired-retry",
@@ -753,14 +753,14 @@ class TestRetryLogic:
             max_retries=3,
             expires_at=current_time - 3600,  # Expired 1 hour ago
         )
-        
+
         # Should not retry expired message
         assert not msg.should_retry()
-        
+
         # Add to queue and attempt retry
         queue.queue.append(msg)
         retried_count = queue.retry_failed_messages()
-        
+
         # Should not retry any messages
         assert retried_count == 0
         assert msg.status == MessageStatus.FAILED
@@ -770,9 +770,9 @@ class TestRetryLogic:
         mock_client = MagicMock(spec=discord.Client)
         mock_channel = MagicMock()
         mock_client.get_channel.return_value = mock_channel
-        
+
         queue.set_discord_client(mock_client)
-        
+
         # Add a message that will fail initially
         message_id = await queue.enqueue(
             channel_id=123456789,
@@ -780,32 +780,38 @@ class TestRetryLogic:
             priority=MessagePriority.HIGH,
             max_retries=2,
         )
-        
+
         # Mock the Discord rate limiter to fail first time
-        with patch('ip_monitor.utils.discord_rate_limiter.DiscordRateLimiter') as mock_rate_limiter_class:
+        with patch(
+            "ip_monitor.utils.discord_rate_limiter.DiscordRateLimiter"
+        ) as mock_rate_limiter_class:
             mock_rate_limiter = mock_rate_limiter_class.return_value
-            mock_rate_limiter.send_message_with_backoff = AsyncMock(side_effect=[
-                None,  # Fail first time
-                True,  # Succeed second time
-            ])
-            
+            mock_rate_limiter.send_message_with_backoff = AsyncMock(
+                side_effect=[
+                    None,  # Fail first time
+                    True,  # Succeed second time
+                ]
+            )
+
             # Process the message (should fail and schedule retry)
             await queue._process_message(queue.queue[0])
-            
+
             # Verify message failed and retry was scheduled
             msg = queue.queue[0]
             assert msg.status == MessageStatus.PENDING
             assert msg.retry_count == 1
             assert msg.scheduled_at is not None
             assert msg.scheduled_at > time.time()
-        
+
         # Verify statistics
-        assert queue.stats["total_failed"] == 0  # Should not increment until max retries
+        assert (
+            queue.stats["total_failed"] == 0
+        )  # Should not increment until max retries
 
     def test_retry_statistics_tracking(self, queue):
         """Test that retry statistics are properly tracked."""
         current_time = time.time()
-        
+
         # Create messages with different retry states
         permanently_failed_msg = QueuedMessage(
             id="permanent-fail",
@@ -817,12 +823,12 @@ class TestRetryLogic:
             retry_count=3,
             max_retries=3,
         )
-        
+
         # Simulate permanent failure (remove from queue)
         queue.queue.append(permanently_failed_msg)
         queue.stats["total_failed"] += 1
         queue.queue.remove(permanently_failed_msg)
-        
+
         # Verify statistics
         assert queue.stats["total_failed"] == 1
         assert len(queue.queue) == 0
@@ -830,7 +836,7 @@ class TestRetryLogic:
     def test_custom_max_retries_per_message(self, queue):
         """Test that messages can have custom max retry limits."""
         current_time = time.time()
-        
+
         # Create message with custom max retries
         msg = QueuedMessage(
             id="custom-retry",
@@ -842,10 +848,10 @@ class TestRetryLogic:
             retry_count=1,
             max_retries=5,  # Custom limit
         )
-        
+
         # Should still allow retry
         assert msg.should_retry()
-        
+
         # Test with retry count at custom limit
         msg.retry_count = 5
         assert not msg.should_retry()
@@ -853,7 +859,7 @@ class TestRetryLogic:
     def test_retry_with_error_tracking(self, queue):
         """Test that retry errors are tracked properly."""
         current_time = time.time()
-        
+
         # Create message with error
         msg = QueuedMessage(
             id="error-track",
@@ -866,12 +872,12 @@ class TestRetryLogic:
             max_retries=3,
             last_error="Connection timeout",
         )
-        
+
         queue.queue.append(msg)
-        
+
         # Verify error is tracked
         assert msg.last_error == "Connection timeout"
-        
+
         # Retry the message
         retried_count = queue.retry_failed_messages()
         assert retried_count == 1
@@ -884,7 +890,7 @@ class TestQueueProcessing:
     @pytest.fixture
     def temp_queue_file(self):
         """Create a temporary queue file for testing."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_file = f.name
         yield temp_file
         # Cleanup
@@ -911,7 +917,7 @@ class TestQueueProcessing:
     async def test_batch_processing_size_limit(self, queue, mock_discord_client):
         """Test that batch processing respects batch size limit."""
         queue.set_discord_client(mock_discord_client)
-        
+
         # Add more messages than batch size
         for i in range(5):
             await queue.enqueue(
@@ -919,44 +925,50 @@ class TestQueueProcessing:
                 content=f"Message {i}",
                 priority=MessagePriority.HIGH,
             )
-        
+
         # Mock channel and rate limiter
         mock_channel = MagicMock()
         mock_discord_client.get_channel.return_value = mock_channel
-        
-        with patch('ip_monitor.utils.discord_rate_limiter.DiscordRateLimiter') as mock_rate_limiter_class:
+
+        with patch(
+            "ip_monitor.utils.discord_rate_limiter.DiscordRateLimiter"
+        ) as mock_rate_limiter_class:
             mock_rate_limiter = mock_rate_limiter_class.return_value
             mock_rate_limiter.send_message_with_backoff = AsyncMock(return_value=True)
-            
+
             # Process batch (should only process batch_size messages)
             await queue._process_batch()
-            
+
             # Should have processed 3 messages (batch_size)
             assert mock_rate_limiter.send_message_with_backoff.call_count == 3
             assert len(queue.queue) == 2  # 2 messages remaining
 
-    async def test_message_lifecycle_successful_delivery(self, queue, mock_discord_client):
+    async def test_message_lifecycle_successful_delivery(
+        self, queue, mock_discord_client
+    ):
         """Test complete message lifecycle for successful delivery."""
         queue.set_discord_client(mock_discord_client)
-        
+
         # Add message to queue
         message_id = await queue.enqueue(
             channel_id=123456789,
             content="Test message",
             priority=MessagePriority.HIGH,
         )
-        
+
         # Mock successful delivery
         mock_channel = MagicMock()
         mock_discord_client.get_channel.return_value = mock_channel
-        
-        with patch('ip_monitor.utils.discord_rate_limiter.DiscordRateLimiter') as mock_rate_limiter_class:
+
+        with patch(
+            "ip_monitor.utils.discord_rate_limiter.DiscordRateLimiter"
+        ) as mock_rate_limiter_class:
             mock_rate_limiter = mock_rate_limiter_class.return_value
             mock_rate_limiter.send_message_with_backoff = AsyncMock(return_value=True)
-            
+
             # Process the message
             await queue._process_message(queue.queue[0])
-            
+
             # Verify message was delivered and removed from queue
             assert len(queue.queue) == 0
             assert queue.stats["total_delivered"] == 1
@@ -964,7 +976,7 @@ class TestQueueProcessing:
     async def test_message_lifecycle_failed_delivery(self, queue, mock_discord_client):
         """Test message lifecycle for failed delivery."""
         queue.set_discord_client(mock_discord_client)
-        
+
         # Add message to queue
         message_id = await queue.enqueue(
             channel_id=123456789,
@@ -972,19 +984,21 @@ class TestQueueProcessing:
             priority=MessagePriority.HIGH,
             max_retries=1,
         )
-        
+
         # Mock failed delivery
         mock_channel = MagicMock()
         mock_discord_client.get_channel.return_value = mock_channel
-        
-        with patch('ip_monitor.utils.discord_rate_limiter.DiscordRateLimiter') as mock_rate_limiter_class:
+
+        with patch(
+            "ip_monitor.utils.discord_rate_limiter.DiscordRateLimiter"
+        ) as mock_rate_limiter_class:
             mock_rate_limiter = mock_rate_limiter_class.return_value
             mock_rate_limiter.send_message_with_backoff = AsyncMock(return_value=None)
-            
+
             # Process the message twice (should fail permanently after max retries)
             await queue._process_message(queue.queue[0])
             await queue._process_message(queue.queue[0])
-            
+
             # Verify message was failed and removed from queue
             assert len(queue.queue) == 0
             assert queue.stats["total_failed"] == 1
@@ -995,35 +1009,39 @@ class TestQueueProcessing:
         queue.start_processing()
         assert queue.is_processing
         assert queue.process_task is not None
-        
+
         # Let it run briefly
         await asyncio.sleep(0.2)
-        
+
         # Stop processing
         await queue.stop_processing()
         assert not queue.is_processing
         assert queue.process_task is None
 
-    async def test_processing_with_discord_api_health_check(self, queue, mock_discord_client):
+    async def test_processing_with_discord_api_health_check(
+        self, queue, mock_discord_client
+    ):
         """Test that processing respects Discord API health status."""
         queue.set_discord_client(mock_discord_client)
-        
+
         # Add message to queue
         await queue.enqueue(
             channel_id=123456789,
             content="Test message",
             priority=MessagePriority.HIGH,
         )
-        
+
         # Mock Discord API as failed
-        with patch('ip_monitor.utils.message_queue.service_health') as mock_service_health:
+        with patch(
+            "ip_monitor.utils.message_queue.service_health"
+        ) as mock_service_health:
             mock_health_status = MagicMock()
             mock_health_status.status.value = "failed"
             mock_service_health.get_service_health.return_value = mock_health_status
-            
+
             # Process batch (should skip due to failed Discord API)
             await queue._process_batch()
-            
+
             # Message should still be in queue (not processed)
             assert len(queue.queue) == 1
             assert queue.queue[0].status == MessageStatus.PENDING
@@ -1032,7 +1050,7 @@ class TestQueueProcessing:
         """Test processing of scheduled messages."""
         queue.set_discord_client(mock_discord_client)
         current_time = time.time()
-        
+
         # Add message scheduled for future
         message_id = await queue.enqueue(
             channel_id=123456789,
@@ -1040,25 +1058,27 @@ class TestQueueProcessing:
             priority=MessagePriority.HIGH,
             delay_seconds=3600,  # 1 hour in future
         )
-        
+
         # Add message ready for processing
         message_id2 = await queue.enqueue(
             channel_id=123456789,
             content="Ready message",
             priority=MessagePriority.HIGH,
         )
-        
+
         # Mock successful delivery
         mock_channel = MagicMock()
         mock_discord_client.get_channel.return_value = mock_channel
-        
-        with patch('ip_monitor.utils.discord_rate_limiter.DiscordRateLimiter') as mock_rate_limiter_class:
+
+        with patch(
+            "ip_monitor.utils.discord_rate_limiter.DiscordRateLimiter"
+        ) as mock_rate_limiter_class:
             mock_rate_limiter = mock_rate_limiter_class.return_value
             mock_rate_limiter.send_message_with_backoff = AsyncMock(return_value=True)
-            
+
             # Process batch
             await queue._process_batch()
-            
+
             # Should only process the ready message, not the scheduled one
             assert mock_rate_limiter.send_message_with_backoff.call_count == 1
             assert len(queue.queue) == 1  # Scheduled message still in queue
@@ -1067,7 +1087,7 @@ class TestQueueProcessing:
         """Test processing handles expired messages correctly."""
         queue.set_discord_client(mock_discord_client)
         current_time = time.time()
-        
+
         # Add expired message
         expired_msg = QueuedMessage(
             id="expired",
@@ -1078,17 +1098,17 @@ class TestQueueProcessing:
             expires_at=current_time - 3600,  # Expired 1 hour ago
         )
         queue.queue.append(expired_msg)
-        
+
         # Add valid message
         await queue.enqueue(
             channel_id=123456789,
             content="Valid message",
             priority=MessagePriority.HIGH,
         )
-        
+
         # Process batch (should clean up expired messages)
         await queue._process_batch()
-        
+
         # Expired message should be removed
         assert len(queue.queue) == 1
         assert queue.queue[0].content == "Valid message"
@@ -1097,20 +1117,20 @@ class TestQueueProcessing:
     async def test_processing_with_channel_not_found(self, queue, mock_discord_client):
         """Test processing handles missing channels gracefully."""
         queue.set_discord_client(mock_discord_client)
-        
+
         # Add message to queue
         message_id = await queue.enqueue(
             channel_id=123456789,
             content="Test message",
             priority=MessagePriority.HIGH,
         )
-        
+
         # Mock channel not found
         mock_discord_client.get_channel.return_value = None
-        
+
         # Process the message (should fail gracefully)
         await queue._process_message(queue.queue[0])
-        
+
         # Verify message failed and was scheduled for retry
         assert queue.queue[0].status == MessageStatus.PENDING  # Retry scheduled
         assert queue.queue[0].retry_count == 1
@@ -1119,10 +1139,10 @@ class TestQueueProcessing:
     async def test_processing_with_embed_messages(self, queue, mock_discord_client):
         """Test processing messages with embeds."""
         queue.set_discord_client(mock_discord_client)
-        
+
         # Create embed
         embed = discord.Embed(title="Test Embed", description="Test description")
-        
+
         # Add message with embed
         message_id = await queue.enqueue(
             channel_id=123456789,
@@ -1130,40 +1150,42 @@ class TestQueueProcessing:
             priority=MessagePriority.HIGH,
             embed=embed,
         )
-        
+
         # Mock successful delivery
         mock_channel = MagicMock()
         mock_discord_client.get_channel.return_value = mock_channel
-        
-        with patch('ip_monitor.utils.discord_rate_limiter.DiscordRateLimiter') as mock_rate_limiter_class:
+
+        with patch(
+            "ip_monitor.utils.discord_rate_limiter.DiscordRateLimiter"
+        ) as mock_rate_limiter_class:
             mock_rate_limiter = mock_rate_limiter_class.return_value
             mock_rate_limiter.send_message_with_backoff = AsyncMock(return_value=True)
-            
+
             # Process the message
             await queue._process_message(queue.queue[0])
-            
+
             # Verify embed was included in the call
             call_args = mock_rate_limiter.send_message_with_backoff.call_args
-            assert 'embed' in call_args.kwargs
-            assert call_args.kwargs['embed'].title == "Test Embed"
+            assert "embed" in call_args.kwargs
+            assert call_args.kwargs["embed"].title == "Test Embed"
 
     async def test_processing_error_handling(self, queue, mock_discord_client):
         """Test that processing errors are handled gracefully."""
         queue.set_discord_client(mock_discord_client)
-        
+
         # Add message to queue
         message_id = await queue.enqueue(
             channel_id=123456789,
             content="Test message",
             priority=MessagePriority.HIGH,
         )
-        
+
         # Mock channel to raise exception
         mock_discord_client.get_channel.side_effect = Exception("Unexpected error")
-        
+
         # Process the message (should not raise exception)
         await queue._process_message(queue.queue[0])
-        
+
         # Verify message failed and was scheduled for retry
         assert queue.queue[0].status == MessageStatus.PENDING  # Retry scheduled
         assert queue.queue[0].retry_count == 1
@@ -1172,17 +1194,17 @@ class TestQueueProcessing:
     async def test_processing_without_discord_client(self, queue):
         """Test that processing handles missing Discord client gracefully."""
         # Don't set Discord client
-        
+
         # Add message to queue
         await queue.enqueue(
             channel_id=123456789,
             content="Test message",
             priority=MessagePriority.HIGH,
         )
-        
+
         # Process batch (should return early without error)
         await queue._process_batch()
-        
+
         # Message should still be in queue
         assert len(queue.queue) == 1
         assert queue.queue[0].status == MessageStatus.PENDING
@@ -1194,7 +1216,7 @@ class TestDeduplicationAndEdgeCases:
     @pytest.fixture
     def temp_queue_file(self):
         """Create a temporary queue file for testing."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_file = f.name
         yield temp_file
         # Cleanup
@@ -1221,7 +1243,7 @@ class TestDeduplicationAndEdgeCases:
             priority=MessagePriority.HIGH,
             dedupe_key="unique-key-1",
         )
-        
+
         # Add duplicate message with same dedupe key
         message_id2 = await queue.enqueue(
             channel_id=123456789,
@@ -1229,7 +1251,7 @@ class TestDeduplicationAndEdgeCases:
             priority=MessagePriority.HIGH,
             dedupe_key="unique-key-1",
         )
-        
+
         # Should return same message ID and not add duplicate
         assert message_id1 == message_id2
         assert len(queue.queue) == 1
@@ -1245,7 +1267,7 @@ class TestDeduplicationAndEdgeCases:
             priority=MessagePriority.HIGH,
             dedupe_key="persist-key",
         )
-        
+
         # Create new queue instance with same file
         new_queue = AsyncMessageQueue(
             queue_file=queue.queue_file,
@@ -1254,7 +1276,7 @@ class TestDeduplicationAndEdgeCases:
             batch_size=3,
             process_interval=0.1,
         )
-        
+
         # Try to add duplicate message
         duplicate_id = await new_queue.enqueue(
             channel_id=123456789,
@@ -1262,7 +1284,7 @@ class TestDeduplicationAndEdgeCases:
             priority=MessagePriority.HIGH,
             dedupe_key="persist-key",
         )
-        
+
         # Should return same message ID
         assert duplicate_id == message_id
         assert len(new_queue.queue) == 1
@@ -1277,24 +1299,24 @@ class TestDeduplicationAndEdgeCases:
             priority=MessagePriority.HIGH,
             dedupe_key="cleanup-key",
         )
-        
+
         # Verify dedupe cache contains the key
         assert "cleanup-key" in queue.dedupe_cache
         assert queue.dedupe_cache["cleanup-key"] == message_id
-        
+
         # Simulate successful delivery (remove from queue)
         message = queue.queue[0]
         queue.queue.remove(message)
         if message.dedupe_key and message.dedupe_key in queue.dedupe_cache:
             del queue.dedupe_cache[message.dedupe_key]
-        
+
         # Verify dedupe cache is cleaned up
         assert "cleanup-key" not in queue.dedupe_cache
 
     async def test_message_expiration_handling(self, queue):
         """Test comprehensive message expiration handling."""
         current_time = time.time()
-        
+
         # Add message with short expiration
         message_id = await queue.enqueue(
             channel_id=123456789,
@@ -1302,22 +1324,22 @@ class TestDeduplicationAndEdgeCases:
             priority=MessagePriority.HIGH,
             expires_in_hours=0.001,  # Very short expiration (3.6 seconds)
         )
-        
+
         # Verify message is not expired initially
         assert not queue.queue[0].is_expired()
-        
+
         # Wait for expiration
         await asyncio.sleep(0.1)
-        
+
         # Update expiration manually for testing
         queue.queue[0].expires_at = current_time - 1
-        
+
         # Verify message is now expired
         assert queue.queue[0].is_expired()
-        
+
         # Clean up expired messages
         queue._cleanup_expired_messages()
-        
+
         # Verify expired message was removed
         assert len(queue.queue) == 0
         assert queue.stats["total_expired"] == 1
@@ -1325,14 +1347,14 @@ class TestDeduplicationAndEdgeCases:
     async def test_queue_status_comprehensive(self, queue):
         """Test comprehensive queue status reporting."""
         current_time = time.time()
-        
+
         # Add messages with different states
         await queue.enqueue(
             channel_id=123456789,
             content="Pending message",
             priority=MessagePriority.HIGH,
         )
-        
+
         # Add scheduled message
         await queue.enqueue(
             channel_id=123456789,
@@ -1340,7 +1362,7 @@ class TestDeduplicationAndEdgeCases:
             priority=MessagePriority.NORMAL,
             delay_seconds=3600,
         )
-        
+
         # Add expired message manually
         expired_msg = QueuedMessage(
             id="expired",
@@ -1351,10 +1373,10 @@ class TestDeduplicationAndEdgeCases:
             expires_at=current_time - 3600,
         )
         queue.queue.append(expired_msg)
-        
+
         # Get comprehensive status
         status = queue.get_queue_status()
-        
+
         # Verify status breakdown
         assert status["queue_size"] == 3
         assert status["ready_to_process"] == 1  # Only the pending message
@@ -1375,14 +1397,14 @@ class TestDeduplicationAndEdgeCases:
             content="Test message",
             priority=MessagePriority.HIGH,
         )
-        
+
         # Retrieve message by ID
         retrieved_msg = queue.get_message_by_id(message_id)
-        
+
         assert retrieved_msg is not None
         assert retrieved_msg.id == message_id
         assert retrieved_msg.content == "Test message"
-        
+
         # Test with non-existent ID
         non_existent = queue.get_message_by_id("non-existent-id")
         assert non_existent is None
@@ -1402,10 +1424,10 @@ class TestDeduplicationAndEdgeCases:
             priority=MessagePriority.LOW,
             dedupe_key="key2",
         )
-        
+
         # Clear all messages
         cleared_count = queue.clear_queue()
-        
+
         assert cleared_count == 2
         assert len(queue.queue) == 0
         assert len(queue.dedupe_cache) == 0
@@ -1419,7 +1441,7 @@ class TestDeduplicationAndEdgeCases:
             priority=MessagePriority.HIGH,
             tags=["important", "notification", "ip-change"],
         )
-        
+
         # Verify tags are preserved
         message = queue.queue[0]
         assert message.tags == ["important", "notification", "ip-change"]
@@ -1428,21 +1450,21 @@ class TestDeduplicationAndEdgeCases:
         """Test queue size enforcement edge cases."""
         # Set very small max size
         queue.max_queue_size = 1
-        
+
         # Add message
         await queue.enqueue(
             channel_id=123456789,
             content="First message",
             priority=MessagePriority.LOW,
         )
-        
+
         # Add higher priority message (should replace first)
         await queue.enqueue(
             channel_id=123456789,
             content="High priority message",
             priority=MessagePriority.CRITICAL,
         )
-        
+
         # Should only have the high priority message
         assert len(queue.queue) == 1
         assert queue.queue[0].priority == MessagePriority.CRITICAL
@@ -1451,7 +1473,7 @@ class TestDeduplicationAndEdgeCases:
     async def test_message_with_custom_expiration(self, queue):
         """Test messages with custom expiration times."""
         current_time = time.time()
-        
+
         # Add message with custom expiration
         message_id = await queue.enqueue(
             channel_id=123456789,
@@ -1459,7 +1481,7 @@ class TestDeduplicationAndEdgeCases:
             priority=MessagePriority.HIGH,
             expires_in_hours=2.0,  # 2 hours
         )
-        
+
         # Verify expiration is set correctly
         message = queue.queue[0]
         expected_expiration = current_time + (2.0 * 3600)
@@ -1469,14 +1491,14 @@ class TestDeduplicationAndEdgeCases:
         """Test messages without expiration (when max_message_age_hours is 0)."""
         # Create queue with no automatic expiration
         queue.max_message_age_hours = 0
-        
+
         # Add message without explicit expiration
         message_id = await queue.enqueue(
             channel_id=123456789,
             content="No expiration",
             priority=MessagePriority.HIGH,
         )
-        
+
         # Verify message has no expiration
         message = queue.queue[0]
         assert message.expires_at is None
@@ -1485,7 +1507,7 @@ class TestDeduplicationAndEdgeCases:
     async def test_queue_statistics_accuracy(self, queue):
         """Test that queue statistics are accurate."""
         initial_stats = queue.stats.copy()
-        
+
         # Add messages
         await queue.enqueue(
             channel_id=123456789,
@@ -1498,7 +1520,7 @@ class TestDeduplicationAndEdgeCases:
             priority=MessagePriority.HIGH,
             dedupe_key="dedupe-test",
         )
-        
+
         # Add duplicate
         await queue.enqueue(
             channel_id=123456789,
@@ -1506,24 +1528,26 @@ class TestDeduplicationAndEdgeCases:
             priority=MessagePriority.HIGH,
             dedupe_key="dedupe-test",
         )
-        
+
         # Verify statistics
         assert queue.stats["total_queued"] == initial_stats["total_queued"] + 2
-        assert queue.stats["total_deduplicated"] == initial_stats["total_deduplicated"] + 1
+        assert (
+            queue.stats["total_deduplicated"] == initial_stats["total_deduplicated"] + 1
+        )
 
     async def test_queue_empty_operations(self, queue):
         """Test queue operations when queue is empty."""
         # Test operations on empty queue
         assert len(queue.queue) == 0
-        
+
         # Clear empty queue
         cleared = queue.clear_queue()
         assert cleared == 0
-        
+
         # Retry on empty queue
         retried = queue.retry_failed_messages()
         assert retried == 0
-        
+
         # Get status of empty queue
         status = queue.get_queue_status()
         assert status["queue_size"] == 0

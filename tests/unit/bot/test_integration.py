@@ -3,6 +3,7 @@ Tests for IPMonitorBot integration points and configuration propagation.
 """
 
 from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
 
 from ip_monitor.bot import IPMonitorBot
@@ -121,8 +122,8 @@ class TestComponentIntegration:
         assert mock_bot_instance.admin_commands is not None
 
         # Verify they can access bot services
-        assert hasattr(mock_bot_instance.commands, 'handle_ip_command')
-        assert hasattr(mock_bot_instance.admin_commands, 'handle_command')
+        assert hasattr(mock_bot_instance.commands, "handle_ip_command")
+        assert hasattr(mock_bot_instance.admin_commands, "handle_command")
 
 
 class TestTaskIntegration:
@@ -169,7 +170,9 @@ class TestTaskIntegration:
 class TestMessageFlowIntegration:
     """Test suite for message flow integration."""
 
-    async def test_message_routing_integration(self, mock_bot_instance, mock_bot_message):
+    async def test_message_routing_integration(
+        self, mock_bot_instance, mock_bot_message
+    ):
         """Test message routing between components."""
         # Setup
         mock_bot_message.content = "!ip"
@@ -180,9 +183,13 @@ class TestMessageFlowIntegration:
         await mock_bot_instance.on_message(mock_bot_message)
 
         # Verify routing works
-        mock_bot_instance.commands.handle_ip_command.assert_called_once_with(mock_bot_message)
+        mock_bot_instance.commands.handle_ip_command.assert_called_once_with(
+            mock_bot_message
+        )
 
-    async def test_admin_command_routing_integration(self, mock_bot_instance, mock_bot_admin_message):
+    async def test_admin_command_routing_integration(
+        self, mock_bot_instance, mock_bot_admin_message
+    ):
         """Test admin command routing integration."""
         # Setup
         mock_bot_admin_message.content = "!config show"
@@ -199,7 +206,9 @@ class TestMessageFlowIntegration:
         """Test message queue integration with bot."""
         # Setup
         mock_bot_instance.rate_limiter.is_limited = AsyncMock(return_value=(False, 0))
-        mock_bot_instance.ip_service.check_ip_change = AsyncMock(return_value=(True, "192.168.1.2"))
+        mock_bot_instance.ip_service.check_ip_change = AsyncMock(
+            return_value=(True, "192.168.1.2")
+        )
         mock_bot_instance.storage.save_current_ip = Mock()
         mock_bot_instance.message_queue.add_message = AsyncMock()
 
@@ -217,24 +226,24 @@ class TestConfigurationIntegration:
         """Test configuration access across components."""
         # Verify config is accessible
         assert mock_bot_instance.config is not None
-        assert hasattr(mock_bot_instance.config, 'channel_id')
-        assert hasattr(mock_bot_instance.config, 'check_interval')
-        assert hasattr(mock_bot_instance.config, 'max_retries')
+        assert hasattr(mock_bot_instance.config, "channel_id")
+        assert hasattr(mock_bot_instance.config, "check_interval")
+        assert hasattr(mock_bot_instance.config, "max_retries")
 
     async def test_runtime_config_integration(self, mock_bot_instance):
         """Test runtime configuration changes integration."""
         # Setup
         original_interval = mock_bot_instance.base_check_interval
-        
+
         # Verify base interval is set
         assert original_interval == mock_bot_instance.config.check_interval
 
     async def test_feature_flag_integration(self, mock_bot_instance):
         """Test feature flag integration."""
         # Verify feature flags are respected
-        assert hasattr(mock_bot_instance.config, 'message_queue_enabled')
-        assert hasattr(mock_bot_instance.config, 'startup_message_enabled')
-        assert hasattr(mock_bot_instance.config, 'testing_mode')
+        assert hasattr(mock_bot_instance.config, "message_queue_enabled")
+        assert hasattr(mock_bot_instance.config, "startup_message_enabled")
+        assert hasattr(mock_bot_instance.config, "testing_mode")
 
 
 class TestServiceHealthIntegration:
@@ -244,10 +253,10 @@ class TestServiceHealthIntegration:
         """Test service health monitoring integration."""
         # Verify service health is available
         assert mock_bot_instance.service_health is not None
-        
+
         # Verify health methods are accessible
-        assert hasattr(mock_bot_instance.service_health, 'get_status')
-        assert hasattr(mock_bot_instance.service_health, 'is_degraded')
+        assert hasattr(mock_bot_instance.service_health, "get_status")
+        assert hasattr(mock_bot_instance.service_health, "is_degraded")
 
     async def test_degradation_response_integration(self, mock_bot_instance):
         """Test degradation response integration."""
@@ -255,7 +264,9 @@ class TestServiceHealthIntegration:
         mock_bot_instance.service_health.is_degraded = Mock(return_value=True)
         mock_bot_instance.service_health.get_degradation_level = Mock(return_value=2)
         mock_bot_instance.rate_limiter.is_limited = AsyncMock(return_value=(False, 0))
-        mock_bot_instance.ip_service.check_ip_change = AsyncMock(return_value=(False, "192.168.1.1"))
+        mock_bot_instance.ip_service.check_ip_change = AsyncMock(
+            return_value=(False, "192.168.1.1")
+        )
 
         # Execute
         await mock_bot_instance._scheduled_check_ip()
@@ -271,8 +282,8 @@ class TestDiscordIntegration:
         """Test Discord client integration."""
         # Verify Discord client is available
         assert mock_bot_instance.client is not None
-        assert hasattr(mock_bot_instance.client, 'get_channel')
-        assert hasattr(mock_bot_instance.client, 'user')
+        assert hasattr(mock_bot_instance.client, "get_channel")
+        assert hasattr(mock_bot_instance.client, "user")
 
     async def test_discord_rate_limiter_integration(self, mock_bot_instance):
         """Test Discord rate limiter integration."""

@@ -3,8 +3,8 @@ Logging configuration for the IP Monitor Bot.
 """
 
 import logging
-from logging.handlers import RotatingFileHandler
 import os
+from logging.handlers import RotatingFileHandler
 
 
 def setup_logging(log_level: str | None = None) -> None:

@@ -3,12 +3,12 @@ Async message queue for Discord notifications during API downtime.
 """
 
 import asyncio
-from dataclasses import asdict, dataclass
-from enum import Enum
 import json
 import logging
 import os
 import time
+from dataclasses import asdict, dataclass
+from enum import Enum
 from typing import Any
 from uuid import uuid4
 

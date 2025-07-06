@@ -3,6 +3,7 @@ Tests for IPMonitorBot initialization.
 """
 
 from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from ip_monitor.bot import IPMonitorBot

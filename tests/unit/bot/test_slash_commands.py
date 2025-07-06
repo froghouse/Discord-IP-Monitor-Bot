@@ -3,6 +3,7 @@ Tests for IPMonitorBot slash command setup and integration.
 """
 
 from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
 
 from ip_monitor.bot import IPMonitorBot
@@ -58,9 +59,9 @@ class TestSlashCommandSetup:
     async def test_slash_command_integration(self, mock_bot_instance):
         """Test slash command integration with bot instance."""
         # Verify slash command cogs are available
-        assert hasattr(mock_bot_instance, 'ip_slash_cog')
-        assert hasattr(mock_bot_instance, 'admin_slash_cog')
-        
+        assert hasattr(mock_bot_instance, "ip_slash_cog")
+        assert hasattr(mock_bot_instance, "admin_slash_cog")
+
         # Verify cogs have expected attributes
         assert mock_bot_instance.ip_slash_cog is not None
         assert mock_bot_instance.admin_slash_cog is not None
@@ -71,7 +72,7 @@ class TestSlashCommandSetup:
         # the necessary dependencies to the cogs
         ip_cog = mock_bot_instance.ip_slash_cog
         admin_cog = mock_bot_instance.admin_slash_cog
-        
+
         # These should be available for the cogs to use
         assert mock_bot_instance.ip_service is not None
         assert mock_bot_instance.storage is not None

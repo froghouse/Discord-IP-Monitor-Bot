@@ -5,8 +5,8 @@ Comprehensive tests for the IPMonitorBot class.
 from unittest.mock import AsyncMock, Mock, patch
 
 import discord
-from discord.ext import commands
 import pytest
+from discord.ext import commands
 
 from ip_monitor.bot import IPMonitorBot
 from ip_monitor.config import AppConfig
@@ -1830,11 +1830,11 @@ class TestIPMonitorBot:
         # Note: Since on_command_error is not explicitly defined in the bot,
         # we test the default Discord.py error handling behavior
         # This test validates that error handling infrastructure is in place
-        
+
         # Verify bot initialization doesn't break error handling setup
         assert bot.client is not None
-        assert hasattr(bot.client, 'tree')  # Slash command tree
-        
+        assert hasattr(bot.client, "tree")  # Slash command tree
+
         # Verify the bot can handle command processing without breaking
         # when an error occurs (this is implicit through on_message error handling)
         test_message = AsyncMock()
@@ -1843,7 +1843,7 @@ class TestIPMonitorBot:
         test_message.channel = Mock()
         test_message.channel.id = mock_config.channel_id
         test_message.content = "!unknown_command"
-        
+
         # This should not raise an exception
         await bot.on_message(test_message)
 
@@ -1885,7 +1885,7 @@ class TestIPMonitorBot:
         assert bot.client is not None
         assert bot.ip_service is not None
         assert bot.storage is not None
-        
+
         # Bot should maintain state during disconnect/reconnect cycles
         assert bot.config == mock_config
         assert bot.check_ip_task is None  # Not started yet
@@ -1924,12 +1924,12 @@ class TestIPMonitorBot:
         # Note: Discord.py handles resume events internally
         # This test verifies that the bot can handle connection restoration
         assert bot.client is not None
-        
+
         # Tasks should continue running after resume
         mock_task = AsyncMock()
         mock_task.is_running.return_value = True
         bot.check_ip_task = mock_task
-        
+
         # Verify task state is maintained
         assert bot.check_ip_task.is_running()
 
@@ -1971,7 +1971,7 @@ class TestIPMonitorBot:
         # Discord.py handles guild events internally, but bot should maintain state
         assert bot.client is not None
         assert bot.config.channel_id == mock_config.channel_id
-        
+
         # Channel access should work when guild is available
         channel = bot.client.get_channel(mock_config.channel_id)
         assert channel is not None
@@ -2225,7 +2225,7 @@ class TestIPMonitorBot:
 
         # Create and simulate task execution
         task = bot._create_check_ip_task()
-        
+
         # Access the inner coroutine function directly
         check_ip_func = task.coro
 
@@ -2233,8 +2233,12 @@ class TestIPMonitorBot:
         await check_ip_func()
 
         # Verify normal operation
-        mock_ip_commands.check_ip_once.assert_called_once_with(mock_client, user_requested=False)
-        mock_service_health.record_success.assert_called_once_with("discord_api", "scheduled_task")
+        mock_ip_commands.check_ip_once.assert_called_once_with(
+            mock_client, user_requested=False
+        )
+        mock_service_health.record_success.assert_called_once_with(
+            "discord_api", "scheduled_task"
+        )
 
     @patch("ip_monitor.bot.commands.Bot")
     @patch("ip_monitor.bot.discord.Intents")
@@ -2264,7 +2268,9 @@ class TestIPMonitorBot:
         mock_client = AsyncMock()
         mock_bot_class.return_value = mock_client
 
-        mock_service_health.is_fallback_active.side_effect = lambda mode: mode == "silent_monitoring"
+        mock_service_health.is_fallback_active.side_effect = (
+            lambda mode: mode == "silent_monitoring"
+        )
         mock_service_health.get_adjusted_interval.return_value = 5.0
 
         mock_ip_service = AsyncMock()
@@ -2323,7 +2329,7 @@ class TestIPMonitorBot:
 
         def fallback_active(mode):
             return mode in ["silent_monitoring", "read_only_mode"]
-        
+
         mock_service_health.is_fallback_active.side_effect = fallback_active
         mock_service_health.get_adjusted_interval.return_value = 5.0
 
@@ -2386,7 +2392,9 @@ class TestIPMonitorBot:
 
         mock_ip_commands = AsyncMock()
         mock_ip_commands.check_ip_once = AsyncMock()
-        mock_ip_commands.check_ip_once.side_effect = discord.DiscordException("API Error")
+        mock_ip_commands.check_ip_once.side_effect = discord.DiscordException(
+            "API Error"
+        )
         mock_ip_commands_class.return_value = mock_ip_commands
 
         mock_ip_service = AsyncMock()
@@ -2549,14 +2557,16 @@ class TestTaskScheduling:
 
         # Verify task properties
         assert task is not None
-        assert hasattr(task, 'start')
-        assert hasattr(task, 'stop')
-        assert hasattr(task, 'restart')
-        assert hasattr(task, 'cancel')
-        assert hasattr(task, 'is_running')
-        
+        assert hasattr(task, "start")
+        assert hasattr(task, "stop")
+        assert hasattr(task, "restart")
+        assert hasattr(task, "cancel")
+        assert hasattr(task, "is_running")
+
         # Verify interval was set correctly
-        mock_service_health.get_adjusted_interval.assert_called_once_with(mock_config.check_interval)
+        mock_service_health.get_adjusted_interval.assert_called_once_with(
+            mock_config.check_interval
+        )
 
     @patch("ip_monitor.bot.commands.Bot")
     @patch("ip_monitor.bot.discord.Intents")
@@ -2989,7 +2999,9 @@ class TestTaskScheduling:
         original_task = bot.check_ip_task
 
         # Simulate no significant interval change
-        mock_service_health.get_adjusted_interval.return_value = 5.05  # Very small change
+        mock_service_health.get_adjusted_interval.return_value = (
+            5.05  # Very small change
+        )
 
         # Call adjustment method
         bot._adjust_check_interval_for_degradation()

@@ -3,6 +3,7 @@ Tests for IPMonitorBot scheduled tasks and IP checking.
 """
 
 from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
 
 from ip_monitor.bot import IPMonitorBot
@@ -15,7 +16,9 @@ class TestScheduledIPCheck:
         """Test normal scheduled IP check operation."""
         # Setup
         mock_bot_instance.rate_limiter.is_limited = AsyncMock(return_value=(False, 0))
-        mock_bot_instance.ip_service.check_ip_change = AsyncMock(return_value=(True, "192.168.1.2"))
+        mock_bot_instance.ip_service.check_ip_change = AsyncMock(
+            return_value=(True, "192.168.1.2")
+        )
         mock_bot_instance.storage.save_current_ip = Mock()
         mock_bot_instance.storage.add_ip_to_history = Mock()
         mock_bot_instance.message_queue.add_message = AsyncMock()
@@ -33,7 +36,9 @@ class TestScheduledIPCheck:
         """Test scheduled IP check when IP hasn't changed."""
         # Setup
         mock_bot_instance.rate_limiter.is_limited = AsyncMock(return_value=(False, 0))
-        mock_bot_instance.ip_service.check_ip_change = AsyncMock(return_value=(False, "192.168.1.1"))
+        mock_bot_instance.ip_service.check_ip_change = AsyncMock(
+            return_value=(False, "192.168.1.1")
+        )
         mock_bot_instance.storage.save_current_ip = Mock()
         mock_bot_instance.message_queue.add_message = AsyncMock()
 
@@ -62,8 +67,12 @@ class TestScheduledIPCheck:
         # Setup
         mock_bot_instance.rate_limiter.is_limited = AsyncMock(return_value=(False, 0))
         mock_bot_instance.service_health.is_degraded = Mock(return_value=True)
-        mock_bot_instance.service_health.get_degradation_level = Mock(return_value=4)  # SEVERE
-        mock_bot_instance.ip_service.check_ip_change = AsyncMock(return_value=(True, "192.168.1.2"))
+        mock_bot_instance.service_health.get_degradation_level = Mock(
+            return_value=4
+        )  # SEVERE
+        mock_bot_instance.ip_service.check_ip_change = AsyncMock(
+            return_value=(True, "192.168.1.2")
+        )
         mock_bot_instance.storage.save_current_ip = Mock()
         mock_bot_instance.message_queue.add_message = AsyncMock()
 
@@ -80,7 +89,9 @@ class TestScheduledIPCheck:
         """Test scheduled IP check with Discord exception."""
         # Setup
         mock_bot_instance.rate_limiter.is_limited = AsyncMock(return_value=(False, 0))
-        mock_bot_instance.ip_service.check_ip_change = AsyncMock(return_value=(True, "192.168.1.2"))
+        mock_bot_instance.ip_service.check_ip_change = AsyncMock(
+            return_value=(True, "192.168.1.2")
+        )
         mock_bot_instance.storage.save_current_ip = Mock()
         mock_bot_instance.message_queue.add_message = AsyncMock(
             side_effect=Exception("Discord API error")
@@ -200,14 +211,16 @@ class TestTaskCreationAndManagement:
 
         # Verify task properties
         assert task is not None
-        assert hasattr(task, 'start')
-        assert hasattr(task, 'stop')
-        assert hasattr(task, 'restart')
-        assert hasattr(task, 'cancel')
-        assert hasattr(task, 'is_running')
-        
+        assert hasattr(task, "start")
+        assert hasattr(task, "stop")
+        assert hasattr(task, "restart")
+        assert hasattr(task, "cancel")
+        assert hasattr(task, "is_running")
+
         # Verify interval was set correctly
-        mock_service_health.get_adjusted_interval.assert_called_once_with(mock_bot_config.check_interval)
+        mock_service_health.get_adjusted_interval.assert_called_once_with(
+            mock_bot_config.check_interval
+        )
 
 
 class TestTaskIntervalAdjustment:
