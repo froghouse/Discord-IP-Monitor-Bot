@@ -138,6 +138,10 @@ class IntelligentCache:
         """Generate a unique cache key."""
         combined = f"{namespace}:{identifier}"
         return hashlib.sha256(combined.encode()).hexdigest()
+    
+    def _get_original_key(self, namespace: str, identifier: str) -> str:
+        """Get the original namespace:identifier key."""
+        return f"{namespace}:{identifier}"
 
     def _evict_expired(self) -> None:
         """Remove expired entries from memory cache."""
@@ -225,13 +229,14 @@ class IntelligentCache:
             metadata: Additional metadata to store
         """
         key = self._generate_key(namespace, identifier)
+        original_key = self._get_original_key(namespace, identifier)
 
         if ttl is None:
             ttl = self.default_ttl.get(cache_type, 300)
 
         current_time = time.time()
         entry = CacheEntry(
-            key=key,
+            key=original_key,  # Store original key for namespace operations
             value=value,
             created_at=current_time,
             last_accessed=current_time,
@@ -398,7 +403,9 @@ class IntelligentCache:
             for entry_data in cache_data.get("entries", []):
                 entry = CacheEntry.from_dict(entry_data)
                 if not entry.is_expired():
-                    self.memory_cache[entry.key] = entry
+                    # Generate hash key for storage from original key
+                    hash_key = hashlib.sha256(entry.key.encode()).hexdigest()
+                    self.memory_cache[hash_key] = entry
                     loaded_count += 1
 
             # Load stats
