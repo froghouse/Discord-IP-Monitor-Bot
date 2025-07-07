@@ -178,8 +178,11 @@ class IPMonitorBot:
         # Cancel the background task properly
         if self.check_ip_task and self.check_ip_task.is_running():
             logger.info("Stopping scheduled IP check task")
-            self.check_ip_task.cancel()
-            logger.info("IP check task cancelled")
+            try:
+                self.check_ip_task.cancel()
+                logger.info("IP check task cancelled")
+            except Exception as e:
+                logger.warning(f"Error cancelling IP check task: {e}")
 
         # Close any pending HTTP connections in the IP service
         logger.info("Closing HTTP connections")
