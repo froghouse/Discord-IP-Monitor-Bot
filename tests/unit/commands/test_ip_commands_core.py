@@ -79,9 +79,17 @@ class TestManualIPCheck:
         ip_commands.storage.load_last_ip = Mock(return_value="192.168.1.1")
         ip_commands.storage.save_current_ip = Mock(return_value=True)
 
-        with patch.object(
-            ip_commands, "send_message_with_retry", new_callable=AsyncMock
-        ) as mock_send:
+        # Mock get_channel to return a valid channel
+        channel = AsyncMock()
+        mock_discord_client.get_channel.return_value = channel
+
+        with (
+            patch.object(
+                ip_commands, "send_message_with_retry", new_callable=AsyncMock
+            ) as mock_send,
+            patch("ip_monitor.commands.ip_commands.service_health") as mock_health,
+        ):
+            mock_health.is_fallback_active.return_value = False
             mock_send.return_value = True
 
             # Execute command
