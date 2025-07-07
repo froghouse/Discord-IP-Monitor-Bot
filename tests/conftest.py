@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sqlite3
 import sys
@@ -105,10 +106,11 @@ def mock_message_queue():
             "total_failed": 0,
         }
     )
-    queue.clear = AsyncMock()
-    queue.start_processing = Mock()  # Changed from AsyncMock to Mock
-    queue.stop_processing = AsyncMock()
-    queue.set_discord_client = Mock()  # Add missing method as Mock
+    queue.clear_queue = Mock(return_value=0)  # Fixed: clear_queue is synchronous, not clear
+    queue.retry_failed_messages = Mock(return_value=0)  # Added missing method
+    queue.start_processing = Mock()  # Correct: synchronous method
+    queue.stop_processing = AsyncMock()  # Correct: async method
+    queue.set_discord_client = Mock()  # Correct: synchronous method
     return queue
 
 
@@ -236,7 +238,9 @@ def mock_storage():
 @pytest.fixture
 def mock_stop_callback():
     """Create a mock stop callback."""
-    return AsyncMock()
+    # Return a simple Mock that doesn't create async coroutines
+    # In tests, the stop_callback is typically not called, just passed around
+    return Mock()
 
 
 @pytest.fixture
@@ -485,7 +489,7 @@ async def mock_api_cluster():
 
 
 @pytest.fixture
-def mock_httpx_client():
+async def mock_httpx_client():
     """Create a mock httpx client for testing."""
     client = Mock()
     client.get = AsyncMock()
@@ -500,7 +504,14 @@ def mock_httpx_client():
 
     client.get.return_value = response
 
-    return client
+    yield client
+    
+    # Cleanup: ensure aclose is properly awaited if it was called
+    if client.aclose.called:
+        try:
+            await client.aclose()
+        except Exception:
+            pass  # Ignore cleanup errors in tests
 
 
 @pytest.fixture
