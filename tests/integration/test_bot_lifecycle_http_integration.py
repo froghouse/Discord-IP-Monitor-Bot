@@ -46,6 +46,7 @@ class TestBotLifecycleHTTPIntegration:
         config.check_interval = 1  # 1 second for fast testing
         config.max_retries = 2
         config.retry_delay = 0.1
+        config.concurrent_api_checks = True
         config.circuit_breaker_enabled = True
         config.circuit_breaker_failure_threshold = 3
         config.circuit_breaker_recovery_timeout = 1.0
@@ -58,6 +59,12 @@ class TestBotLifecycleHTTPIntegration:
         config.connection_timeout = 5.0
         config.read_timeout = 10.0
         config.ip_history_size = 10
+        config.connection_pool_size = 10
+        config.connection_pool_max_keepalive = 5
+        config.rate_limit_period = 300
+        config.max_checks_per_period = 10
+        config.ip_file = "last_ip.json"
+        config.ip_history_file = "ip_history.json"
         return config
 
     @pytest.fixture
@@ -85,7 +92,7 @@ class TestBotLifecycleHTTPIntegration:
     @pytest.fixture
     def storage(self, temp_db_path):
         """Create SQLite storage."""
-        return SQLiteIPStorage(temp_db_path)
+        return SQLiteIPStorage(temp_db_path, history_size=10)
 
     @pytest.fixture
     async def bot_instance(self, mock_config, mock_discord_client, storage):
