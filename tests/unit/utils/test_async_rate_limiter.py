@@ -7,7 +7,7 @@ functionality used throughout the IP Monitor Bot.
 
 import asyncio
 import time
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -25,7 +25,8 @@ class TestAsyncRateLimiter:
     @pytest.fixture
     def strict_rate_limiter(self):
         """Create a strict rate limiter for testing edge cases."""
-        return AsyncRateLimiter(period=0.2, max_calls=2)  # Reduced period from 5 to 0.2 for faster testing
+        # Reduced period from 5 to 0.2 for faster testing
+        return AsyncRateLimiter(period=0.2, max_calls=2)
 
     async def test_initialization(self, rate_limiter):
         """Test rate limiter initialization."""
@@ -152,9 +153,9 @@ class TestAsyncRateLimiter:
 
     async def test_wait_if_limited_is_limited(self, strict_rate_limiter):
         """Test wait_if_limited when limited."""
-        # Fill up the rate limiter
+        # Fill up the rate limiter with recent calls (within the 0.2 second period)
         current_time = time.time()
-        strict_rate_limiter.calls = [current_time - i for i in range(2)]
+        strict_rate_limiter.calls = [current_time - 0.01, current_time - 0.02]
 
         start_time = time.time()
         waited = await strict_rate_limiter.wait_if_limited()
@@ -175,9 +176,9 @@ class TestAsyncRateLimiter:
 
     async def test_try_acquire_failure(self, strict_rate_limiter):
         """Test try_acquire when limited."""
-        # Fill up the rate limiter
+        # Fill up the rate limiter with recent calls (within the 0.2 second period)
         current_time = time.time()
-        strict_rate_limiter.calls = [current_time - i for i in range(2)]
+        strict_rate_limiter.calls = [current_time - 0.01, current_time - 0.02]
 
         acquired = await strict_rate_limiter.try_acquire()
 
@@ -195,9 +196,9 @@ class TestAsyncRateLimiter:
 
     async def test_acquire_with_wait(self, strict_rate_limiter):
         """Test acquire when limited (will wait)."""
-        # Fill up the rate limiter
+        # Fill up the rate limiter with recent calls (within the 0.2 second period)
         current_time = time.time()
-        strict_rate_limiter.calls = [current_time - i for i in range(2)]
+        strict_rate_limiter.calls = [current_time - 0.01, current_time - 0.02]
 
         start_time = time.time()
         await strict_rate_limiter.acquire()
@@ -205,7 +206,8 @@ class TestAsyncRateLimiter:
 
         # Should have waited and then acquired
         assert end_time - start_time >= 0.1  # Reduced from 1.0
-        # After waiting, old calls may be expired and cleaned up, but there should be at least one new call
+        # After waiting, old calls may be expired and cleaned up,
+        # but there should be at least one new call
         assert len(strict_rate_limiter.calls) >= 1
         # The newest call should be recent (from the acquire operation)
         assert max(strict_rate_limiter.calls) >= start_time
@@ -348,7 +350,8 @@ class TestTokenBucketRateLimiter:
     @pytest.fixture
     def small_bucket(self):
         """Create a small token bucket for testing edge cases."""
-        return TokenBucketRateLimiter(rate=10.0, capacity=3)  # Increased rate from 1.0 to 10.0 for faster testing
+        # Increased rate from 1.0 to 10.0 for faster testing
+        return TokenBucketRateLimiter(rate=10.0, capacity=3)
 
     async def test_initialization(self, token_bucket):
         """Test token bucket initialization."""
