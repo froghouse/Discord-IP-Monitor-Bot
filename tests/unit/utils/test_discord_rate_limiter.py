@@ -62,8 +62,8 @@ class TestDiscordRateLimiter:
     def test_initialization(self, rate_limiter):
         """Test rate limiter initialization."""
         assert rate_limiter.max_retries == 3
-        assert rate_limiter.base_delay == 1.0
-        assert rate_limiter.max_delay == 30.0
+        assert rate_limiter.base_delay == 0.1
+        assert rate_limiter.max_delay == 1.0
         assert rate_limiter.backoff_factor == 2.0
         assert rate_limiter.jitter is True
         assert rate_limiter.rate_limit_buckets == {}
@@ -72,10 +72,10 @@ class TestDiscordRateLimiter:
     def test_calculate_delay_no_retry_after(self, no_jitter_limiter):
         """Test delay calculation without retry-after header."""
         # Test exponential backoff
-        assert no_jitter_limiter._calculate_delay(0) == 2.0  # base_delay
-        assert no_jitter_limiter._calculate_delay(1) == 4.0  # base_delay * 2^1
-        assert no_jitter_limiter._calculate_delay(2) == 8.0  # base_delay * 2^2
-        assert no_jitter_limiter._calculate_delay(3) == 10.0  # capped at max_delay
+        assert no_jitter_limiter._calculate_delay(0) == 0.1  # base_delay
+        assert no_jitter_limiter._calculate_delay(1) == 0.2  # base_delay * 2^1
+        assert no_jitter_limiter._calculate_delay(2) == 0.4  # base_delay * 2^2
+        assert no_jitter_limiter._calculate_delay(3) == 0.5  # capped at max_delay
 
     def test_calculate_delay_with_retry_after(self, no_jitter_limiter):
         """Test delay calculation with retry-after header."""
@@ -86,8 +86,8 @@ class TestDiscordRateLimiter:
         """Test delay calculation with jitter."""
         with patch("secrets.SystemRandom.uniform", return_value=0.75):
             delay = rate_limiter._calculate_delay(0)
-            # Should be base_delay (1.0) * jitter (0.75) = 0.75
-            assert delay == 0.75
+            # Should be base_delay (0.1) * jitter (0.75) = 0.075
+            assert delay == pytest.approx(0.075)
 
     def test_get_bucket_key(self, rate_limiter):
         """Test bucket key generation."""
@@ -526,14 +526,14 @@ class TestDiscordRateLimiter:
 
         # Check timing between calls (allowing for small variations)
         if len(call_times) >= 2:
-            # First retry should be after ~2 seconds (base_delay)
+            # First retry should be after ~0.1 seconds (base_delay)
             first_gap = call_times[1] - call_times[0]
-            assert 1.8 <= first_gap <= 2.2
+            assert 0.08 <= first_gap <= 0.12
 
         if len(call_times) >= 3:
-            # Second retry should be after ~4 seconds (base_delay * 2)
+            # Second retry should be after ~0.2 seconds (base_delay * 2)
             second_gap = call_times[2] - call_times[1]
-            assert 3.8 <= second_gap <= 4.2
+            assert 0.18 <= second_gap <= 0.22
 
     async def test_jitter_randomization(self, rate_limiter):
         """Test that jitter adds randomization to delays."""
@@ -549,16 +549,16 @@ class TestDiscordRateLimiter:
 
         # All delays should be different due to jitter
         assert len(set(delays)) == 3
-        # All delays should be within expected range
-        assert all(0.5 <= d <= 4.0 for d in delays)
+        # All delays should be within expected range (adjusted for 0.1 base_delay and 1.0 max_delay)
+        assert all(0.05 <= d <= 1.0 for d in delays)
 
     async def test_max_delay_cap(self, rate_limiter):
         """Test that delays are capped at max_delay."""
         # Test with high attempt number
         delay = rate_limiter._calculate_delay(10)  # Would be very high without cap
 
-        # Should be capped at max_delay (30.0) even with jitter
-        assert delay <= 30.0
+        # Should be capped at max_delay (1.0) even with jitter
+        assert delay <= 1.0
 
     async def test_rate_limiter_state_isolation(self):
         """Test that different rate limiter instances maintain separate state."""
