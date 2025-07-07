@@ -160,6 +160,7 @@ def mock_ip_api_config():
     """Create a mock IP API configuration."""
     config = Mock()
     config.get_all_apis = Mock(return_value=[])
+    config.list_apis = Mock(return_value=[])
     config.add_api = Mock(return_value=True)
     config.remove_api = Mock(return_value=True)
     config.enable_api = Mock(return_value=True)

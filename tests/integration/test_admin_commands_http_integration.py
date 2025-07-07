@@ -112,7 +112,7 @@ class TestAdminCommandsHTTPIntegration:
             await admin_router.handle_admin_command(mock_admin_message)
 
             # Verify API was added
-            apis = api_config.get_all_apis()
+            apis = api_config.list_apis()
             assert len(apis) == 1
             assert apis[0].name == "TestAPI"
             assert apis[0].url == f"{server.base_url}/json"
@@ -319,7 +319,7 @@ class TestAdminCommandsHTTPIntegration:
                 await admin_router.handle_admin_command(mock_admin_message)
 
                 # Verify API was added
-                apis = api_config.get_all_apis()
+                apis = api_config.list_apis()
                 assert len(apis) == i + 1
 
             # Test all APIs
@@ -489,7 +489,7 @@ class TestAdminCommandsHTTPIntegration:
                 await admin_router.handle_admin_command(mock_admin_message)
 
                 # Should reject malicious URLs
-                apis = api_config.get_all_apis()
+                apis = api_config.list_apis()
                 assert not any(api.url == url for api in apis)
 
     async def test_comprehensive_admin_workflow(
@@ -562,7 +562,7 @@ class TestAdminCommandsHTTPIntegration:
         assert backup_server.get_request_count() >= 1
 
         # Verify APIs were properly configured
-        apis = api_config.get_all_apis()
+        apis = api_config.list_apis()
         assert len(apis) == 2
         assert any(api.name == "MainAPI" for api in apis)
         assert any(api.name == "BackupAPI" for api in apis)

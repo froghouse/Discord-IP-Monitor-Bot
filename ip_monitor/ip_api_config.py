@@ -223,6 +223,30 @@ class IPAPIManager:
         self.save_apis()
         return True
 
+    def get_api_by_name(self, name: str) -> IPAPIEndpoint | None:
+        """
+        Get an API endpoint by name.
+
+        Args:
+            name: Name of the API to find
+
+        Returns:
+            API endpoint if found, None otherwise
+        """
+        for endpoint in self.endpoints.values():
+            if endpoint.name == name:
+                return endpoint
+        return None
+
+    def get_all_apis(self) -> list[IPAPIEndpoint]:
+        """
+        Get all API endpoints (alias for list_apis for backward compatibility).
+
+        Returns:
+            List of all API endpoints
+        """
+        return self.list_apis()
+
     def get_api_urls(self, enabled_only: bool = True) -> list[str]:
         """
         Get list of API URLs for use by IPService.

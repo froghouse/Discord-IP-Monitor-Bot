@@ -48,6 +48,7 @@ class TestIPServiceHTTPIntegration:
             connection_timeout=mock_config.connection_timeout,
             read_timeout=mock_config.read_timeout,
             cache_enabled=mock_config.cache_enabled,
+            use_custom_apis=False,  # Disable custom APIs, use legacy_apis for testing
         )
 
     async def test_successful_json_api_call(self, http_fixture, ip_service):
@@ -55,8 +56,8 @@ class TestIPServiceHTTPIntegration:
         server = await http_fixture.create_server()
 
         # Configure IP service to use our mock server
-        with patch.object(ip_service, "apis", [f"{server.base_url}/json"]):
-            ip_address = await ip_service.get_current_ip()
+        with patch.object(ip_service, "legacy_apis", [f"{server.base_url}/json"]):
+            ip_address = await ip_service.get_public_ip()
 
         assert ip_address == "203.0.113.1"
         assert server.get_request_count() == 1
@@ -72,8 +73,8 @@ class TestIPServiceHTTPIntegration:
         server = await http_fixture.create_server()
 
         # Configure IP service to use our mock server
-        with patch.object(ip_service, "apis", [f"{server.base_url}/text"]):
-            ip_address = await ip_service.get_current_ip()
+        with patch.object(ip_service, "legacy_apis", [f"{server.base_url}/text"]):
+            ip_address = await ip_service.get_public_ip()
 
         assert ip_address == "203.0.113.1"
         assert server.get_request_count() == 1
@@ -84,7 +85,7 @@ class TestIPServiceHTTPIntegration:
 
         # Mock IP API config to handle custom field
         mock_api_config = Mock()
-        mock_api_config.get_all_apis.return_value = [
+        mock_api_config.list_apis.return_value = [
             IPAPIEndpoint(
                 id="custom",
                 name="Custom API",
@@ -98,7 +99,7 @@ class TestIPServiceHTTPIntegration:
 
         with patch("ip_monitor.ip_service.ip_api_manager", mock_api_config):
             with patch.object(ip_service, "use_custom_apis", True):
-                ip_address = await ip_service.get_current_ip()
+                ip_address = await ip_service.get_public_ip()
 
         assert ip_address == "203.0.113.1"
         assert server.get_request_count() == 1
@@ -117,7 +118,7 @@ class TestIPServiceHTTPIntegration:
             "apis",
             [f"{error_server.base_url}/json", f"{success_server.base_url}/json"],
         ):
-            ip_address = await ip_service.get_current_ip()
+            ip_address = await ip_service.get_public_ip()
 
         assert ip_address == "203.0.113.1"
         assert error_server.get_request_count() == 1
@@ -146,8 +147,8 @@ class TestIPServiceHTTPIntegration:
 
         server.app.router._resources[0]._handler = failing_handler
 
-        with patch.object(ip_service, "apis", [f"{server.base_url}/json"]):
-            ip_address = await ip_service.get_current_ip()
+        with patch.object(ip_service, "legacy_apis", [f"{server.base_url}/json"]):
+            ip_address = await ip_service.get_public_ip()
 
         assert ip_address == "203.0.113.1"
         assert server.get_request_count() >= 2  # Should have retried
@@ -169,7 +170,7 @@ class TestIPServiceHTTPIntegration:
                 f"{fast_server.base_url}/json",
             ],
         ):
-            ip_address = await ip_service.get_current_ip()
+            ip_address = await ip_service.get_public_ip()
 
         assert ip_address == "203.0.113.1"
         # Should have failed over to fast server
@@ -185,7 +186,7 @@ class TestIPServiceHTTPIntegration:
             "apis",
             [f"{malformed_server.base_url}/malformed", f"{good_server.base_url}/json"],
         ):
-            ip_address = await ip_service.get_current_ip()
+            ip_address = await ip_service.get_public_ip()
 
         assert ip_address == "203.0.113.1"
         assert malformed_server.get_request_count() == 1
@@ -201,7 +202,7 @@ class TestIPServiceHTTPIntegration:
             "apis",
             [f"{empty_server.base_url}/empty", f"{good_server.base_url}/json"],
         ):
-            ip_address = await ip_service.get_current_ip()
+            ip_address = await ip_service.get_public_ip()
 
         assert ip_address == "203.0.113.1"
         assert empty_server.get_request_count() == 1
@@ -217,7 +218,7 @@ class TestIPServiceHTTPIntegration:
             "apis",
             [f"{invalid_server.base_url}/invalid_ip", f"{valid_server.base_url}/json"],
         ):
-            ip_address = await ip_service.get_current_ip()
+            ip_address = await ip_service.get_public_ip()
 
         assert ip_address == "203.0.113.1"
         assert invalid_server.get_request_count() == 1
@@ -240,11 +241,11 @@ class TestIPServiceHTTPIntegration:
             ],
         ):
             # First request should succeed
-            ip_address1 = await ip_service.get_current_ip()
+            ip_address1 = await ip_service.get_public_ip()
             assert ip_address1 == "203.0.113.1"
 
             # Second request should be rate limited, fail over to backup
-            ip_address2 = await ip_service.get_current_ip()
+            ip_address2 = await ip_service.get_public_ip()
             assert ip_address2 == "203.0.113.1"
 
         assert rate_limited_server.get_request_count() >= 1
@@ -281,7 +282,7 @@ class TestIPServiceHTTPIntegration:
                 f"{server3.base_url}/json",
             ],
         ):
-            ip_address = await ip_service.get_current_ip()
+            ip_address = await ip_service.get_public_ip()
 
         end_time = asyncio.get_event_loop().time()
         duration = end_time - start_time
@@ -310,7 +311,7 @@ class TestIPServiceHTTPIntegration:
 
         with patch("ip_monitor.ip_service.ip_api_manager", api_config):
             with patch.object(ip_service, "use_custom_apis", True):
-                ip_address = await ip_service.get_current_ip()
+                ip_address = await ip_service.get_public_ip()
 
         assert ip_address == "203.0.113.1"
         assert server.get_request_count() == 1
@@ -345,7 +346,7 @@ class TestIPServiceHTTPIntegration:
         ):
             # First few requests should trigger circuit breaker
             for _ in range(3):
-                ip_address = await ip_service.get_current_ip()
+                ip_address = await ip_service.get_public_ip()
                 assert ip_address == "203.0.113.1"
 
             # Circuit breaker should prevent further calls to failing server
@@ -353,7 +354,7 @@ class TestIPServiceHTTPIntegration:
 
             # Additional requests should use backup server only
             for _ in range(2):
-                ip_address = await ip_service.get_current_ip()
+                ip_address = await ip_service.get_public_ip()
                 assert ip_address == "203.0.113.1"
 
             # Failing server should not receive more requests
@@ -367,21 +368,21 @@ class TestIPServiceHTTPIntegration:
         urls = cluster.get_server_urls()
         with patch.object(ip_service, "apis", urls):
             # Initial request should succeed
-            ip_address = await ip_service.get_current_ip()
+            ip_address = await ip_service.get_public_ip()
             assert ip_address == "203.0.113.1"
 
             # Fail primary server
             cluster.fail_server(0)
 
             # Should fail over to secondary servers
-            ip_address = await ip_service.get_current_ip()
+            ip_address = await ip_service.get_public_ip()
             assert ip_address == "203.0.113.1"
 
             # Fail second server
             cluster.fail_server(1)
 
             # Should still work with third server
-            ip_address = await ip_service.get_current_ip()
+            ip_address = await ip_service.get_public_ip()
             assert ip_address == "203.0.113.1"
 
         # Verify requests were distributed
@@ -405,7 +406,7 @@ class TestIPServiceHTTPIntegration:
             with patch.object(ip_service, "use_custom_apis", True):
                 # Make multiple requests to gather performance data
                 for _ in range(5):
-                    await ip_service.get_current_ip()
+                    await ip_service.get_public_ip()
 
         # Check performance statistics
         stats = api_config.get_performance_stats()
@@ -425,10 +426,10 @@ class TestIPServiceHTTPIntegration:
         ip_service.connection_pool_size = 5
         ip_service.connection_pool_max_keepalive = 3
 
-        with patch.object(ip_service, "apis", [f"{server.base_url}/json"]):
+        with patch.object(ip_service, "legacy_apis", [f"{server.base_url}/json"]):
             # Make multiple requests to test connection reuse
             for _ in range(10):
-                ip_address = await ip_service.get_current_ip()
+                ip_address = await ip_service.get_public_ip()
                 assert ip_address == "203.0.113.1"
 
         assert server.get_request_count() == 10
@@ -456,7 +457,7 @@ class TestIPServiceHTTPIntegration:
         ):
             for _ in range(total_attempts):
                 try:
-                    ip_address = await ip_service.get_current_ip()
+                    ip_address = await ip_service.get_public_ip()
                     if ip_address == "203.0.113.1":
                         success_count += 1
                 except Exception:
