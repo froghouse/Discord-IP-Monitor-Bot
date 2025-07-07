@@ -54,7 +54,7 @@ class TestIPMonitorBot:
         storage = AsyncMock()
         storage.load_last_ip.return_value = "192.168.1.1"
         storage.save_current_ip = AsyncMock()
-        storage.migrate_from_json = AsyncMock()
+        storage.migrate_from_json = Mock()  # migrate_from_json() is synchronous
         return storage
 
     @pytest.fixture
@@ -62,7 +62,7 @@ class TestIPMonitorBot:
         """Mock IP service for testing."""
         service = AsyncMock()
         service.get_public_ip.return_value = "192.168.1.1"
-        service.set_last_known_ip = AsyncMock()
+        service.set_last_known_ip = Mock()  # set_last_known_ip() is synchronous
         service.close = AsyncMock()
         return service
 

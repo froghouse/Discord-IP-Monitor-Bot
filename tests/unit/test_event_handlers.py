@@ -43,7 +43,8 @@ class TestOnReadyEventHandler:
         """Test successful on_ready event handler."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_channel = AsyncMock()
@@ -114,7 +115,8 @@ class TestOnReadyEventHandler:
         """Test on_ready with channel not found."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_client.get_channel.return_value = None
@@ -156,7 +158,8 @@ class TestOnReadyEventHandler:
         """Test on_ready with Discord exception."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_client.get_channel.side_effect = discord.DiscordException("API Error")
@@ -196,7 +199,8 @@ class TestOnReadyEventHandler:
         """Test on_ready with message queue disabled."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_channel = AsyncMock()
@@ -258,7 +262,8 @@ class TestOnReadyEventHandler:
         """Test on_ready with startup message disabled."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_channel = AsyncMock()
@@ -321,7 +326,8 @@ class TestOnMessageEventHandler:
         """Test on_message handling IP command."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_bot_class.return_value = mock_client
@@ -371,7 +377,8 @@ class TestOnMessageEventHandler:
         """Test on_message handling admin command."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_bot_class.return_value = mock_client
@@ -419,7 +426,8 @@ class TestOnMessageEventHandler:
         """Test on_message ignoring bot's own messages."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_bot_class.return_value = mock_client
@@ -464,7 +472,8 @@ class TestOnMessageEventHandler:
         """Test on_message ignoring messages from wrong channel for non-admin."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_bot_class.return_value = mock_client
@@ -514,7 +523,8 @@ class TestOnMessageEventHandler:
         """Test on_message allowing admin commands from any channel."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_bot_class.return_value = mock_client
@@ -566,7 +576,8 @@ class TestOnMessageEventHandler:
         """Test on_message handling Discord exception."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_bot_class.return_value = mock_client
@@ -625,7 +636,8 @@ class TestOnMessageEventHandler:
         """Test on_message handling unexpected exception."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_bot_class.return_value = mock_client
@@ -682,7 +694,8 @@ class TestOnMessageEventHandler:
         """Test on_message when error notification itself fails."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_bot_class.return_value = mock_client
@@ -742,7 +755,8 @@ class TestMessageHandlingEdgeCases:
         """Test on_message handling empty message content."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_bot_class.return_value = mock_client
@@ -790,7 +804,8 @@ class TestMessageHandlingEdgeCases:
         """Test on_message handling unknown commands."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_bot_class.return_value = mock_client
@@ -838,7 +853,8 @@ class TestMessageHandlingEdgeCases:
         """Test on_message command case sensitivity."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_bot_class.return_value = mock_client
@@ -886,7 +902,8 @@ class TestMessageHandlingEdgeCases:
         """Test on_message handling direct messages."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_bot_class.return_value = mock_client
@@ -944,7 +961,8 @@ class TestConnectionEventHandlers:
         """Test handling of disconnect events."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_bot_class.return_value = mock_client
@@ -985,7 +1003,8 @@ class TestConnectionEventHandlers:
         """Test handling of connection resume events."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_bot_class.return_value = mock_client
@@ -1032,7 +1051,8 @@ class TestGuildEventHandlers:
         """Test handling of guild availability changes."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_client.get_channel.return_value = AsyncMock()
@@ -1077,7 +1097,8 @@ class TestCommandErrorHandler:
         """Test command error handling for slash commands."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_bot_class.return_value = mock_client

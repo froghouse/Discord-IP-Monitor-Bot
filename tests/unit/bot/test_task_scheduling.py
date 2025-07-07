@@ -40,7 +40,8 @@ class TestTaskScheduling:
         """Test creation of IP check task."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
         mock_service_health.get_adjusted_interval.return_value = 5.0
 
@@ -88,7 +89,8 @@ class TestTaskScheduling:
         """Test task lifecycle management (start, stop, restart)."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
         mock_service_health.get_adjusted_interval.return_value = 5.0
 
@@ -135,7 +137,8 @@ class TestTaskScheduling:
         """Test task interval adjustment based on service health."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
         mock_service_health.get_adjusted_interval.return_value = (
             10.0  # Different interval
@@ -178,7 +181,8 @@ class TestTaskScheduling:
         """Test task before_loop hook functionality."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.wait_until_ready = AsyncMock()
         mock_bot_class.return_value = mock_client
         mock_service_health.get_adjusted_interval.return_value = 5.0
@@ -217,7 +221,8 @@ class TestTaskScheduling:
         """Test error handling in task before_loop hook."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.wait_until_ready = AsyncMock(
             side_effect=Exception("Client not ready")
         )
@@ -258,7 +263,8 @@ class TestTaskScheduling:
         """Test task error handler functionality."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
         mock_service_health.get_adjusted_interval.return_value = 5.0
 
@@ -296,7 +302,8 @@ class TestTaskScheduling:
         """Test task error handler exception handling."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
         mock_service_health.get_adjusted_interval.return_value = 5.0
 
@@ -334,7 +341,8 @@ class TestTaskScheduling:
         """Test task error handler restart when task is running."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
         mock_service_health.get_adjusted_interval.return_value = 5.0
 
@@ -373,7 +381,8 @@ class TestTaskScheduling:
         """Test task error handler start when task is stopped."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
         mock_service_health.get_adjusted_interval.return_value = 5.0
 
@@ -415,14 +424,15 @@ class TestTaskScheduling:
         """Test adjust check interval when no change is needed."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
         mock_service_health.get_adjusted_interval.return_value = 5.0  # Same as current
 
         mock_task = AsyncMock()
         mock_task.is_running.return_value = True
         mock_task.minutes = 5.0  # Current interval matches adjusted interval
-        mock_task.cancel = AsyncMock()
+        mock_task.cancel = Mock()  # cancel() is synchronous
 
         # Initialize bot
         bot = IPMonitorBot(mock_bot_config)
@@ -461,7 +471,8 @@ class TestTaskScheduling:
         """Test adjust check interval when no task exists."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
         mock_service_health.get_adjusted_interval.return_value = 10.0
 
@@ -485,7 +496,7 @@ class TestTaskErrorHandling:
         # Setup
         mock_task = AsyncMock()
         mock_task.is_running.return_value = True
-        mock_task.cancel = AsyncMock()
+        mock_task.cancel = Mock()  # cancel() is synchronous
         mock_bot_instance.check_ip_task = mock_task
 
         # Execute
@@ -499,7 +510,7 @@ class TestTaskErrorHandling:
         # Setup
         mock_task = AsyncMock()
         mock_task.is_running.return_value = True
-        mock_task.cancel = AsyncMock(side_effect=Exception("Cancel failed"))
+        mock_task.cancel = Mock(side_effect=Exception("Cancel failed"))  # cancel() is synchronous
         mock_bot_instance.check_ip_task = mock_task
 
         # Execute (should not raise exception)
@@ -513,11 +524,11 @@ class TestTaskErrorHandling:
         # Setup
         mock_check_task = AsyncMock()
         mock_check_task.is_running.return_value = True
-        mock_check_task.cancel = AsyncMock()
+        mock_check_task.cancel = Mock()  # cancel() is synchronous
 
         mock_cache_task = AsyncMock()
         mock_cache_task.is_running.return_value = True
-        mock_cache_task.cancel = AsyncMock()
+        mock_cache_task.cancel = Mock()  # cancel() is synchronous
 
         mock_bot_instance.check_ip_task = mock_check_task
         mock_bot_instance.cache_cleanup_task = mock_cache_task

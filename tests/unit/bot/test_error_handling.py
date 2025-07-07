@@ -37,7 +37,8 @@ class TestErrorHandling:
         """Test scheduled task in silent monitoring mode."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
 
         mock_service_health.is_fallback_active.side_effect = (
@@ -50,6 +51,7 @@ class TestErrorHandling:
         mock_ip_service_class.return_value = mock_ip_service
 
         mock_storage = AsyncMock()
+        mock_storage.migrate_from_json = Mock()  # migrate_from_json() is synchronous
         mock_storage.save_current_ip = AsyncMock()
         mock_storage_class.return_value = mock_storage
 

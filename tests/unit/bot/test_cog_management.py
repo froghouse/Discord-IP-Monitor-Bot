@@ -41,7 +41,8 @@ class TestCogManagement:
         """Test that cogs are properly initialized during bot setup."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
 
         mock_ip_cog = AsyncMock()

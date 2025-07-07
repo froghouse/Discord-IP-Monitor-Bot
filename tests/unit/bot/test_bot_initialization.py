@@ -2,7 +2,7 @@
 Tests for IPMonitorBot initialization.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -35,7 +35,8 @@ class TestBotInitialization:
         """Test bot initialization with default configuration."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
 
         # Initialize bot
@@ -85,7 +86,8 @@ class TestBotInitialization:
 
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
 
         # Initialize bot
@@ -132,9 +134,11 @@ class TestBotInitialization:
         """Test bot initialization triggers data migration."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
         mock_storage = AsyncMock()
+        mock_storage.migrate_from_json = Mock()  # migrate_from_json() is synchronous
         mock_storage_class.return_value = mock_storage
 
         # Initialize bot

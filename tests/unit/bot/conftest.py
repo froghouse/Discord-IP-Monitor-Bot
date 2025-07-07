@@ -234,7 +234,7 @@ def mock_bot_message_queue():
     queue.add_message = AsyncMock()
     queue.process_messages = AsyncMock()
     queue.clear = AsyncMock()
-    queue.start_processing = AsyncMock()
+    queue.start_processing = Mock()  # start_processing() is synchronous
     queue.stop_processing = AsyncMock()
 
     # Status and statistics
@@ -368,7 +368,7 @@ def mock_tasks_loop():
     loop = Mock()
 
     # Task control
-    loop.start = AsyncMock()
+    loop.start = Mock()  # start() is synchronous for tasks.Loop
     loop.stop = Mock()
     loop.cancel = Mock()
     loop.restart = Mock()

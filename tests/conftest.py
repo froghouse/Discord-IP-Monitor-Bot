@@ -106,8 +106,9 @@ def mock_message_queue():
         }
     )
     queue.clear = AsyncMock()
-    queue.start_processing = AsyncMock()
+    queue.start_processing = Mock()  # Changed from AsyncMock to Mock
     queue.stop_processing = AsyncMock()
+    queue.set_discord_client = Mock()  # Add missing method as Mock
     return queue
 
 
@@ -217,6 +218,7 @@ def mock_ip_service():
     )
     service.invalidate_cache = Mock(return_value=0)
     service.refresh_stale_cache_entries = AsyncMock(return_value=0)
+    service.set_last_known_ip = Mock()  # Add missing method as Mock
     return service
 
 
@@ -227,6 +229,7 @@ def mock_storage():
     storage.get_current_ip = Mock(return_value="192.168.1.1")
     storage.save_current_ip = Mock()
     storage.get_ip_history = Mock(return_value=[])
+    storage.migrate_from_json = Mock()  # Add missing method as Mock
     return storage
 
 

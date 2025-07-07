@@ -38,7 +38,8 @@ class TestOnReadyEventHandler:
         """Test successful on_ready event handler."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_channel = AsyncMock()
@@ -61,13 +62,13 @@ class TestOnReadyEventHandler:
         mock_discord_rate_limiter_class.return_value = mock_discord_rate_limiter
 
         mock_message_queue.set_discord_client = AsyncMock()
-        mock_message_queue.start_processing = AsyncMock()
+        mock_message_queue.start_processing = Mock()  # start_processing() is synchronous
 
         # Initialize bot
         bot = IPMonitorBot(mock_bot_config)
         bot._create_check_ip_task = Mock()
         mock_task = AsyncMock()
-        mock_task.start = AsyncMock()
+        mock_task.start = Mock()  # start() is synchronous for tasks.Loop
         bot._create_check_ip_task.return_value = mock_task
 
         # Run on_ready
@@ -109,7 +110,8 @@ class TestOnReadyEventHandler:
         """Test on_ready with channel not found."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_client.get_channel.return_value = None
@@ -150,7 +152,8 @@ class TestOnReadyEventHandler:
         """Test on_ready with Discord exception."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_client.get_channel.side_effect = discord.DiscordException("API Error")
@@ -191,7 +194,8 @@ class TestOnReadyEventHandler:
         """Test on_ready with message queue disabled."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_channel = AsyncMock()
@@ -202,6 +206,7 @@ class TestOnReadyEventHandler:
         mock_bot_class.return_value = mock_client
 
         mock_storage = AsyncMock()
+        mock_storage.migrate_from_json = Mock()  # migrate_from_json() is synchronous
         mock_storage.load_last_ip.return_value = None
         mock_storage_class.return_value = mock_storage
 
@@ -217,7 +222,7 @@ class TestOnReadyEventHandler:
         bot = IPMonitorBot(mock_bot_config)
         bot._create_check_ip_task = Mock()
         mock_task = AsyncMock()
-        mock_task.start = AsyncMock()
+        mock_task.start = Mock()  # start() is synchronous for tasks.Loop
         bot._create_check_ip_task.return_value = mock_task
 
         # Run on_ready
@@ -253,7 +258,8 @@ class TestOnReadyEventHandler:
         """Test on_ready with startup message disabled."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
         mock_channel = AsyncMock()
@@ -264,6 +270,7 @@ class TestOnReadyEventHandler:
         mock_bot_class.return_value = mock_client
 
         mock_storage = AsyncMock()
+        mock_storage.migrate_from_json = Mock()  # migrate_from_json() is synchronous
         mock_storage.load_last_ip.return_value = None
         mock_storage_class.return_value = mock_storage
 
@@ -279,7 +286,7 @@ class TestOnReadyEventHandler:
         bot = IPMonitorBot(mock_bot_config)
         bot._create_check_ip_task = Mock()
         mock_task = AsyncMock()
-        mock_task.start = AsyncMock()
+        mock_task.start = Mock()  # start() is synchronous for tasks.Loop
         bot._create_check_ip_task.return_value = mock_task
 
         # Run on_ready

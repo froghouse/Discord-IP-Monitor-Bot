@@ -35,7 +35,8 @@ class TestComponentIntegration:
         """Test that all command handlers are properly registered."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
 
         # Initialize bot
@@ -74,7 +75,8 @@ class TestComponentIntegration:
         """Test that configuration is properly propagated to services."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
         mock_bot_class.return_value = mock_client
 
         # Initialize bot
@@ -149,7 +151,7 @@ class TestTaskIntegration:
         # Setup
         mock_task = AsyncMock()
         mock_task.is_running.return_value = True
-        mock_task.cancel = AsyncMock()
+        mock_task.cancel = Mock()  # cancel() is synchronous
         mock_bot_instance.check_ip_task = mock_task
 
         # Execute cleanup with mocked message queue

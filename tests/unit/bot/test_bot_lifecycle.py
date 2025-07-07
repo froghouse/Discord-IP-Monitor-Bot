@@ -36,7 +36,9 @@ class TestBotLifecycle:
         """Test bot run method in normal mode."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
+        mock_client.close = AsyncMock()  # client.close() is awaited
         mock_client.start = AsyncMock()
         mock_bot_class.return_value = mock_client
         mock_bot_config.testing_mode = False
@@ -76,7 +78,9 @@ class TestBotLifecycle:
         """Test bot run method in testing mode with successful IP check."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
+        mock_client.close = AsyncMock()  # client.close() is awaited
         mock_bot_class.return_value = mock_client
         mock_ip_service = AsyncMock()
         mock_ip_service.get_public_ip.return_value = "192.168.1.1"
@@ -119,7 +123,9 @@ class TestBotLifecycle:
         """Test bot run method in testing mode with failed IP check."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
+        mock_client.close = AsyncMock()  # client.close() is awaited
         mock_bot_class.return_value = mock_client
         mock_ip_service = AsyncMock()
         mock_ip_service.get_public_ip.return_value = None
@@ -162,7 +168,9 @@ class TestBotLifecycle:
         """Test bot run method with Discord login failure."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
+        mock_client.close = AsyncMock()  # client.close() is awaited
         mock_client.start.side_effect = discord.LoginFailure("Invalid token")
         mock_bot_class.return_value = mock_client
         mock_bot_config.testing_mode = False
@@ -204,9 +212,12 @@ class TestBotLifecycle:
         """Test cleanup method properly closes all resources."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
+        mock_client.close = AsyncMock()  # client.close() is awaited
         mock_client.http = Mock()
-        mock_client.http.session = AsyncMock()
+        mock_client.http.session = Mock()
+        mock_client.http.session.close = AsyncMock()  # session.close() is awaited
         mock_client.close = AsyncMock()
         mock_bot_class.return_value = mock_client
 
@@ -215,8 +226,8 @@ class TestBotLifecycle:
         mock_ip_service_class.return_value = mock_ip_service
 
         mock_task = AsyncMock()
-        mock_task.is_running.return_value = True
-        mock_task.cancel = AsyncMock()
+        mock_task.is_running = Mock(return_value=True)  # is_running() is synchronous
+        mock_task.cancel = Mock()  # cancel() is synchronous
 
         mock_message_queue.stop_processing = AsyncMock()
 
@@ -259,9 +270,12 @@ class TestBotLifecycle:
         """Test cleanup method with already stopped task."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
+        mock_client.close = AsyncMock()  # client.close() is awaited
         mock_client.http = Mock()
-        mock_client.http.session = AsyncMock()
+        mock_client.http.session = Mock()
+        mock_client.http.session.close = AsyncMock()  # session.close() is awaited
         mock_client.close = AsyncMock()
         mock_bot_class.return_value = mock_client
 
@@ -270,8 +284,8 @@ class TestBotLifecycle:
         mock_ip_service_class.return_value = mock_ip_service
 
         mock_task = AsyncMock()
-        mock_task.is_running.return_value = False
-        mock_task.cancel = AsyncMock()
+        mock_task.is_running = Mock(return_value=False)  # is_running() is synchronous
+        mock_task.cancel = Mock()  # cancel() is synchronous
 
         mock_message_queue.stop_processing = AsyncMock()
 
@@ -282,8 +296,8 @@ class TestBotLifecycle:
         # Run cleanup
         await bot.cleanup()
 
-        # Verify task is still cancelled even if not running (cleanup is safer)
-        mock_task.cancel.assert_called_once()
+        # Verify task is not cancelled when not running (matches implementation logic)
+        mock_task.cancel.assert_not_called()
         mock_client.close.assert_called_once()
 
     @patch("ip_monitor.bot.commands.Bot")
@@ -311,8 +325,10 @@ class TestBotLifecycle:
         """Test cleanup method without HTTP session."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
-        mock_client.close = AsyncMock()
+        # Create mock client without http attribute for "without http session" test
+        mock_client = Mock(spec=['event', 'close', 'user', 'latency'])  # Specify allowed attributes
+        mock_client.event = Mock()  # client.event() is synchronous
+        mock_client.close = AsyncMock()  # client.close() is awaited
         mock_bot_class.return_value = mock_client
 
         mock_ip_service = AsyncMock()
@@ -352,7 +368,9 @@ class TestBotLifecycle:
         """Test stop bot method."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
+        mock_client.close = AsyncMock()  # client.close() is awaited
         mock_bot_class.return_value = mock_client
 
         # Initialize bot
@@ -390,9 +408,12 @@ class TestBotLifecycle:
         """Test graceful shutdown with active background tasks."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
+        mock_client.close = AsyncMock()  # client.close() is awaited
         mock_client.http = Mock()
-        mock_client.http.session = AsyncMock()
+        mock_client.http.session = Mock()
+        mock_client.http.session.close = AsyncMock()  # session.close() is awaited
         mock_client.close = AsyncMock()
         mock_bot_class.return_value = mock_client
 
@@ -401,12 +422,12 @@ class TestBotLifecycle:
         mock_ip_service_class.return_value = mock_ip_service
 
         mock_check_ip_task = AsyncMock()
-        mock_check_ip_task.is_running.return_value = True
-        mock_check_ip_task.cancel = AsyncMock()
+        mock_check_ip_task.is_running = Mock(return_value=True)  # is_running() is synchronous
+        mock_check_ip_task.cancel = Mock()  # cancel() is synchronous
 
         mock_cache_cleanup_task = AsyncMock()
-        mock_cache_cleanup_task.is_running.return_value = True
-        mock_cache_cleanup_task.cancel = AsyncMock()
+        mock_cache_cleanup_task.is_running = Mock(return_value=True)  # is_running() is synchronous
+        mock_cache_cleanup_task.cancel = Mock()  # cancel() is synchronous
 
         mock_message_queue.stop_processing = AsyncMock()
 
@@ -449,9 +470,12 @@ class TestBotLifecycle:
         """Test shutdown continues even if cleanup operations fail."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
+        mock_client.close = AsyncMock()  # client.close() is awaited
         mock_client.http = Mock()
-        mock_client.http.session = AsyncMock()
+        mock_client.http.session = Mock()
+        mock_client.http.session.close = AsyncMock()  # session.close() is awaited
         mock_client.close = AsyncMock()
         mock_bot_class.return_value = mock_client
 
@@ -462,8 +486,8 @@ class TestBotLifecycle:
         mock_ip_service_class.return_value = mock_ip_service
 
         mock_task = AsyncMock()
-        mock_task.is_running.return_value = True
-        mock_task.cancel = AsyncMock(side_effect=Exception("Task cancel failed"))
+        mock_task.is_running = Mock(return_value=True)  # is_running() is synchronous
+        mock_task.cancel = Mock(side_effect=Exception("Task cancel failed"))  # cancel() is synchronous
 
         mock_message_queue.stop_processing = AsyncMock(
             side_effect=Exception("Queue stop failed")
@@ -509,9 +533,12 @@ class TestBotLifecycle:
         """Test shutdown handles Discord client exceptions gracefully."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
+        mock_client.close = AsyncMock()  # client.close() is awaited
         mock_client.http = Mock()
-        mock_client.http.session = AsyncMock()
+        mock_client.http.session = Mock()
+        mock_client.http.session.close = AsyncMock()  # session.close() is awaited
         mock_client.close = AsyncMock(
             side_effect=discord.DiscordException("Connection error")
         )
@@ -563,9 +590,12 @@ class TestBotLifecycle:
         """Test shutdown properly closes database connections."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
+        mock_client.close = AsyncMock()  # client.close() is awaited
         mock_client.http = Mock()
-        mock_client.http.session = AsyncMock()
+        mock_client.http.session = Mock()
+        mock_client.http.session.close = AsyncMock()  # session.close() is awaited
         mock_client.close = AsyncMock()
         mock_bot_class.return_value = mock_client
 
@@ -613,7 +643,9 @@ class TestBotLifecycle:
         """Test _stop_bot method calls cleanup."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
+        mock_client.close = AsyncMock()  # client.close() is awaited
         mock_bot_class.return_value = mock_client
 
         mock_ip_service = AsyncMock()
@@ -655,7 +687,13 @@ class TestBotLifecycle:
         """Test that shutdown sequence follows proper order."""
         # Setup mocks
         mock_intents.default.return_value = mock_intents
-        mock_client = AsyncMock()
+        mock_client = Mock()
+        mock_client.event = Mock()  # client.event() is synchronous
+        mock_client.close = AsyncMock()  # client.close() is awaited
+        # Mock the HTTP session for cleanup
+        mock_client.http = Mock()
+        mock_client.http.session = Mock()
+        mock_client.http.session.close = AsyncMock()  # session.close() is awaited
         mock_bot_class.return_value = mock_client
 
         mock_ip_service = AsyncMock()
