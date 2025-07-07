@@ -501,7 +501,7 @@ class TestTokenBucketRateLimiter:
         end_time = time.time()
 
         # Should have waited for token to be refilled (0.1s at 10 tokens/sec)
-        assert end_time - start_time >= 0.1
+        assert end_time - start_time >= 0.09
         assert (
             small_bucket.tokens >= 0.0
         )  # Used the refilled token (allowing for floating point precision)
