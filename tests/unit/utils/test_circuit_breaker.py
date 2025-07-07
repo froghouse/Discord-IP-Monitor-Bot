@@ -55,7 +55,7 @@ class TestCircuitBreaker:
         assert circuit_breaker.failure_threshold == 3
         assert circuit_breaker.recovery_timeout == 60.0
         assert circuit_breaker.success_threshold == 2
-        assert circuit_breaker.timeout == 10.0
+        assert circuit_breaker.timeout == 0.5
         assert circuit_breaker.state == CircuitBreakerState.CLOSED
         assert circuit_breaker.failure_count == 0
         assert circuit_breaker.success_count == 0
