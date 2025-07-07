@@ -2,8 +2,8 @@
 Slash command implementations for IP-related commands.
 """
 
-import logging
 from datetime import datetime
+import logging
 
 import discord
 from discord import app_commands
@@ -95,14 +95,14 @@ class IPSlashCommands(commands.Cog):
                 logger.debug("Skipping IP save due to read-only mode")
 
             # Send response with current IP information
-            message = "✅ IP address check complete.\\n\\n"
-            message += f"**Current IP:** `{current_ip}`\\n"
+            message = "✅ IP address check complete.\n\n"
+            message += f"**Current IP:** `{current_ip}`\n"
             message += f"**Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             if last_ip:
                 if last_ip != current_ip:
-                    message += f"\\n\\n🔄 **IP has changed** from previous: `{last_ip}`"
+                    message += f"\n\n🔄 **IP has changed** from previous: `{last_ip}`"
                 else:
-                    message += f"\\n\\nNo change from previous IP: `{last_ip}`"
+                    message += f"\n\nNo change from previous IP: `{last_ip}`"
 
             await interaction.followup.send(message)
 
@@ -134,7 +134,7 @@ class IPSlashCommands(commands.Cog):
                 )
                 return
 
-            history_text = "📜 **IP Address History**\\n"
+            history_text = "📜 **IP Address History**\n"
             for idx, entry in enumerate(reversed(history), 1):
                 ip = entry.get("ip", "Unknown")
                 timestamp_str = entry.get("timestamp", "Unknown time")
@@ -145,7 +145,7 @@ class IPSlashCommands(commands.Cog):
                 except (ValueError, TypeError):
                     pass
 
-                history_text += f"{idx}. IP: `{ip}` - {timestamp_str}\\n"
+                history_text += f"{idx}. IP: `{ip}` - {timestamp_str}\n"
 
                 # Discord message limit is 2000 chars, be safe and break if needed
                 if len(history_text) > 1800 and idx < len(history):
@@ -185,29 +185,29 @@ class IPSlashCommands(commands.Cog):
             max_retries = self.ip_service.max_retries
             concurrent_api_checking = self.ip_service.use_concurrent_checks
 
-            status_text = "📊 **IP Monitor Bot Status**\\n"
-            status_text += f"⏱️ Checking interval: Every {check_interval} minutes\\n"
-            status_text += f"🔄 IP API retry attempts: {max_retries}\\n"
-            status_text += f"⚡ Concurrent API checking: {'Enabled' if concurrent_api_checking else 'Disabled'}\\n"
-            status_text += f"⏳ Rate limit status: {'Limited (wait ' + str(wait_time) + ' seconds)' if is_limited else 'Not limited'}\\n"
-            status_text += f"📝 Checks remaining in current period: {remaining_calls}/{self.rate_limiter.max_calls}\\n"
+            status_text = "📊 **IP Monitor Bot Status**\n"
+            status_text += f"⏱️ Checking interval: Every {check_interval} minutes\n"
+            status_text += f"🔄 IP API retry attempts: {max_retries}\n"
+            status_text += f"⚡ Concurrent API checking: {'Enabled' if concurrent_api_checking else 'Disabled'}\n"
+            status_text += f"⏳ Rate limit status: {'Limited (wait ' + str(wait_time) + ' seconds)' if is_limited else 'Not limited'}\n"
+            status_text += f"📝 Checks remaining in current period: {remaining_calls}/{self.rate_limiter.max_calls}\n"
 
             # Add circuit breaker info
             cb_info = self.ip_service.get_circuit_breaker_info()
             if cb_info["enabled"]:
                 cb_state = cb_info["state"]
                 if cb_state == "closed":
-                    status_text += "🟢 Circuit breaker: CLOSED (normal operation)\\n"
+                    status_text += "🟢 Circuit breaker: CLOSED (normal operation)\n"
                 elif cb_state == "open":
                     time_until_half_open = cb_info.get("time_until_half_open", 0)
-                    status_text += f"🔴 Circuit breaker: OPEN (retry in {time_until_half_open:.0f}s)\\n"
+                    status_text += f"🔴 Circuit breaker: OPEN (retry in {time_until_half_open:.0f}s)\n"
                 elif cb_state == "half_open":
-                    status_text += "🟡 Circuit breaker: HALF-OPEN (testing recovery)\\n"
+                    status_text += "🟡 Circuit breaker: HALF-OPEN (testing recovery)\n"
 
                 if cb_info.get("last_known_ip"):
-                    status_text += f"💾 Cached IP: `{cb_info['last_known_ip']}`\\n"
+                    status_text += f"💾 Cached IP: `{cb_info['last_known_ip']}`\n"
             else:
-                status_text += "⚪ Circuit breaker: Disabled\\n"
+                status_text += "⚪ Circuit breaker: Disabled\n"
 
             # Add cache information
             cache_info = self.ip_service.get_cache_info()
@@ -219,37 +219,37 @@ class IPSlashCommands(commands.Cog):
                 stale_entries = cache_info.get("stale_entries_count", 0)
 
                 if memory_entries > 0:
-                    status_text += f"🗄️ Cache: Enabled ({hit_rate:.1f}% hit rate)\\n"
+                    status_text += f"🗄️ Cache: Enabled ({hit_rate:.1f}% hit rate)\n"
                     status_text += (
                         f"   ↳ Entries: {memory_entries}, Memory: {memory_usage:.1f} MB"
                     )
                     if stale_entries > 0:
                         status_text += f", Stale: {stale_entries}"
-                    status_text += "\\n"
+                    status_text += "\n"
                 else:
-                    status_text += "🗄️ Cache: Enabled (no entries yet)\\n"
+                    status_text += "🗄️ Cache: Enabled (no entries yet)\n"
             else:
-                status_text += "⚪ Cache: Disabled\\n"
+                status_text += "⚪ Cache: Disabled\n"
 
             # Add current IP info
             current_ip = self.storage.load_last_ip()
             if current_ip:
-                status_text += f"🌐 Current IP: `{current_ip}`\\n"
+                status_text += f"🌐 Current IP: `{current_ip}`\n"
 
             # Add service health information
             system_health = service_health.get_system_health()
             degradation_level = system_health["degradation_level"]
 
             if degradation_level == "normal":
-                status_text += "✅ System Health: NORMAL\\n"
+                status_text += "✅ System Health: NORMAL\n"
             elif degradation_level == "minor":
-                status_text += "🟡 System Health: MINOR ISSUES\\n"
+                status_text += "🟡 System Health: MINOR ISSUES\n"
             elif degradation_level == "moderate":
-                status_text += "🟠 System Health: DEGRADED\\n"
+                status_text += "🟠 System Health: DEGRADED\n"
             elif degradation_level == "severe":
-                status_text += "🔴 System Health: SEVERE DEGRADATION\\n"
+                status_text += "🔴 System Health: SEVERE DEGRADATION\n"
             elif degradation_level == "critical":
-                status_text += "💀 System Health: CRITICAL\\n"
+                status_text += "💀 System Health: CRITICAL\n"
 
             # Show failed/degraded services
             failed_services = [
@@ -264,27 +264,27 @@ class IPSlashCommands(commands.Cog):
             ]
 
             if failed_services:
-                status_text += f"❌ Failed: {', '.join(failed_services)}\\n"
+                status_text += f"❌ Failed: {', '.join(failed_services)}\n"
             if degraded_services:
-                status_text += f"⚠️ Degraded: {', '.join(degraded_services)}\\n"
+                status_text += f"⚠️ Degraded: {', '.join(degraded_services)}\n"
 
             # Show active fallbacks
             active_fallbacks = system_health["system_capabilities"]["active_fallbacks"]
             if active_fallbacks:
-                status_text += f"🔄 Active Fallbacks: {', '.join(active_fallbacks)}\\n"
+                status_text += f"🔄 Active Fallbacks: {', '.join(active_fallbacks)}\n"
 
             # Add message queue status if available
             try:
                 from ip_monitor.utils.message_queue import message_queue
 
                 queue_status = message_queue.get_queue_status()
-                status_text += f"📥 Message Queue: {queue_status['queue_size']}/{queue_status['max_queue_size']} messages\\n"
+                status_text += f"📥 Message Queue: {queue_status['queue_size']}/{queue_status['max_queue_size']} messages\n"
 
                 if queue_status["queue_size"] > 0:
-                    status_text += f"   ↳ Ready: {queue_status['ready_to_process']}, Scheduled: {queue_status['scheduled_for_later']}\\n"
+                    status_text += f"   ↳ Ready: {queue_status['ready_to_process']}, Scheduled: {queue_status['scheduled_for_later']}\n"
 
                 queue_stats = queue_status["statistics"]
-                status_text += f"📊 Queue Stats: {queue_stats['total_delivered']} sent, {queue_stats['total_failed']} failed\\n"
+                status_text += f"📊 Queue Stats: {queue_stats['total_delivered']} sent, {queue_stats['total_failed']} failed\n"
             except Exception as e:
                 logger.debug(f"Could not get message queue status: {e}")
 
@@ -309,19 +309,19 @@ class IPSlashCommands(commands.Cog):
         """
         try:
             help_text = (
-                "**IP Monitor Bot Commands**\\n"
-                "**User Commands:**\\n"
-                "- `/ip` - Manually check the current IP address\\n"
-                "- `/history` - View IP address history\\n"
-                "- `/status` - View bot status and configuration\\n"
-                "- `/help` - Show this help message\\n"
-                "\\n**Admin Commands:**\\n"
-                "- `/config` - Manage bot configuration\\n"
-                "- `/api` - Manage IP detection APIs\\n"
-                "- `/cache` - Manage intelligent caching\\n"
-                "- `/queue` - Manage message queue\\n"
-                "- `/stop` - Stop the bot\\n"
-                "\\n*Note: Admin commands require administrator permissions.*"
+                "**IP Monitor Bot Commands**\n"
+                "**User Commands:**\n"
+                "- `/ip` - Manually check the current IP address\n"
+                "- `/history` - View IP address history\n"
+                "- `/status` - View bot status and configuration\n"
+                "- `/help` - Show this help message\n"
+                "\n**Admin Commands:**\n"
+                "- `/config` - Manage bot configuration\n"
+                "- `/api` - Manage IP detection APIs\n"
+                "- `/cache` - Manage intelligent caching\n"
+                "- `/queue` - Manage message queue\n"
+                "- `/stop` - Stop the bot\n"
+                "\n*Note: Admin commands require administrator permissions.*"
             )
             await interaction.response.send_message(help_text, ephemeral=True)
 
