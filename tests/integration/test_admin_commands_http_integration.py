@@ -365,6 +365,7 @@ class TestAdminCommandsHTTPIntegration:
         with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
             # Add all cluster servers as APIs
             server_urls = cluster.get_server_urls()
+            initial_api_count = len(api_config.list_apis())  # Account for default APIs
             for i, url in enumerate(server_urls):
                 mock_admin_message.content = (
                     f"!admin api add ClusterAPI{i} {url} json ip"
@@ -375,7 +376,7 @@ class TestAdminCommandsHTTPIntegration:
 
                 # Verify API was added
                 apis = api_config.list_apis()
-                assert len(apis) == i + 1
+                assert len(apis) == initial_api_count + i + 1
 
             # Test all APIs
             for i in range(3):
@@ -384,8 +385,8 @@ class TestAdminCommandsHTTPIntegration:
 
                 await admin_router.handle_admin_command(mock_admin_message)
 
-                # Verify test was performed
-                mock_admin_message.channel.send.assert_called_once()
+                # Verify test was performed (two calls: status message + result)
+                assert mock_admin_message.channel.send.call_count == 2
 
         # Verify cluster received requests
         stats = cluster.get_cluster_stats()
@@ -646,6 +647,6 @@ class TestAdminCommandsHTTPIntegration:
 
         # Verify APIs were properly configured
         apis = api_config.list_apis()
-        assert len(apis) == 2
+        assert len(apis) == 7  # 5 default APIs + 2 added APIs
         assert any(api.name == "MainAPI" for api in apis)
         assert any(api.name == "BackupAPI" for api in apis)
