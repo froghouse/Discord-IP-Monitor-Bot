@@ -139,42 +139,28 @@ class TestBotLifecycleHTTPIntegration:
         """Test periodic IP monitoring with HTTP server."""
         server = await http_fixture.create_server()
 
-        # Configure different IPs for testing IP changes
-        call_count = 0
-        original_responses = server.responses.copy()
+        with patch.object(bot_instance.ip_service, "legacy_apis", [f"{server.base_url}/json"]):
+            with patch.object(bot_instance.ip_service, "use_custom_apis", False):
+                # Set initial IP that's different from what the server returns
+                storage.save_current_ip("203.0.113.1")
 
-        async def changing_ip_handler(request):
-            nonlocal call_count
-            call_count += 1
+                # The server by default returns 203.0.113.1, so modify it to return a different IP
+                server.responses["/json"] = {"ip": "203.0.113.2"}
 
-            server._track_request(request)
+                # Simulate periodic check with IP change
+                await bot_instance.check_ip_periodically()
 
-            if call_count == 1:
-                return server.app.router.json_response({"ip": "203.0.113.1"})
-            return server.app.router.json_response({"ip": "203.0.113.2"})
+                # Verify IP change was detected and stored
+                current_ip = storage.get_current_ip()
+                assert current_ip == "203.0.113.2"
 
-        # Replace the handler to simulate IP changes
-        server.app.router._resources[0]._handler = changing_ip_handler
+                # Verify history was updated
+                history = storage.get_ip_history()
+                assert len(history) >= 1
 
-        with patch.object(bot_instance.ip_service, "apis", [f"{server.base_url}/json"]):
-            # Simulate initial IP check
-            initial_ip = await bot_instance.ip_service.get_current_ip()
-            storage.save_current_ip(initial_ip)
-
-            # Simulate periodic check with IP change
-            await bot_instance.check_ip_periodically()
-
-            # Verify IP change was detected and stored
-            current_ip = storage.get_current_ip()
-            assert current_ip == "149.50.216.211"
-
-            # Verify history was updated
-            history = storage.get_ip_history()
-            assert len(history) >= 1
-
-            # Verify notification was sent
-            channel = bot_instance.client.get_channel.return_value
-            assert channel.send.call_count >= 1
+                # Verify notification was sent (IP changed from 203.0.113.1 to 203.0.113.2)
+                channel = bot_instance.client.get_channel.return_value
+                assert channel.send.call_count >= 1
 
     async def test_bot_command_handling_with_http(
         self, http_fixture, bot_instance, mock_discord_client
@@ -188,19 +174,20 @@ class TestBotLifecycleHTTPIntegration:
         message.channel = Mock()
         message.channel.send = AsyncMock()
 
-        with patch.object(bot_instance.ip_service, "apis", [f"{server.base_url}/json"]):
-            # Test IP command
-            await bot_instance.on_message(message)
+        with patch.object(bot_instance.ip_service, "legacy_apis", [f"{server.base_url}/json"]):
+            with patch.object(bot_instance.ip_service, "use_custom_apis", False):
+                # Test IP command
+                await bot_instance.on_message(message)
 
-            # Verify HTTP request was made
-            assert server.get_request_count() == 1
+                # Verify HTTP request was made
+                assert server.get_request_count() == 1
 
-            # Verify response was sent
-            message.channel.send.assert_called_once()
+                # Verify response was sent
+                message.channel.send.assert_called_once()
 
-            # Verify response contains IP
-            call_args = message.channel.send.call_args[0][0]
-            assert "203.0.113.1" in call_args
+                # Verify response contains IP
+                call_args = message.channel.send.call_args[0][0]
+                assert "203.0.113.1" in call_args
 
     async def test_admin_command_api_management(self, http_fixture, bot_instance):
         """Test admin command API management with HTTP integration."""
@@ -246,18 +233,19 @@ class TestBotLifecycleHTTPIntegration:
 
         with patch.object(
             bot_instance.ip_service,
-            "apis",
+            "legacy_apis",
             [f"{failing_server.base_url}/json", f"{backup_server.base_url}/json"],
         ):
-            # Test error recovery
-            await bot_instance.check_ip_periodically()
+            with patch.object(bot_instance.ip_service, "use_custom_apis", False):
+                # Test error recovery
+                await bot_instance.check_ip_periodically()
 
-            # Verify backup server was used
-            assert backup_server.get_request_count() >= 1
+                # Verify backup server was used
+                assert backup_server.get_request_count() >= 1
 
-            # Verify IP was still saved
-            current_ip = storage.get_current_ip()
-            assert current_ip == "203.0.113.1"
+                # Verify IP was still saved
+                current_ip = storage.get_current_ip()
+                assert current_ip == "203.0.113.1"
 
     async def test_circuit_breaker_behavior_in_monitoring(
         self, http_fixture, bot_instance
@@ -273,17 +261,18 @@ class TestBotLifecycleHTTPIntegration:
         bot_instance.ip_service.circuit_breaker_failure_threshold = 2
 
         with patch.object(
-            bot_instance.ip_service, "apis", [f"{failing_server.base_url}/json"]
+            bot_instance.ip_service, "legacy_apis", [f"{failing_server.base_url}/json"]
         ):
-            # Multiple monitoring attempts should trigger circuit breaker
-            for _ in range(5):
-                try:
-                    await bot_instance.check_ip_periodically()
-                except Exception:
-                    pass  # Expected failures
+            with patch.object(bot_instance.ip_service, "use_custom_apis", False):
+                # Multiple monitoring attempts should trigger circuit breaker
+                for _ in range(5):
+                    try:
+                        await bot_instance.check_ip_periodically()
+                    except Exception:
+                        pass  # Expected failures
 
-            # Circuit breaker should limit requests
-            assert failing_server.get_request_count() <= 3
+                # Circuit breaker should limit requests
+                assert failing_server.get_request_count() <= 3
 
     async def test_message_queue_integration(self, http_fixture, bot_instance):
         """Test message queue integration with HTTP operations."""
@@ -302,37 +291,39 @@ class TestBotLifecycleHTTPIntegration:
             )
 
             with patch.object(
-                bot_instance.ip_service, "apis", [f"{server.base_url}/json"]
+                bot_instance.ip_service, "legacy_apis", [f"{server.base_url}/json"]
             ):
-                # Simulate IP change detection
-                await bot_instance.check_ip_periodically()
+                with patch.object(bot_instance.ip_service, "use_custom_apis", False):
+                    # Simulate IP change detection
+                    await bot_instance.check_ip_periodically()
 
-                # Verify message was queued
-                if mock_queue.add_message.called:
-                    call_args = mock_queue.add_message.call_args
-                    assert call_args is not None
+                    # Verify message was queued
+                    if mock_queue.add_message.called:
+                        call_args = mock_queue.add_message.call_args
+                        assert call_args is not None
 
     async def test_cache_integration_with_http(self, http_fixture, bot_instance):
         """Test cache integration with HTTP requests."""
         server = await http_fixture.create_server()
 
-        with patch.object(bot_instance.ip_service, "apis", [f"{server.base_url}/json"]):
-            # First request should hit HTTP server
-            ip1 = await bot_instance.ip_service.get_current_ip()
-            initial_requests = server.get_request_count()
+        with patch.object(bot_instance.ip_service, "legacy_apis", [f"{server.base_url}/json"]):
+            with patch.object(bot_instance.ip_service, "use_custom_apis", False):
+                # First request should hit HTTP server
+                ip1 = await bot_instance.ip_service.get_current_ip()
+                initial_requests = server.get_request_count()
 
-            # Second request should use cache (if enabled)
-            ip2 = await bot_instance.ip_service.get_current_ip()
+                # Second request should use cache (if enabled)
+                ip2 = await bot_instance.ip_service.get_current_ip()
 
-            assert ip1 == ip2 == "149.50.216.211"
+                assert ip1 == ip2 == "203.0.113.1"
 
-            # Verify cache behavior
-            if bot_instance.ip_service.cache_enabled:
-                # Should not have made additional HTTP requests
-                assert server.get_request_count() == initial_requests
-            else:
-                # Should have made additional HTTP requests
-                assert server.get_request_count() > initial_requests
+                # Verify cache behavior
+                if bot_instance.ip_service.cache_enabled:
+                    # Should not have made additional HTTP requests
+                    assert server.get_request_count() == initial_requests
+                else:
+                    # Should have made additional HTTP requests
+                    assert server.get_request_count() > initial_requests
 
     async def test_bot_shutdown_with_active_http_connections(
         self, http_fixture, bot_instance
@@ -343,24 +334,25 @@ class TestBotLifecycleHTTPIntegration:
         # Add latency to simulate active connections
         server.set_latency(1000)  # 1 second delay
 
-        with patch.object(bot_instance.ip_service, "apis", [f"{server.base_url}/json"]):
-            # Start IP check in background
-            ip_task = asyncio.create_task(bot_instance.ip_service.get_current_ip())
+        with patch.object(bot_instance.ip_service, "legacy_apis", [f"{server.base_url}/json"]):
+            with patch.object(bot_instance.ip_service, "use_custom_apis", False):
+                # Start IP check in background
+                ip_task = asyncio.create_task(bot_instance.ip_service.get_current_ip())
 
-            # Wait a bit to ensure request is in progress
-            await asyncio.sleep(0.1)
+                # Wait a bit to ensure request is in progress
+                await asyncio.sleep(0.1)
 
-            # Test graceful shutdown
-            await bot_instance.shutdown()
+                # Test graceful shutdown
+                await bot_instance.shutdown()
 
-            # Verify task was cancelled or completed
-            try:
-                await asyncio.wait_for(ip_task, timeout=2.0)
-            except TimeoutError:
-                ip_task.cancel()
+                # Verify task was cancelled or completed
+                try:
+                    await asyncio.wait_for(ip_task, timeout=2.0)
+                except TimeoutError:
+                    ip_task.cancel()
 
-            # Verify bot state
-            assert bot_instance.client.is_closed() or not bot_instance.client.is_ready()
+                # Verify bot state
+                assert bot_instance.client.is_closed() or not bot_instance.client.is_ready()
 
     async def test_performance_monitoring_integration(self, http_fixture, bot_instance):
         """Test performance monitoring integration."""
@@ -427,25 +419,26 @@ class TestBotLifecycleHTTPIntegration:
 
         server.app.router._resources[0]._handler = sequential_ip_handler
 
-        with patch.object(bot_instance.ip_service, "apis", [f"{server.base_url}/json"]):
-            # Simulate multiple monitoring cycles
-            for cycle in range(3):
-                await bot_instance.check_ip_periodically()
+        with patch.object(bot_instance.ip_service, "legacy_apis", [f"{server.base_url}/json"]):
+            with patch.object(bot_instance.ip_service, "use_custom_apis", False):
+                # Simulate multiple monitoring cycles
+                for cycle in range(3):
+                    await bot_instance.check_ip_periodically()
 
-                # Verify IP was stored
-                current_ip = storage.get_current_ip()
-                expected_ip = ip_sequence[cycle % len(ip_sequence)]
-                assert current_ip == expected_ip
+                    # Verify IP was stored
+                    current_ip = storage.get_current_ip()
+                    expected_ip = ip_sequence[cycle % len(ip_sequence)]
+                    assert current_ip == expected_ip
 
-                # Small delay between cycles
-                await asyncio.sleep(0.1)
+                    # Small delay between cycles
+                    await asyncio.sleep(0.1)
 
-            # Verify history tracking
-            history = storage.get_ip_history()
-            assert len(history) >= 2  # Should have tracked changes
+                # Verify history tracking
+                history = storage.get_ip_history()
+                assert len(history) >= 2  # Should have tracked changes
 
-            # Verify HTTP requests were made
-            assert server.get_request_count() >= 3
+                # Verify HTTP requests were made
+                assert server.get_request_count() >= 3
 
     async def test_resilience_under_network_conditions(
         self, http_fixture, bot_instance
@@ -461,18 +454,19 @@ class TestBotLifecycleHTTPIntegration:
         total_attempts = 10
 
         with patch.object(
-            bot_instance.ip_service, "apis", [f"{unreliable_server.base_url}/json"]
+            bot_instance.ip_service, "legacy_apis", [f"{unreliable_server.base_url}/json"]
         ):
-            for attempt in range(total_attempts):
-                try:
-                    await bot_instance.check_ip_periodically()
-                    success_count += 1
-                except Exception as e:
-                    # Log but don't fail the test
-                    print(f"Attempt {attempt + 1} failed: {e}")
+            with patch.object(bot_instance.ip_service, "use_custom_apis", False):
+                for attempt in range(total_attempts):
+                    try:
+                        await bot_instance.check_ip_periodically()
+                        success_count += 1
+                    except Exception as e:
+                        # Log but don't fail the test
+                        print(f"Attempt {attempt + 1} failed: {e}")
 
-                # Brief pause between attempts
-                await asyncio.sleep(0.1)
+                    # Brief pause between attempts
+                    await asyncio.sleep(0.1)
 
         # Should have reasonable success rate despite network issues
         success_rate = success_count / total_attempts
