@@ -144,19 +144,21 @@ class TestAdminCommandsHTTPIntegration:
         api_config.add_api(test_endpoint)
 
         with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
-            # Test API testing command
-            mock_admin_message.content = "!admin api test TestAPI"
+            # Test API testing command (use API ID, not name)
+            mock_admin_message.content = "!admin api test testapi"
 
             await admin_router.handle_admin_command(mock_admin_message)
 
             # Verify HTTP request was made
             assert server.get_request_count() == 1
 
-            # Verify response was sent
-            mock_admin_message.channel.send.assert_called_once()
-            response = mock_admin_message.channel.send.call_args[0][0]
-            assert "203.0.113.1" in response
-            assert "successful" in response.lower()
+            # Verify responses were sent (status message + result message)
+            assert mock_admin_message.channel.send.call_count == 2
+            
+            # Check the result message (last call)
+            result_message = mock_admin_message.channel.send.call_args[0][0]
+            assert "203.0.113.1" in result_message
+            assert "successful" in result_message.lower()
 
     async def test_api_test_command_with_failing_server(
         self, http_fixture, admin_router, mock_admin_message
@@ -182,7 +184,7 @@ class TestAdminCommandsHTTPIntegration:
 
         with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
             # Test API testing command
-            mock_admin_message.content = "!admin api test FailingAPI"
+            mock_admin_message.content = "!admin api test failingapi"
 
             await admin_router.handle_admin_command(mock_admin_message)
 
@@ -359,7 +361,7 @@ class TestAdminCommandsHTTPIntegration:
 
             # Test all APIs
             for i in range(3):
-                mock_admin_message.content = f"!admin api test ClusterAPI{i}"
+                mock_admin_message.content = f"!admin api test clusterapi{i}"
                 mock_admin_message.channel.send.reset_mock()
 
                 await admin_router.handle_admin_command(mock_admin_message)
@@ -402,7 +404,7 @@ class TestAdminCommandsHTTPIntegration:
 
         with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
             # Test primary API (should fail)
-            mock_admin_message.content = "!admin api test PrimaryAPI"
+            mock_admin_message.content = "!admin api test primaryapi"
 
             await admin_router.handle_admin_command(mock_admin_message)
 
@@ -410,7 +412,7 @@ class TestAdminCommandsHTTPIntegration:
             assert primary_server.get_request_count() == 1
 
             # Test backup API (should succeed)
-            mock_admin_message.content = "!admin api test BackupAPI"
+            mock_admin_message.content = "!admin api test backupapi"
             mock_admin_message.channel.send.reset_mock()
 
             await admin_router.handle_admin_command(mock_admin_message)
@@ -447,7 +449,7 @@ class TestAdminCommandsHTTPIntegration:
         with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
             # Perform multiple tests to build performance history
             for i in range(5):
-                mock_admin_message.content = "!admin api test MonitoredAPI"
+                mock_admin_message.content = "!admin api test monitoredapi"
                 mock_admin_message.channel.send.reset_mock()
 
                 await admin_router.handle_admin_command(mock_admin_message)
@@ -497,7 +499,7 @@ class TestAdminCommandsHTTPIntegration:
         with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
             # Test API multiple times to trigger rate limiting
             for i in range(4):
-                mock_admin_message.content = "!admin api test RateLimitedAPI"
+                mock_admin_message.content = "!admin api test ratelimitedapi"
                 mock_admin_message.channel.send.reset_mock()
 
                 await admin_router.handle_admin_command(mock_admin_message)
@@ -584,11 +586,11 @@ class TestAdminCommandsHTTPIntegration:
             await admin_router.handle_admin_command(mock_admin_message)
 
             # Step 2: Test APIs
-            mock_admin_message.content = "!admin api test MainAPI"
+            mock_admin_message.content = "!admin api test mainapi"
             mock_admin_message.channel.send.reset_mock()
             await admin_router.handle_admin_command(mock_admin_message)
 
-            mock_admin_message.content = "!admin api test BackupAPI"
+            mock_admin_message.content = "!admin api test backupapi"
             mock_admin_message.channel.send.reset_mock()
             await admin_router.handle_admin_command(mock_admin_message)
 
