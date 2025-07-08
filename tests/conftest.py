@@ -84,7 +84,7 @@ def mock_config():
 
 
 # Backward compatibility alias - use mock_discord_client for new tests
-@pytest.fixture(scope="session")
+@pytest.fixture
 def mock_client(mock_discord_client):
     """Backward compatibility alias for mock_discord_client."""
     return mock_discord_client
@@ -663,7 +663,7 @@ def mock_httpx_responses():
 
 
 # Enhanced Discord Bot Mock Fixtures
-@pytest.fixture(scope="session")
+@pytest.fixture
 def mock_discord_client():
     """Enhanced Discord client mock with comprehensive API coverage."""
     client = AsyncMock()
