@@ -116,18 +116,22 @@ class TestBotLifecycleHTTPIntegration:
         """Test bot startup with HTTP server integration."""
         server = await http_fixture.create_server()
 
-        # Configure bot to use our test server
-        with patch.object(bot_instance.ip_service, "apis", [f"{server.base_url}/json"]):
-            # Test bot initialization
-            await bot_instance.on_ready()
+        # Mock the IP service to use our test server
+        with patch.object(bot_instance.ip_service, "legacy_apis", [f"{server.base_url}/json"]):
+            with patch.object(bot_instance.ip_service, "use_custom_apis", False):
+                # Test bot initialization
+                await bot_instance.on_ready()
 
-            # Verify startup message was sent
-            bot_instance.client.get_channel.assert_called_with(mock_config.channel_id)
-            channel = bot_instance.client.get_channel.return_value
-            channel.send.assert_called()
+                # Verify startup message was sent
+                bot_instance.client.get_channel.assert_called_with(mock_config.channel_id)
+                channel = bot_instance.client.get_channel.return_value
+                channel.send.assert_called()
 
-            # Verify IP check was performed
-            assert server.get_request_count() >= 1
+                # Manually trigger IP check to verify HTTP server integration
+                await bot_instance.check_ip_periodically()
+
+                # Verify IP check was performed
+                assert server.get_request_count() >= 1
 
     async def test_periodic_ip_monitoring_with_http(
         self, http_fixture, bot_instance, storage
