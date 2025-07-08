@@ -223,3 +223,128 @@ class IntegrationTestHelpers:
 def test_helpers():
     """Provide test helper methods."""
     return IntegrationTestHelpers()
+
+
+# Integration Test Isolation Fixtures
+@pytest.fixture(autouse=True)
+async def integration_test_isolation():
+    """Ensure proper isolation for integration tests."""
+    # Setup: Clear any existing state before test
+    yield
+    
+    # Teardown: Reset global state after test
+    await _reset_all_global_state()
+    
+    # Cancel any lingering async tasks
+    await _cancel_remaining_tasks()
+
+
+async def _reset_all_global_state():
+    """Reset all global state for integration test isolation."""
+    # Reset cache
+    try:
+        from ip_monitor.utils.cache import get_cache
+        cache = get_cache()
+        cache.clear()
+        import ip_monitor.utils.cache
+        ip_monitor.utils.cache._cache_instance = None
+    except Exception:
+        pass
+    
+    # Reset service health
+    try:
+        from ip_monitor.utils.service_health import service_health
+        service_health.reset()
+    except Exception:
+        pass
+    
+    # Reset message queue
+    try:
+        from ip_monitor.utils.message_queue import message_queue
+        if hasattr(message_queue, '_processing_task') and message_queue._processing_task:
+            try:
+                message_queue._processing_task.cancel()
+                await asyncio.sleep(0.1)  # Allow cancellation to complete
+            except Exception:
+                pass
+        message_queue.clear_queue()
+        if hasattr(message_queue, '_messages'):
+            message_queue._messages.clear()
+        if hasattr(message_queue, '_deduplication_cache'):
+            message_queue._deduplication_cache.clear()
+        if hasattr(message_queue, '_stats'):
+            message_queue._stats = {
+                'total_processed': 0,
+                'total_failed': 0,
+                'total_retried': 0,
+                'total_expired': 0,
+                'total_duplicates': 0
+            }
+    except Exception:
+        pass
+    
+    # Reset IP API manager
+    try:
+        from ip_monitor.ip_api_config import ip_api_manager
+        ip_api_manager.clear_performance_data()
+        ip_api_manager._initialize_default_apis()
+    except Exception:
+        pass
+
+
+async def _cancel_remaining_tasks():
+    """Cancel any remaining async tasks to prevent interference."""
+    try:
+        current_task = asyncio.current_task()
+        all_tasks = asyncio.all_tasks()
+        
+        other_tasks = [
+            task for task in all_tasks 
+            if task != current_task and not task.done()
+        ]
+        
+        if other_tasks:
+            for task in other_tasks:
+                if not task.cancelled():
+                    task.cancel()
+            
+            # Wait for task cancellation with timeout
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*other_tasks, return_exceptions=True),
+                    timeout=1.0
+                )
+            except asyncio.TimeoutError:
+                pass  # Some tasks may take longer to cancel
+    except Exception:
+        pass
+
+
+@pytest.fixture
+def isolated_test_config(integration_test_config):
+    """Create isolated test configuration with unique temporary files."""
+    import tempfile
+    import os
+    
+    # Create temporary directory for test
+    temp_dir = tempfile.mkdtemp()
+    
+    # Update config with isolated paths
+    config = integration_test_config.copy()
+    config.update({
+        "db_file": os.path.join(temp_dir, "test.db"),
+        "cache_file": os.path.join(temp_dir, "test_cache.json"),
+        "ip_file": os.path.join(temp_dir, "test_ip.json"),
+        "ip_history_file": os.path.join(temp_dir, "test_history.json"),
+        "api_config_file": os.path.join(temp_dir, "test_apis.json"),
+        "bot_config_file": os.path.join(temp_dir, "test_bot_config.json"),
+    })
+    
+    yield config
+    
+    # Cleanup temporary directory
+    import shutil
+    try:
+        shutil.rmtree(temp_dir)
+    except Exception:
+        pass

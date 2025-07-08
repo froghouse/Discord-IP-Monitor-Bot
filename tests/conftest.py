@@ -5,8 +5,8 @@ import sys
 import tempfile
 from unittest.mock import AsyncMock, Mock
 
-import pytest
 from aiohttp import web
+import pytest
 
 # Add the project root to the Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -106,7 +106,9 @@ def mock_message_queue():
             "total_failed": 0,
         }
     )
-    queue.clear_queue = Mock(return_value=0)  # Fixed: clear_queue is synchronous, not clear
+    queue.clear_queue = Mock(
+        return_value=0
+    )  # Fixed: clear_queue is synchronous, not clear
     queue.retry_failed_messages = Mock(return_value=0)  # Added missing method
     queue.start_processing = Mock()  # Correct: synchronous method
     queue.stop_processing = AsyncMock()  # Correct: async method
@@ -364,6 +366,34 @@ def sqlite_storage(temp_db_path):
 
 
 @pytest.fixture(scope="function")
+def isolated_sqlite_storage():
+    """Create an isolated SQLiteIPStorage instance with unique temporary database."""
+    import tempfile
+    import os
+    from ip_monitor.storage import SQLiteIPStorage
+    
+    # Create unique temporary database file
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as temp_file:
+        temp_db_path = temp_file.name
+    
+    storage = SQLiteIPStorage(temp_db_path, history_size=10)
+    
+    yield storage
+    
+    # Cleanup
+    try:
+        storage.close()
+    except Exception:
+        pass
+    
+    # Remove temporary file
+    try:
+        os.unlink(temp_db_path)
+    except Exception:
+        pass
+
+
+@pytest.fixture(scope="function")
 def sqlite_storage_with_data(sqlite_storage):
     """Create a SQLiteIPStorage instance with test data."""
     # Insert test data
@@ -394,11 +424,62 @@ def sqlite_storage_with_data(sqlite_storage):
     # Cleanup is handled by the parent sqlite_storage fixture
 
 
+@pytest.fixture(scope="function")
+def isolated_sqlite_storage_with_data():
+    """Create an isolated SQLiteIPStorage instance with test data."""
+    import tempfile
+    import os
+    import sqlite3
+    from ip_monitor.storage import SQLiteIPStorage
+    
+    # Create unique temporary database file
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as temp_file:
+        temp_db_path = temp_file.name
+    
+    storage = SQLiteIPStorage(temp_db_path, history_size=10)
+    
+    # Insert test data
+    test_ips = [
+        ("192.168.1.1", "2023-01-01T12:00:00Z"),
+        ("192.168.1.2", "2023-01-01T13:00:00Z"),
+        ("192.168.1.3", "2023-01-01T14:00:00Z"),
+    ]
+    
+    with sqlite3.connect(temp_db_path) as conn:
+        cursor = conn.cursor()
+        
+        # Add current IP
+        cursor.execute(
+            "INSERT INTO current_ip (ip, timestamp) VALUES (?, ?)", test_ips[-1]
+        )
+        
+        # Add history in reverse order so chronological order is correct
+        for ip, timestamp in reversed(test_ips):
+            cursor.execute(
+                "INSERT INTO ip_history (ip, timestamp) VALUES (?, ?)", (ip, timestamp)
+            )
+        
+        conn.commit()
+    
+    yield storage
+    
+    # Cleanup
+    try:
+        storage.close()
+    except Exception:
+        pass
+    
+    # Remove temporary file
+    try:
+        os.unlink(temp_db_path)
+    except Exception:
+        pass
+
+
 # HTTP Mock Server Fixtures
 @pytest.fixture
 async def mock_ip_api_server():
     """Create a mock HTTP server for IP API testing."""
-    import asyncio
 
     responses = {
         "/json": {"ip": "203.0.113.1"},
@@ -506,7 +587,7 @@ async def mock_httpx_client():
     client.get.return_value = response
 
     yield client
-    
+
     # Cleanup: ensure aclose is properly awaited if it was called
     if client.aclose.called:
         try:
@@ -626,3 +707,216 @@ def mock_discord_cog():
     cog.get_commands.return_value = []
 
     return cog
+
+
+# Test Isolation Fixtures
+@pytest.fixture(autouse=True)
+def reset_global_state():
+    """Reset global state before each test for proper isolation."""
+    yield
+    
+    # Reset global cache instance
+    try:
+        from ip_monitor.utils.cache import get_cache
+        cache = get_cache()
+        cache.clear()
+        # Reset the global instance to None so it gets recreated
+        import ip_monitor.utils.cache
+        ip_monitor.utils.cache._cache_instance = None
+    except Exception:
+        pass
+    
+    # Reset global service health monitor
+    try:
+        from ip_monitor.utils.service_health import service_health
+        service_health.reset()
+    except Exception:
+        pass
+    
+    # Reset global message queue
+    try:
+        from ip_monitor.utils.message_queue import message_queue
+        import asyncio
+        if hasattr(message_queue, '_processing_task') and message_queue._processing_task:
+            message_queue._processing_task.cancel()
+        message_queue.clear_queue()
+        message_queue._messages.clear()
+        message_queue._deduplication_cache.clear()
+        message_queue._stats = {
+            'total_processed': 0,
+            'total_failed': 0,
+            'total_retried': 0,
+            'total_expired': 0,
+            'total_duplicates': 0
+        }
+    except Exception:
+        pass
+    
+    # Reset global IP API manager
+    try:
+        from ip_monitor.ip_api_config import ip_api_manager
+        ip_api_manager.clear_performance_data()
+        # Reset to default configuration
+        ip_api_manager._initialize_default_apis()
+    except Exception:
+        pass
+
+
+@pytest.fixture
+def isolated_cache():
+    """Create an isolated cache instance for testing."""
+    from ip_monitor.utils.cache import IntelligentCache
+    return IntelligentCache()
+
+
+@pytest.fixture
+def isolated_service_health():
+    """Create an isolated service health monitor for testing."""
+    from ip_monitor.utils.service_health import ServiceHealthMonitor
+    return ServiceHealthMonitor()
+
+
+@pytest.fixture
+def isolated_message_queue():
+    """Create an isolated message queue for testing."""
+    from ip_monitor.utils.message_queue import AsyncMessageQueue
+    return AsyncMessageQueue()
+
+
+@pytest.fixture
+def isolated_ip_api_manager():
+    """Create an isolated IP API manager for testing."""
+    from ip_monitor.ip_api_config import IPAPIManager
+    manager = IPAPIManager()
+    manager._initialize_default_apis()
+    return manager
+
+
+@pytest.fixture
+def isolated_circuit_breaker():
+    """Create an isolated circuit breaker for testing."""
+    from ip_monitor.utils.circuit_breaker import CircuitBreaker
+    return CircuitBreaker(failure_threshold=3, recovery_timeout=120)
+
+
+@pytest.fixture
+def isolated_rate_limiter():
+    """Create an isolated rate limiter for testing."""
+    from ip_monitor.utils.async_rate_limiter import AsyncRateLimiter
+    return AsyncRateLimiter(max_calls=10, period=300)
+
+
+# Enhanced Mock Cleanup Fixtures
+@pytest.fixture
+def enhanced_mock_storage(mock_storage):
+    """Enhanced mock storage with proper cleanup."""
+    yield mock_storage
+    
+    # Reset all mock calls and state
+    mock_storage.reset_mock()
+    
+    # Reset specific method mocks to ensure clean state
+    mock_storage.get_current_ip.reset_mock()
+    mock_storage.save_current_ip.reset_mock()
+    mock_storage.get_ip_history.reset_mock()
+
+
+@pytest.fixture
+def enhanced_mock_ip_service(mock_ip_service):
+    """Enhanced mock IP service with proper cleanup."""
+    yield mock_ip_service
+    
+    # Reset all mock calls and state
+    mock_ip_service.reset_mock()
+    
+    # Reset specific method mocks
+    mock_ip_service.get_current_ip.reset_mock()
+    mock_ip_service.get_cache_info.reset_mock()
+    mock_ip_service.invalidate_cache.reset_mock()
+    mock_ip_service.refresh_stale_cache_entries.reset_mock()
+
+
+@pytest.fixture
+def enhanced_mock_cache(mock_cache):
+    """Enhanced mock cache with proper cleanup."""
+    yield mock_cache
+    
+    # Reset all mock calls and state
+    mock_cache.reset_mock()
+    
+    # Reset cache to empty state
+    mock_cache.get.return_value = None
+    mock_cache.get_status.return_value = {
+        "memory_entries": 0,
+        "hit_rate": 0.0,
+        "operations": {"hits": 0, "misses": 0, "sets": 0},
+    }
+
+
+@pytest.fixture
+def enhanced_mock_message_queue(mock_message_queue):
+    """Enhanced mock message queue with proper cleanup."""
+    yield mock_message_queue
+    
+    # Reset all mock calls and state
+    mock_message_queue.reset_mock()
+    
+    # Reset queue to empty state
+    mock_message_queue.get_status.return_value = {
+        "queued_messages": 0,
+        "processing": False,
+        "total_processed": 0,
+        "total_failed": 0,
+    }
+    mock_message_queue.clear_queue.return_value = 0
+
+
+@pytest.fixture
+def enhanced_mock_service_health(mock_service_health):
+    """Enhanced mock service health with proper cleanup."""
+    yield mock_service_health
+    
+    # Reset all mock calls and state
+    mock_service_health.reset_mock()
+    
+    # Reset to healthy state
+    mock_service_health.get_status.return_value = {
+        "level": "NORMAL", 
+        "score": 100, 
+        "issues": []
+    }
+
+
+@pytest.fixture
+def enhanced_mock_circuit_breaker(mock_circuit_breaker):
+    """Enhanced mock circuit breaker with proper cleanup."""
+    yield mock_circuit_breaker
+    
+    # Reset all mock calls and state
+    mock_circuit_breaker.reset_mock()
+    
+    # Reset to closed state
+    mock_circuit_breaker.is_open = False
+    mock_circuit_breaker.get_status.return_value = {
+        "state": "CLOSED", 
+        "failure_count": 0, 
+        "success_count": 0
+    }
+
+
+@pytest.fixture
+def enhanced_mock_rate_limiter(mock_rate_limiter):
+    """Enhanced mock rate limiter with proper cleanup."""
+    yield mock_rate_limiter
+    
+    # Reset all mock calls and state
+    mock_rate_limiter.reset_mock()
+    
+    # Reset to non-limited state
+    mock_rate_limiter.is_limited.return_value = (False, 0)
+    mock_rate_limiter.get_status.return_value = {
+        "is_limited": False,
+        "remaining_calls": 10,
+        "period": 300,
+        "max_calls": 10,
+    }
