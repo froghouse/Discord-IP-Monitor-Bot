@@ -115,7 +115,7 @@ class TestIPServiceHTTPIntegration:
         # Configure IP service to use both servers
         with patch.object(
             ip_service,
-            "apis",
+            "legacy_apis",
             [f"{error_server.base_url}/json", f"{success_server.base_url}/json"],
         ):
             ip_address = await ip_service.get_public_ip()
@@ -164,7 +164,7 @@ class TestIPServiceHTTPIntegration:
 
         with patch.object(
             ip_service,
-            "apis",
+            "legacy_apis",
             [
                 f"{slow_server.base_url}/slow",  # 2 second delay
                 f"{fast_server.base_url}/json",
@@ -183,7 +183,7 @@ class TestIPServiceHTTPIntegration:
 
         with patch.object(
             ip_service,
-            "apis",
+            "legacy_apis",
             [f"{malformed_server.base_url}/malformed", f"{good_server.base_url}/json"],
         ):
             ip_address = await ip_service.get_public_ip()
@@ -199,7 +199,7 @@ class TestIPServiceHTTPIntegration:
 
         with patch.object(
             ip_service,
-            "apis",
+            "legacy_apis",
             [f"{empty_server.base_url}/empty", f"{good_server.base_url}/json"],
         ):
             ip_address = await ip_service.get_public_ip()
@@ -215,7 +215,7 @@ class TestIPServiceHTTPIntegration:
 
         with patch.object(
             ip_service,
-            "apis",
+            "legacy_apis",
             [f"{invalid_server.base_url}/invalid_ip", f"{valid_server.base_url}/json"],
         ):
             ip_address = await ip_service.get_public_ip()
@@ -234,7 +234,7 @@ class TestIPServiceHTTPIntegration:
 
         with patch.object(
             ip_service,
-            "apis",
+            "legacy_apis",
             [
                 f"{rate_limited_server.base_url}/rate_limit",
                 f"{backup_server.base_url}/json",
@@ -275,7 +275,7 @@ class TestIPServiceHTTPIntegration:
 
         with patch.object(
             ip_service,
-            "apis",
+            "legacy_apis",
             [
                 f"{server1.base_url}/json",
                 f"{server2.base_url}/json",
@@ -341,7 +341,7 @@ class TestIPServiceHTTPIntegration:
 
         with patch.object(
             ip_service,
-            "apis",
+            "legacy_apis",
             [f"{failing_server.base_url}/json", f"{backup_server.base_url}/json"],
         ):
             # First few requests should trigger circuit breaker
@@ -366,7 +366,7 @@ class TestIPServiceHTTPIntegration:
 
         # Configure IP service to use cluster
         urls = cluster.get_server_urls()
-        with patch.object(ip_service, "apis", urls):
+        with patch.object(ip_service, "legacy_apis", urls):
             # Initial request should succeed
             ip_address = await ip_service.get_public_ip()
             assert ip_address == "203.0.113.1"
@@ -452,7 +452,7 @@ class TestIPServiceHTTPIntegration:
 
         with patch.object(
             ip_service,
-            "apis",
+            "legacy_apis",
             [f"{unreliable_server.base_url}/json", f"{reliable_server.base_url}/json"],
         ):
             for _ in range(total_attempts):
