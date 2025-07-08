@@ -9,6 +9,7 @@ import asyncio
 from unittest.mock import Mock, patch
 
 import pytest
+from aiohttp import web
 
 from ip_monitor.ip_api_config import IPAPIEndpoint, IPAPIManager, ResponseFormat
 from ip_monitor.ip_service import IPService
@@ -128,30 +129,29 @@ class TestIPServiceHTTPIntegration:
         """Test retry logic with temporary failures."""
         server = await http_fixture.create_server()
 
-        # Configure server to fail first 2 requests, then succeed
-        server.set_error_rate(0.7)  # 70% error rate
-
-        # Mock the requests to fail first 2, succeed on 3rd
-        original_handler = server._json_handler
-        call_count = 0
-
-        async def failing_handler(request):
-            nonlocal call_count
-            call_count += 1
-            if call_count <= 2:
-                server._track_request(request)
-                return server.app.router._resources[0]._handler(request)
-            # Disable errors for success
-            server.set_error_rate(0.0)
-            return await original_handler(request)
-
-        server.app.router._resources[0]._handler = failing_handler
+        # Use a class to track state and control error behavior dynamically
+        class RetryTestState:
+            def __init__(self):
+                self.call_count = 0
+                
+        state = RetryTestState()
+        
+        # Patch the _should_error method to control when errors occur
+        original_should_error = server._should_error
+        
+        def controlled_error():
+            state.call_count += 1
+            # Return True (error) for first 2 calls, False (success) for subsequent calls
+            return state.call_count <= 2
+            
+        server._should_error = controlled_error
 
         with patch.object(ip_service, "legacy_apis", [f"{server.base_url}/json"]):
             ip_address = await ip_service.get_public_ip()
 
         assert ip_address == "203.0.113.1"
-        assert server.get_request_count() >= 2  # Should have retried
+        assert state.call_count == 3  # Should have made exactly 3 calls (2 errors + 1 success)
+        assert server.get_request_count() == 3  # Should have made 3 requests
 
     async def test_timeout_handling(self, http_fixture, ip_service):
         """Test timeout handling with slow server."""
