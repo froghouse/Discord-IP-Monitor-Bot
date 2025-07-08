@@ -2,13 +2,13 @@
 Storage operations for the IP Monitor Bot using SQLite for data integrity.
 """
 
+from datetime import datetime
 import json
 import logging
 import os
 import shutil
 import sqlite3
 import tempfile
-from datetime import datetime
 from typing import Any
 
 from ip_monitor.utils.service_health import service_health
@@ -293,6 +293,44 @@ class SQLiteIPStorage:
             return True
         except ValueError:
             return False
+
+    def _execute_query(self, query: str, params: tuple = ()) -> list[tuple]:
+        """
+        Execute a SQL query and return results.
+
+        Args:
+            query: SQL query string
+            params: Query parameters
+
+        Returns:
+            List of result tuples
+        """
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                return cursor.fetchall()
+        except sqlite3.Error as e:
+            logger.error(f"Error executing query: {e}")
+            return []
+
+    def get_current_ip(self) -> str | None:
+        """
+        Get the current IP address (alias for load_last_ip).
+        
+        Returns:
+            IP address string or None if unsuccessful
+        """
+        return self.load_last_ip()
+
+    def get_ip_history(self) -> list[dict[str, Any]]:
+        """
+        Get the IP address history (alias for load_ip_history).
+        
+        Returns:
+            List of dictionaries containing IP addresses and timestamps
+        """
+        return self.load_ip_history()
 
     def migrate_from_json(self, ip_file: str, history_file: str) -> bool:
         """
