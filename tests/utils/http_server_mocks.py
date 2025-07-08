@@ -31,6 +31,9 @@ class MockIPAPIServer:
         self.site = None
         self.base_url = None
         self.actual_port = None
+        self._is_running = False
+        self._shutdown_timeout = 5.0
+        self._pending_requests = set()
 
         # Response configuration
         self.responses = {
@@ -62,6 +65,9 @@ class MockIPAPIServer:
 
     async def start(self):
         """Start the mock server."""
+        if self._is_running:
+            return
+            
         self.app = web.Application()
         self._setup_routes()
 
@@ -74,14 +80,58 @@ class MockIPAPIServer:
         # Get actual port if using port 0
         self.actual_port = self.site._server.sockets[0].getsockname()[1]
         self.base_url = f"http://127.0.0.1:{self.actual_port}"
+        self._is_running = True
 
         logger.info(f"Mock IP API server started on {self.base_url}")
 
     async def stop(self):
-        """Stop the mock server."""
-        if self.runner:
-            await self.runner.cleanup()
-        logger.info("Mock IP API server stopped")
+        """Stop the mock server with proper cleanup."""
+        if not self._is_running:
+            return
+            
+        self._is_running = False
+        
+        try:
+            # Cancel any pending requests
+            if self._pending_requests:
+                for request_task in self._pending_requests.copy():
+                    if not request_task.done():
+                        request_task.cancel()
+                
+                # Wait for request cancellation with timeout
+                if self._pending_requests:
+                    try:
+                        await asyncio.wait_for(
+                            asyncio.gather(*self._pending_requests, return_exceptions=True),
+                            timeout=1.0
+                        )
+                    except asyncio.TimeoutError:
+                        logger.warning("Some pending requests did not cancel within timeout")
+                
+                self._pending_requests.clear()
+            
+            # Stop the site first
+            if self.site:
+                await self.site.stop()
+                self.site = None
+                
+            # Then cleanup the runner
+            if self.runner:
+                await asyncio.wait_for(self.runner.cleanup(), timeout=self._shutdown_timeout)
+                self.runner = None
+                
+            # Clear references
+            self.app = None
+            self.base_url = None
+            
+            logger.info("Mock IP API server stopped")
+            
+        except asyncio.TimeoutError:
+            logger.error(f"Server shutdown timed out after {self._shutdown_timeout}s")
+            raise
+        except Exception as e:
+            logger.error(f"Error during server shutdown: {e}")
+            raise
 
     def _setup_routes(self):
         """Setup server routes."""
@@ -187,9 +237,25 @@ class MockIPAPIServer:
     async def _timeout_handler(self, request: web.Request):
         """Handle timeout response (never responds)."""
         self._track_request(request)
-        # Wait indefinitely to simulate timeout
-        await asyncio.sleep(60)
-        return web.json_response(self.responses["/timeout"])
+        
+        # Create a task to track this long-running request
+        async def timeout_task():
+            try:
+                # Wait indefinitely to simulate timeout
+                await asyncio.sleep(60)
+                return web.json_response(self.responses["/timeout"])
+            except asyncio.CancelledError:
+                # Return a cancellation response
+                return web.Response(status=499, text="Request cancelled")
+        
+        task = asyncio.create_task(timeout_task())
+        self._pending_requests.add(task)
+        
+        try:
+            result = await task
+            return result
+        finally:
+            self._pending_requests.discard(task)
 
     async def _error_handler(self, request: web.Request):
         """Handle error response (500 status)."""
@@ -204,10 +270,11 @@ class MockIPAPIServer:
         # Track requests per minute
         now = time.time()
         current_minute = int(now // 60)
-        
+
         # Clean old minute buckets (keep only current minute)
         self.request_counts = {
-            minute: count for minute, count in self.request_counts.items() 
+            minute: count
+            for minute, count in self.request_counts.items()
             if minute >= current_minute
         }
 
@@ -367,6 +434,7 @@ class MockAPICluster:
         self.servers = []
         self.server_count = server_count
         self.current_primary = 0
+        self._shutdown_timeout = 10.0
 
     async def start(self):
         """Start all servers in the cluster."""
@@ -376,9 +444,22 @@ class MockAPICluster:
             self.servers.append(server)
 
     async def stop(self):
-        """Stop all servers in the cluster."""
-        for server in self.servers:
-            await server.stop()
+        """Stop all servers in the cluster with proper cleanup."""
+        if not self.servers:
+            return
+            
+        try:
+            # Stop all servers concurrently with timeout
+            stop_tasks = [server.stop() for server in self.servers]
+            await asyncio.wait_for(
+                asyncio.gather(*stop_tasks, return_exceptions=True),
+                timeout=self._shutdown_timeout
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Cluster shutdown timed out after {self._shutdown_timeout}s")
+            raise
+        finally:
+            self.servers.clear()
 
     def get_server_urls(self) -> list[str]:
         """Get all server URLs."""
@@ -422,6 +503,7 @@ class HTTPMockFixture:
         """Initialize the fixture."""
         self.servers = []
         self.clusters = []
+        self._cleanup_timeout = 10.0
 
     async def create_server(self, **kwargs) -> MockIPAPIServer:
         """Create and start a mock server."""
@@ -438,13 +520,44 @@ class HTTPMockFixture:
         return cluster
 
     async def cleanup(self):
-        """Cleanup all servers and clusters."""
+        """Cleanup all servers and clusters with proper error handling."""
+        cleanup_tasks = []
+        
+        # Add server cleanup tasks
         for server in self.servers:
-            await server.stop()
+            cleanup_tasks.append(server.stop())
+            
+        # Add cluster cleanup tasks
         for cluster in self.clusters:
-            await cluster.stop()
-        self.servers.clear()
-        self.clusters.clear()
+            cleanup_tasks.append(cluster.stop())
+        
+        if cleanup_tasks:
+            try:
+                # Execute all cleanup tasks concurrently with timeout
+                results = await asyncio.wait_for(
+                    asyncio.gather(*cleanup_tasks, return_exceptions=True),
+                    timeout=self._cleanup_timeout
+                )
+                
+                # Log any cleanup errors
+                for i, result in enumerate(results):
+                    if isinstance(result, Exception):
+                        logger.error(f"Cleanup task {i} failed: {result}")
+                        
+            except asyncio.TimeoutError:
+                logger.error(f"Fixture cleanup timed out after {self._cleanup_timeout}s")
+                raise
+            except Exception as e:
+                logger.error(f"Unexpected error during fixture cleanup: {e}")
+                raise
+            finally:
+                # Clear references regardless of cleanup success
+                self.servers.clear()
+                self.clusters.clear()
+        else:
+            # No cleanup needed
+            self.servers.clear()
+            self.clusters.clear()
 
 
 # Context manager for easy server management
@@ -455,6 +568,7 @@ class MockServerContext:
         """Initialize context manager."""
         self.server = None
         self.server_kwargs = kwargs
+        self._cleanup_timeout = 5.0
 
     async def __aenter__(self) -> MockIPAPIServer:
         """Enter context and start server."""
@@ -463,6 +577,68 @@ class MockServerContext:
         return self.server
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Exit context and stop server."""
+        """Exit context and stop server with proper cleanup."""
         if self.server:
-            await self.server.stop()
+            try:
+                await asyncio.wait_for(
+                    self.server.stop(),
+                    timeout=self._cleanup_timeout
+                )
+            except asyncio.TimeoutError:
+                logger.error(f"Server context cleanup timed out after {self._cleanup_timeout}s")
+                # Don't re-raise to avoid masking original exceptions
+            except Exception as e:
+                logger.error(f"Error during server context cleanup: {e}")
+                # Don't re-raise to avoid masking original exceptions
+            finally:
+                self.server = None
+
+
+class MockServerCluster:
+    """Enhanced context manager for server cluster lifecycle."""
+    
+    def __init__(self, server_count: int = 3, **server_kwargs):
+        """Initialize cluster context manager.
+        
+        Args:
+            server_count: Number of servers in the cluster
+            **server_kwargs: Keyword arguments to pass to each server
+        """
+        self.server_count = server_count
+        self.server_kwargs = server_kwargs
+        self.cluster = None
+        self._cleanup_timeout = 10.0
+    
+    async def __aenter__(self) -> MockAPICluster:
+        """Enter context and start cluster."""
+        self.cluster = MockAPICluster(self.server_count)
+        
+        # Override server creation to use custom kwargs
+        if self.server_kwargs:
+            original_servers = []
+            for i in range(self.server_count):
+                server = MockIPAPIServer(**self.server_kwargs)
+                await server.start()
+                original_servers.append(server)
+            self.cluster.servers = original_servers
+        else:
+            await self.cluster.start()
+            
+        return self.cluster
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Exit context and stop cluster with proper cleanup."""
+        if self.cluster:
+            try:
+                await asyncio.wait_for(
+                    self.cluster.stop(),
+                    timeout=self._cleanup_timeout
+                )
+            except asyncio.TimeoutError:
+                logger.error(f"Cluster context cleanup timed out after {self._cleanup_timeout}s")
+                # Don't re-raise to avoid masking original exceptions
+            except Exception as e:
+                logger.error(f"Error during cluster context cleanup: {e}")
+                # Don't re-raise to avoid masking original exceptions
+            finally:
+                self.cluster = None
