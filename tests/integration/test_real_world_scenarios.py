@@ -6,8 +6,8 @@ including network failures, API outages, and recovery scenarios.
 """
 
 import asyncio
-import tempfile
 from pathlib import Path
+import tempfile
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -94,7 +94,7 @@ class TestRealWorldScenarios:
         servers[4].set_rate_limit(10)  # Rate limited server
 
         # Create storage
-        storage = SQLiteIPStorage(temp_files["db"])
+        storage = SQLiteIPStorage(temp_files["db"], history_size=10)
 
         # Create IP service with cluster URLs
         ip_service = IPService(
@@ -120,7 +120,7 @@ class TestRealWorldScenarios:
             initial_ip = await ip_service.get_current_ip()
             storage.save_current_ip(initial_ip)
 
-            assert initial_ip == "203.0.113.1"
+            assert initial_ip == "149.50.216.211"
             assert storage.get_current_ip() == initial_ip
 
             # Simulate monitoring over time with various network conditions
@@ -139,7 +139,7 @@ class TestRealWorldScenarios:
 
                 # Verify service remains operational
                 assert current_ip is not None
-                assert current_ip == "203.0.113.1"
+                assert current_ip == "149.50.216.211"
 
                 # Brief pause between checks
                 await asyncio.sleep(0.1)
@@ -176,7 +176,7 @@ class TestRealWorldScenarios:
         with patch.object(ip_service, "apis", all_urls):
             # Phase 1: Normal operation
             ip1 = await ip_service.get_current_ip()
-            assert ip1 == "203.0.113.1"
+            assert ip1 == "149.50.216.211"
 
             # Phase 2: Primary cluster outage
             for i in range(3):
@@ -184,7 +184,7 @@ class TestRealWorldScenarios:
 
             # Should failover to backup cluster
             ip2 = await ip_service.get_current_ip()
-            assert ip2 == "203.0.113.1"
+            assert ip2 == "149.50.216.211"
 
             # Phase 3: Complete outage
             for i in range(2):
@@ -194,7 +194,7 @@ class TestRealWorldScenarios:
             try:
                 ip3 = await ip_service.get_current_ip()
                 # If successful, should be cached value
-                assert ip3 == "203.0.113.1"
+                assert ip3 == "149.50.216.211"
             except Exception:
                 # Acceptable failure during complete outage
                 pass
@@ -205,7 +205,7 @@ class TestRealWorldScenarios:
 
             # Should recover to normal operation
             ip4 = await ip_service.get_current_ip()
-            assert ip4 == "203.0.113.1"
+            assert ip4 == "149.50.216.211"
 
             # Verify requests were distributed appropriately
             primary_stats = primary_cluster.get_cluster_stats()
@@ -302,7 +302,7 @@ class TestRealWorldScenarios:
         with patch.object(ip_service, "apis", all_urls):
             # Phase 1: All regions available
             ip1 = await ip_service.get_current_ip()
-            assert ip1 == "203.0.113.1"
+            assert ip1 == "149.50.216.211"
 
             # Should prefer faster US servers
             us_stats_initial = us_cluster.get_cluster_stats()
@@ -314,7 +314,7 @@ class TestRealWorldScenarios:
 
             # Should failover to EU servers
             ip2 = await ip_service.get_current_ip()
-            assert ip2 == "203.0.113.1"
+            assert ip2 == "149.50.216.211"
 
             # Phase 3: Simulate complete network issues
             for i in range(2):
@@ -323,7 +323,7 @@ class TestRealWorldScenarios:
             # Should handle gracefully (cache or controlled failure)
             try:
                 ip3 = await ip_service.get_current_ip()
-                assert ip3 == "203.0.113.1"  # From cache
+                assert ip3 == "149.50.216.211"  # From cache
             except Exception:
                 pass  # Acceptable during complete outage
 
@@ -331,7 +331,7 @@ class TestRealWorldScenarios:
             us_cluster.recover_server(0)  # Partial US recovery
 
             ip4 = await ip_service.get_current_ip()
-            assert ip4 == "203.0.113.1"
+            assert ip4 == "149.50.216.211"
 
             # Phase 5: Full recovery
             us_cluster.recover_server(1)
@@ -339,7 +339,7 @@ class TestRealWorldScenarios:
                 eu_cluster.recover_server(i)
 
             ip5 = await ip_service.get_current_ip()
-            assert ip5 == "203.0.113.1"
+            assert ip5 == "149.50.216.211"
 
             # Verify failover behavior
             us_stats_final = us_cluster.get_cluster_stats()
@@ -369,7 +369,7 @@ class TestRealWorldScenarios:
         servers[5].set_latency(500)  # Very slow service
 
         # Create storage
-        storage = SQLiteIPStorage(temp_files["db"])
+        storage = SQLiteIPStorage(temp_files["db"], history_size=10)
 
         # Create production-like IP service
         ip_service = IPService(
@@ -479,7 +479,7 @@ class TestRealWorldScenarios:
         emergency_server.set_latency(200)  # Slowest emergency
 
         # Create storage
-        storage = SQLiteIPStorage(temp_files["db"])
+        storage = SQLiteIPStorage(temp_files["db"], history_size=10)
 
         # Create resilient IP service
         ip_service = IPService(
@@ -503,7 +503,7 @@ class TestRealWorldScenarios:
             # Phase 1: Normal operation
             ip1 = await ip_service.get_current_ip()
             storage.save_current_ip(ip1)
-            assert ip1 == "203.0.113.1"
+            assert ip1 == "149.50.216.211"
 
             # Phase 2: Primary data center failure
             for i in range(3):
@@ -511,7 +511,7 @@ class TestRealWorldScenarios:
 
             # Should failover to DR
             ip2 = await ip_service.get_current_ip()
-            assert ip2 == "203.0.113.1"
+            assert ip2 == "149.50.216.211"
 
             # Phase 3: DR data center also fails (complete disaster)
             for i in range(2):
@@ -519,7 +519,7 @@ class TestRealWorldScenarios:
 
             # Should use emergency service
             ip3 = await ip_service.get_current_ip()
-            assert ip3 == "203.0.113.1"
+            assert ip3 == "149.50.216.211"
 
             # Phase 4: Emergency service also fails (total outage)
             emergency_server.set_error_rate(1.0)
@@ -528,7 +528,7 @@ class TestRealWorldScenarios:
             try:
                 ip4 = await ip_service.get_current_ip()
                 # If successful, should be from cache
-                assert ip4 == "203.0.113.1"
+                assert ip4 == "149.50.216.211"
             except Exception:
                 # Total outage is acceptable
                 pass
@@ -537,24 +537,24 @@ class TestRealWorldScenarios:
             emergency_server.set_error_rate(0.0)
 
             ip5 = await ip_service.get_current_ip()
-            assert ip5 == "203.0.113.1"
+            assert ip5 == "149.50.216.211"
 
             # Phase 6: DR recovery
             for i in range(2):
                 dr_cluster.recover_server(i)
 
             ip6 = await ip_service.get_current_ip()
-            assert ip6 == "203.0.113.1"
+            assert ip6 == "149.50.216.211"
 
             # Phase 7: Primary recovery (full restoration)
             for i in range(3):
                 primary_cluster.recover_server(i)
 
             ip7 = await ip_service.get_current_ip()
-            assert ip7 == "203.0.113.1"
+            assert ip7 == "149.50.216.211"
 
             # Verify disaster recovery worked
-            assert storage.get_current_ip() == "203.0.113.1"
+            assert storage.get_current_ip() == "149.50.216.211"
 
             # Verify all tiers were used
             primary_stats = primary_cluster.get_cluster_stats()

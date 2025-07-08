@@ -9,7 +9,6 @@ import asyncio
 from unittest.mock import Mock, patch
 
 import pytest
-from aiohttp import web
 
 from ip_monitor.ip_api_config import IPAPIEndpoint, IPAPIManager, ResponseFormat
 from ip_monitor.ip_service import IPService
@@ -60,7 +59,7 @@ class TestIPServiceHTTPIntegration:
         with patch.object(ip_service, "legacy_apis", [f"{server.base_url}/json"]):
             ip_address = await ip_service.get_public_ip()
 
-        assert ip_address == "203.0.113.1"
+        assert ip_address == "149.50.216.211"
         assert server.get_request_count() == 1
 
         # Verify request details
@@ -77,7 +76,7 @@ class TestIPServiceHTTPIntegration:
         with patch.object(ip_service, "legacy_apis", [f"{server.base_url}/text"]):
             ip_address = await ip_service.get_public_ip()
 
-        assert ip_address == "203.0.113.1"
+        assert ip_address == "149.50.216.211"
         assert server.get_request_count() == 1
 
     async def test_custom_json_field_parsing(self, http_fixture, ip_service):
@@ -102,7 +101,7 @@ class TestIPServiceHTTPIntegration:
             with patch.object(ip_service, "use_custom_apis", True):
                 ip_address = await ip_service.get_public_ip()
 
-        assert ip_address == "203.0.113.1"
+        assert ip_address == "149.50.216.211"
         assert server.get_request_count() == 1
 
     async def test_api_failover_on_error(self, http_fixture, ip_service):
@@ -121,7 +120,7 @@ class TestIPServiceHTTPIntegration:
         ):
             ip_address = await ip_service.get_public_ip()
 
-        assert ip_address == "203.0.113.1"
+        assert ip_address == "149.50.216.211"
         assert error_server.get_request_count() == 1
         assert success_server.get_request_count() == 1
 
@@ -133,24 +132,26 @@ class TestIPServiceHTTPIntegration:
         class RetryTestState:
             def __init__(self):
                 self.call_count = 0
-                
+
         state = RetryTestState()
-        
+
         # Patch the _should_error method to control when errors occur
         original_should_error = server._should_error
-        
+
         def controlled_error():
             state.call_count += 1
             # Return True (error) for first 2 calls, False (success) for subsequent calls
             return state.call_count <= 2
-            
+
         server._should_error = controlled_error
 
         with patch.object(ip_service, "legacy_apis", [f"{server.base_url}/json"]):
             ip_address = await ip_service.get_public_ip()
 
-        assert ip_address == "203.0.113.1"
-        assert state.call_count == 3  # Should have made exactly 3 calls (2 errors + 1 success)
+        assert ip_address == "149.50.216.211"
+        assert (
+            state.call_count == 3
+        )  # Should have made exactly 3 calls (2 errors + 1 success)
         assert server.get_request_count() == 3  # Should have made 3 requests
 
     async def test_timeout_handling(self, http_fixture, ip_service):
@@ -172,7 +173,7 @@ class TestIPServiceHTTPIntegration:
         ):
             ip_address = await ip_service.get_public_ip()
 
-        assert ip_address == "203.0.113.1"
+        assert ip_address == "149.50.216.211"
         # Should have failed over to fast server
         assert fast_server.get_request_count() == 1
 
@@ -188,7 +189,7 @@ class TestIPServiceHTTPIntegration:
         ):
             ip_address = await ip_service.get_public_ip()
 
-        assert ip_address == "203.0.113.1"
+        assert ip_address == "149.50.216.211"
         assert malformed_server.get_request_count() == 1
         assert good_server.get_request_count() == 1
 
@@ -204,7 +205,7 @@ class TestIPServiceHTTPIntegration:
         ):
             ip_address = await ip_service.get_public_ip()
 
-        assert ip_address == "203.0.113.1"
+        assert ip_address == "149.50.216.211"
         assert empty_server.get_request_count() == 1
         assert good_server.get_request_count() == 1
 
@@ -220,7 +221,7 @@ class TestIPServiceHTTPIntegration:
         ):
             ip_address = await ip_service.get_public_ip()
 
-        assert ip_address == "203.0.113.1"
+        assert ip_address == "149.50.216.211"
         assert invalid_server.get_request_count() == 1
         assert valid_server.get_request_count() == 1
 
@@ -287,7 +288,7 @@ class TestIPServiceHTTPIntegration:
         end_time = asyncio.get_event_loop().time()
         duration = end_time - start_time
 
-        assert ip_address == "203.0.113.1"
+        assert ip_address == "149.50.216.211"
         # Should be faster than sequential (< 350ms total)
         assert duration < 0.35
 
@@ -313,7 +314,7 @@ class TestIPServiceHTTPIntegration:
             with patch.object(ip_service, "use_custom_apis", True):
                 ip_address = await ip_service.get_public_ip()
 
-        assert ip_address == "203.0.113.1"
+        assert ip_address == "149.50.216.211"
         assert server.get_request_count() == 1
 
         # Test API performance tracking
@@ -347,7 +348,7 @@ class TestIPServiceHTTPIntegration:
             # First few requests should trigger circuit breaker
             for _ in range(3):
                 ip_address = await ip_service.get_public_ip()
-                assert ip_address == "203.0.113.1"
+                assert ip_address == "149.50.216.211"
 
             # Circuit breaker should prevent further calls to failing server
             initial_failing_count = failing_server.get_request_count()
@@ -355,7 +356,7 @@ class TestIPServiceHTTPIntegration:
             # Additional requests should use backup server only
             for _ in range(2):
                 ip_address = await ip_service.get_public_ip()
-                assert ip_address == "203.0.113.1"
+                assert ip_address == "149.50.216.211"
 
             # Failing server should not receive more requests
             assert failing_server.get_request_count() == initial_failing_count
@@ -369,21 +370,21 @@ class TestIPServiceHTTPIntegration:
         with patch.object(ip_service, "legacy_apis", urls):
             # Initial request should succeed
             ip_address = await ip_service.get_public_ip()
-            assert ip_address == "203.0.113.1"
+            assert ip_address == "149.50.216.211"
 
             # Fail primary server
             cluster.fail_server(0)
 
             # Should fail over to secondary servers
             ip_address = await ip_service.get_public_ip()
-            assert ip_address == "203.0.113.1"
+            assert ip_address == "149.50.216.211"
 
             # Fail second server
             cluster.fail_server(1)
 
             # Should still work with third server
             ip_address = await ip_service.get_public_ip()
-            assert ip_address == "203.0.113.1"
+            assert ip_address == "149.50.216.211"
 
         # Verify requests were distributed
         stats = cluster.get_cluster_stats()
@@ -430,7 +431,7 @@ class TestIPServiceHTTPIntegration:
             # Make multiple requests to test connection reuse
             for _ in range(10):
                 ip_address = await ip_service.get_public_ip()
-                assert ip_address == "203.0.113.1"
+                assert ip_address == "149.50.216.211"
 
         assert server.get_request_count() == 10
 

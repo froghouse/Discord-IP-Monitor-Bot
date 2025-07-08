@@ -166,7 +166,7 @@ class TestBotLifecycleHTTPIntegration:
 
             # Verify IP change was detected and stored
             current_ip = storage.get_current_ip()
-            assert current_ip == "203.0.113.2"
+            assert current_ip == "149.50.216.211"
 
             # Verify history was updated
             history = storage.get_ip_history()
@@ -324,7 +324,7 @@ class TestBotLifecycleHTTPIntegration:
             # Second request should use cache (if enabled)
             ip2 = await bot_instance.ip_service.get_current_ip()
 
-            assert ip1 == ip2 == "203.0.113.1"
+            assert ip1 == ip2 == "149.50.216.211"
 
             # Verify cache behavior
             if bot_instance.ip_service.cache_enabled:
