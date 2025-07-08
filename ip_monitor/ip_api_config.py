@@ -6,9 +6,12 @@ import json
 import logging
 import time
 from dataclasses import asdict, dataclass
+from datetime import datetime
 from enum import Enum
 from typing import Any
 from urllib.parse import urlparse
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +44,8 @@ class IPAPIEndpoint:
     success_count: int = 0
     failure_count: int = 0
     avg_response_time: float = 0.0
-    last_success: float | None = None
-    last_failure: float | None = None
+    last_success: datetime | None = None
+    last_failure: datetime | None = None
 
     def __post_init__(self):
         """Validate the endpoint configuration."""
@@ -71,7 +74,7 @@ class IPAPIEndpoint:
     def record_success(self, response_time: float) -> None:
         """Record a successful API call."""
         self.success_count += 1
-        self.last_success = time.time()
+        self.last_success = datetime.now()
 
         # Update average response time using moving average
         if self.avg_response_time == 0.0:
@@ -85,7 +88,7 @@ class IPAPIEndpoint:
     def record_failure(self) -> None:
         """Record a failed API call."""
         self.failure_count += 1
-        self.last_failure = time.time()
+        self.last_failure = datetime.now()
 
     def get_performance_score(self) -> float:
         """Calculate a performance score for API ranking."""
@@ -105,7 +108,7 @@ class IPAPIEndpoint:
             score += time_bonus
 
         # Recent failure penalty
-        if self.last_failure and time.time() - self.last_failure < 300:  # 5 minutes
+        if self.last_failure and (datetime.now() - self.last_failure).total_seconds() < 300:  # 5 minutes
             score -= 15
 
         return max(0, score)
@@ -114,12 +117,33 @@ class IPAPIEndpoint:
         """Convert to dictionary for JSON serialization."""
         data = asdict(self)
         data["response_format"] = self.response_format.value
+        
+        # Convert datetime objects to ISO format strings
+        if self.last_success:
+            data["last_success"] = self.last_success.isoformat()
+        if self.last_failure:
+            data["last_failure"] = self.last_failure.isoformat()
+            
         return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "IPAPIEndpoint":
         """Create from dictionary after JSON deserialization."""
         data["response_format"] = ResponseFormat(data["response_format"])
+        
+        # Convert ISO format strings back to datetime objects
+        if data.get("last_success"):
+            try:
+                data["last_success"] = datetime.fromisoformat(data["last_success"])
+            except (ValueError, TypeError):
+                data["last_success"] = None
+                
+        if data.get("last_failure"):
+            try:
+                data["last_failure"] = datetime.fromisoformat(data["last_failure"])
+            except (ValueError, TypeError):
+                data["last_failure"] = None
+                
         return cls(**data)
 
 
@@ -222,6 +246,10 @@ class IPAPIManager:
         self.endpoints[api_id].priority = priority
         self.save_apis()
         return True
+
+    def set_api_priority(self, api_id: str, priority: int) -> bool:
+        """Set API priority (alias for update_api_priority)."""
+        return self.update_api_priority(api_id, priority)
 
     def get_api_by_name(self, name: str) -> IPAPIEndpoint | None:
         """
@@ -355,6 +383,99 @@ class IPAPIManager:
 
         self.save_apis()
         logger.info("Initialized with default IP API endpoints")
+
+    async def test_api(self, api_name_or_id: str) -> dict:
+        """
+        Test an API endpoint by name or ID.
+
+        Args:
+            api_name_or_id: Name or ID of the API to test
+
+        Returns:
+            dict: Test results with success status, IP, response time, and error
+        """
+        # Try to get API by ID first, then by name
+        api = self.get_api(api_name_or_id)
+        if not api:
+            api = self.get_api_by_name(api_name_or_id)
+        
+        if not api:
+            return {
+                "success": False,
+                "error": f"API '{api_name_or_id}' not found",
+                "response_time": 0.0,
+                "ip": None,
+            }
+
+        return await self._test_single_api(api)
+
+    async def _test_single_api(self, api: IPAPIEndpoint) -> dict:
+        """
+        Test a single API endpoint.
+
+        Args:
+            api: The API endpoint to test
+
+        Returns:
+            dict: Test results with success status, IP, response time, and error
+        """
+        start_time = time.time()
+
+        try:
+            headers = api.headers or {}
+            headers.setdefault("User-Agent", "IP-Monitor-Bot/1.0")
+
+            async with httpx.AsyncClient(timeout=api.timeout) as client:
+                response = await client.get(api.url, headers=headers)
+                response.raise_for_status()
+
+                response_time = time.time() - start_time
+
+                # Parse response based on format
+                if api.response_format == ResponseFormat.JSON or (
+                    api.response_format == ResponseFormat.AUTO
+                    and response.headers.get("content-type", "").startswith(
+                        "application/json"
+                    )
+                ):
+                    data = response.json()
+                    if api.json_field:
+                        ip = data.get(api.json_field)
+                    else:
+                        # Try common field names
+                        ip = data.get("ip") or data.get("origin") or data.get("address")
+                else:
+                    # Plain text response
+                    ip = response.text.strip()
+
+                if not ip:
+                    return {
+                        "success": False,
+                        "error": "No IP address found in response",
+                        "response_time": response_time,
+                        "ip": None,
+                    }
+
+                # Update API statistics
+                api.record_success(response_time)
+
+                return {
+                    "success": True,
+                    "ip": ip,
+                    "response_time": response_time,
+                    "error": None,
+                }
+
+        except Exception as e:
+            response_time = time.time() - start_time
+            api.record_failure()
+
+            return {
+                "success": False,
+                "error": str(e),
+                "response_time": response_time,
+                "ip": None,
+            }
 
 
 # Global API manager instance
