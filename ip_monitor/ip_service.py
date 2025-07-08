@@ -99,6 +99,9 @@ class IPService:
         # Track last successful IP for fallback
         self._last_known_ip: str | None = None
 
+        # For backward compatibility with tests
+        self._apis: list[str] | None = None
+
         # Caching configuration
         self.cache_enabled = cache_enabled
         self.cache_ttl = cache_ttl
@@ -123,6 +126,36 @@ class IPService:
             f"read timeout: {self.read_timeout}s, "
             f"cache enabled: {self.cache_enabled}, cache TTL: {self.cache_ttl}s"
         )
+
+    @property
+    def apis(self) -> list[str]:
+        """
+        Get list of API URLs to use for IP detection.
+        
+        Returns:
+            List of API URLs
+        """
+        # For backward compatibility with tests, allow overriding
+        if self._apis is not None:
+            return self._apis
+        return self.get_apis_to_use()
+
+    @apis.setter
+    def apis(self, value: list[str]) -> None:
+        """
+        Set list of API URLs (for backward compatibility with tests).
+        
+        Args:
+            value: List of API URLs
+        """
+        self._apis = value
+
+    @apis.deleter
+    def apis(self) -> None:
+        """
+        Delete the overridden API URLs (for backward compatibility with tests).
+        """
+        self._apis = None
 
     def get_apis_to_use(self) -> list[str]:
         """
@@ -435,6 +468,15 @@ class IPService:
                 )
                 return self._last_known_ip
             return None
+
+    async def get_current_ip(self) -> str | None:
+        """
+        Get the current public IP address (alias for get_public_ip).
+        
+        Returns:
+            IP address string or None if unsuccessful
+        """
+        return await self.get_public_ip()
 
     def get_circuit_breaker_info(self) -> dict:
         """

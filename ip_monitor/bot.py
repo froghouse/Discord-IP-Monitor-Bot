@@ -10,6 +10,7 @@ from discord.ext import commands, tasks
 from ip_monitor.commands.admin_commands import AdminCommandRouter
 from ip_monitor.commands.ip_commands import IPCommands
 from ip_monitor.config import AppConfig
+from ip_monitor.ip_api_config import ip_api_manager
 from ip_monitor.ip_service import IPService
 from ip_monitor.storage import SQLiteIPStorage
 from ip_monitor.utils.async_rate_limiter import AsyncRateLimiter
@@ -87,6 +88,9 @@ class IPMonitorBot:
             stop_callback=self._stop_bot,
             config=config,
         )
+
+        # For backward compatibility with tests
+        self.ip_api_config = ip_api_manager
 
         # Set up slash command handlers
         self._setup_slash_commands()
@@ -458,6 +462,15 @@ class IPMonitorBot:
             except Exception as notification_error:
                 # If we can't even send an error message, just log it
                 logger.error(f"Failed to send error notification: {notification_error}")
+
+    async def check_ip_periodically(self) -> bool:
+        """
+        Check IP periodically (wrapper for backward compatibility with tests).
+        
+        Returns:
+            bool: True if check was successful, False otherwise
+        """
+        return await self.ip_commands.check_ip_once(self.client, user_requested=False)
 
     async def _stop_bot(self) -> None:
         """

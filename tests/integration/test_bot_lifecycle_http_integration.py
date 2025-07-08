@@ -6,8 +6,8 @@ Discord interactions, and shutdown with real HTTP servers.
 """
 
 import asyncio
-import tempfile
 from pathlib import Path
+import tempfile
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -65,6 +65,11 @@ class TestBotLifecycleHTTPIntegration:
         config.max_checks_per_period = 10
         config.ip_file = "last_ip.json"
         config.ip_history_file = "ip_history.json"
+        config.message_queue_max_age_hours = 24
+        config.message_queue_batch_size = 5
+        config.message_queue_process_interval = 1.0
+        config.discord_token = "test_token"
+        config.testing_mode = False
         return config
 
     @pytest.fixture
