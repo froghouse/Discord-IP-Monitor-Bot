@@ -539,6 +539,24 @@ class ApiHandler(BaseHandler):
                     "error": None,
                 }
 
+        except httpx.HTTPStatusError as e:
+            response_time = time.time() - start_time
+            api.record_failure()
+
+            # Check for rate limiting
+            if e.response.status_code == 429:
+                retry_after = e.response.headers.get("Retry-After", "unknown")
+                error_msg = f"Rate limit exceeded (retry after {retry_after}s)"
+            else:
+                error_msg = f"HTTP {e.response.status_code}: {e.response.text}"
+
+            return {
+                "success": False,
+                "error": error_msg,
+                "response_time": response_time,
+                "ip": None,
+            }
+
         except Exception as e:
             response_time = time.time() - start_time
             api.record_failure()

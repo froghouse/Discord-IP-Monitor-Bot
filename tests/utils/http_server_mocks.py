@@ -203,15 +203,15 @@ class MockIPAPIServer:
 
         # Track requests per minute
         now = time.time()
-        minute_ago = now - 60
-
-        # Clean old requests
+        current_minute = int(now // 60)
+        
+        # Clean old minute buckets (keep only current minute)
         self.request_counts = {
-            t: count for t, count in self.request_counts.items() if t > minute_ago
+            minute: count for minute, count in self.request_counts.items() 
+            if minute >= current_minute
         }
 
         # Count current minute
-        current_minute = int(now // 60)
         self.request_counts[current_minute] = (
             self.request_counts.get(current_minute, 0) + 1
         )
