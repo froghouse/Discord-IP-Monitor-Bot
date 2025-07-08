@@ -8,8 +8,8 @@ that use real HTTP server mocks.
 import asyncio
 import logging
 import os
-import sys
 from pathlib import Path
+import sys
 
 import pytest
 
@@ -32,26 +32,8 @@ logging.getLogger("asyncio").setLevel(logging.WARNING)
 # from tests.conftest import *
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create event loop for the test session."""
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-
-    yield loop
-
-    # Clean up pending tasks
-    try:
-        pending = asyncio.all_tasks(loop)
-        if pending:
-            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-    except Exception:
-        pass
-
-    if not loop.is_closed():
-        loop.close()
+# Custom event loop fixture removed to resolve conflicts with pytest-asyncio
+# pytest-asyncio with asyncio_mode = auto handles event loop management automatically
 
 
 @pytest.fixture(autouse=True)
@@ -97,17 +79,18 @@ async def cleanup_tasks():
         all_tasks = asyncio.all_tasks()
 
         other_tasks = [
-            task for task in all_tasks if task != current_task and not task.done()
+            task for task in all_tasks 
+            if task != current_task and not task.done()
         ]
 
         if other_tasks:
             for task in other_tasks:
-                task.cancel()
+                if not task.cancelled():
+                    task.cancel()
 
-            try:
+            # Wait for task cancellation to complete
+            if other_tasks:
                 await asyncio.gather(*other_tasks, return_exceptions=True)
-            except Exception:
-                pass
     except Exception:
         pass
 
