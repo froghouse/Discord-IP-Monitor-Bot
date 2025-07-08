@@ -191,10 +191,12 @@ class TestAdminCommandsHTTPIntegration:
             # Verify HTTP request was made
             assert server.get_request_count() == 1
 
-            # Verify error response was sent
-            mock_admin_message.channel.send.assert_called_once()
-            response = mock_admin_message.channel.send.call_args[0][0]
-            assert "failed" in response.lower()
+            # Verify responses were sent (status message + result message)
+            assert mock_admin_message.channel.send.call_count == 2
+            
+            # Check the result message (last call)
+            result_message = mock_admin_message.channel.send.call_args[0][0]
+            assert "failed" in result_message.lower()
 
     async def test_api_stats_command_with_http_performance(
         self, http_fixture, admin_router, mock_admin_message
