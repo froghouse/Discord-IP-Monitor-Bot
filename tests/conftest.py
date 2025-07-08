@@ -12,7 +12,49 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-@pytest.fixture
+# Centralized fixture factory for cleaner dependency injection
+class FixtureFactory:
+    """Factory for creating commonly used fixture combinations."""
+    
+    @staticmethod
+    def create_admin_command_handler_dependencies(mock_discord_client, mock_ip_service, mock_storage, mock_stop_callback, mock_config):
+        """Create dependencies for admin command handler testing."""
+        return {
+            'client': mock_discord_client,
+            'ip_service': mock_ip_service,
+            'storage': mock_storage,
+            'stop_callback': mock_stop_callback,
+            'config': mock_config
+        }
+    
+    @staticmethod
+    def create_bot_dependencies(mock_discord_client, mock_ip_service, mock_storage, mock_config):
+        """Create dependencies for bot testing."""
+        return {
+            'client': mock_discord_client,
+            'ip_service': mock_ip_service,
+            'storage': mock_storage,
+            'config': mock_config
+        }
+    
+    @staticmethod
+    def create_ip_service_dependencies(mock_cache, mock_circuit_breaker, mock_rate_limiter, mock_service_health):
+        """Create dependencies for IP service testing."""
+        return {
+            'cache': mock_cache,
+            'circuit_breaker': mock_circuit_breaker,
+            'rate_limiter': mock_rate_limiter,
+            'service_health': mock_service_health
+        }
+
+
+@pytest.fixture(scope="session")
+def fixture_factory():
+    """Provide access to the fixture factory."""
+    return FixtureFactory()
+
+
+@pytest.fixture(scope="session")
 def mock_config():
     """Create a mock configuration object."""
     config = Mock()
@@ -41,24 +83,10 @@ def mock_config():
     return config
 
 
-@pytest.fixture
-def mock_bot():
-    """Create a mock Discord bot."""
-    bot = AsyncMock()
-    bot.user = Mock()
-    bot.user.id = 123456789
-    bot.user.name = "TestBot"
-    bot.latency = 0.1
-    bot.is_ready.return_value = True
-
-    # Mock channel
-    channel = AsyncMock()
-    channel.send = AsyncMock()
-    bot.get_channel.return_value = channel
-
-    return bot
+# Removed duplicate mock_bot fixture - use mock_discord_client instead
 
 
+# Unified Discord context fixtures
 @pytest.fixture
 def mock_ctx():
     """Create a mock Discord context."""
@@ -75,7 +103,7 @@ def mock_ctx():
     return ctx
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_cache():
     """Create a mock cache."""
     cache = Mock()
@@ -93,7 +121,7 @@ def mock_cache():
     return cache
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_message_queue():
     """Create a mock message queue."""
     queue = Mock()
@@ -106,17 +134,15 @@ def mock_message_queue():
             "total_failed": 0,
         }
     )
-    queue.clear_queue = Mock(
-        return_value=0
-    )  # Fixed: clear_queue is synchronous, not clear
-    queue.retry_failed_messages = Mock(return_value=0)  # Added missing method
-    queue.start_processing = Mock()  # Correct: synchronous method
-    queue.stop_processing = AsyncMock()  # Correct: async method
-    queue.set_discord_client = Mock()  # Correct: synchronous method
+    queue.clear_queue = Mock(return_value=0)
+    queue.retry_failed_messages = Mock(return_value=0)
+    queue.start_processing = Mock()
+    queue.stop_processing = AsyncMock()
+    queue.set_discord_client = Mock()
     return queue
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_service_health():
     """Create a mock service health monitor."""
     health = Mock()
@@ -128,7 +154,7 @@ def mock_service_health():
     return health
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_rate_limiter():
     """Create a mock rate limiter."""
     limiter = Mock()
@@ -145,7 +171,7 @@ def mock_rate_limiter():
     return limiter
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_circuit_breaker():
     """Create a mock circuit breaker."""
     breaker = Mock()
@@ -157,7 +183,7 @@ def mock_circuit_breaker():
     return breaker
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_ip_api_config():
     """Create a mock IP API configuration."""
     config = Mock()
@@ -172,13 +198,13 @@ def mock_ip_api_config():
     return config
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def sample_ip_address():
     """Sample IP address for testing."""
     return "192.168.1.1"
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def sample_ip_history():
     """Sample IP history for testing."""
     return [
@@ -188,17 +214,10 @@ def sample_ip_history():
     ]
 
 
-@pytest.fixture
-def mock_client():
-    """Create a mock Discord client."""
-    client = Mock()
-    client.user = Mock()
-    client.user.id = 123456789
-    client.user.name = "TestBot"
-    return client
+# Removed duplicate mock_client fixture - use mock_discord_client instead
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_ip_service():
     """Create a mock IP service."""
     service = Mock()
@@ -223,32 +242,32 @@ def mock_ip_service():
     )
     service.invalidate_cache = Mock(return_value=0)
     service.refresh_stale_cache_entries = AsyncMock(return_value=0)
-    service.set_last_known_ip = Mock()  # Add missing method as Mock
+    service.set_last_known_ip = Mock()
     return service
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_storage():
     """Create a mock storage."""
     storage = Mock()
     storage.get_current_ip = Mock(return_value="192.168.1.1")
     storage.save_current_ip = Mock()
     storage.get_ip_history = Mock(return_value=[])
-    storage.migrate_from_json = Mock()  # Add missing method as Mock
+    storage.migrate_from_json = Mock()
+    storage.close = Mock()
     return storage
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_stop_callback():
     """Create a mock stop callback."""
-    # Return a simple Mock that doesn't create async coroutines
-    # In tests, the stop_callback is typically not called, just passed around
     return Mock()
 
 
+# Simplified Discord message fixtures
 @pytest.fixture
 def mock_message():
-    """Create a mock Discord message."""
+    """Create a mock Discord message with basic permissions."""
     message = Mock()
     message.author = Mock()
     message.author.id = 987654321
@@ -365,6 +384,7 @@ def sqlite_storage(temp_db_path):
         pass
 
 
+# Simplified database fixtures
 @pytest.fixture(scope="function")
 def isolated_sqlite_storage():
     """Create an isolated SQLiteIPStorage instance with unique temporary database."""
@@ -394,8 +414,19 @@ def isolated_sqlite_storage():
 
 
 @pytest.fixture(scope="function")
-def sqlite_storage_with_data(sqlite_storage):
+def sqlite_storage_with_data():
     """Create a SQLiteIPStorage instance with test data."""
+    import tempfile
+    import os
+    import sqlite3
+    from ip_monitor.storage import SQLiteIPStorage
+    
+    # Create temporary database file
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as temp_file:
+        temp_db_path = temp_file.name
+    
+    storage = SQLiteIPStorage(temp_db_path, history_size=10)
+    
     # Insert test data
     test_ips = [
         ("192.168.1.1", "2023-01-01T12:00:00Z"),
@@ -403,7 +434,7 @@ def sqlite_storage_with_data(sqlite_storage):
         ("192.168.1.3", "2023-01-01T14:00:00Z"),
     ]
 
-    with sqlite3.connect(sqlite_storage.db_file) as conn:
+    with sqlite3.connect(temp_db_path) as conn:
         cursor = conn.cursor()
 
         # Add current IP
@@ -419,9 +450,19 @@ def sqlite_storage_with_data(sqlite_storage):
 
         conn.commit()
 
-    return sqlite_storage
-
-    # Cleanup is handled by the parent sqlite_storage fixture
+    yield storage
+    
+    # Cleanup
+    try:
+        storage.close()
+    except Exception:
+        pass
+    
+    # Remove temporary file
+    try:
+        os.unlink(temp_db_path)
+    except Exception:
+        pass
 
 
 @pytest.fixture(scope="function")
@@ -596,7 +637,7 @@ async def mock_httpx_client():
             pass  # Ignore cleanup errors in tests
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_httpx_responses():
     """Create configurable mock HTTP responses."""
 
@@ -611,13 +652,14 @@ def mock_httpx_responses():
 
         def raise_for_status(self):
             if self.status_code >= 400:
+                import httpx
                 raise httpx.HTTPError(f"HTTP {self.status_code}")
 
     return MockResponse
 
 
 # Enhanced Discord Bot Mock Fixtures
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_discord_client():
     """Enhanced Discord client mock with comprehensive API coverage."""
     client = AsyncMock()
@@ -660,7 +702,7 @@ def mock_discord_client():
     return client
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_discord_interaction():
     """Create a mock Discord interaction for slash commands."""
     interaction = AsyncMock()
@@ -696,7 +738,7 @@ def mock_discord_interaction():
     return interaction
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_discord_cog():
     """Create a mock Discord cog for testing."""
     from discord.ext import commands
@@ -762,6 +804,7 @@ def reset_global_state():
         pass
 
 
+# Isolated utility fixtures - use when you need real instances instead of mocks
 @pytest.fixture
 def isolated_cache():
     """Create an isolated cache instance for testing."""
@@ -806,117 +849,4 @@ def isolated_rate_limiter():
     return AsyncRateLimiter(max_calls=10, period=300)
 
 
-# Enhanced Mock Cleanup Fixtures
-@pytest.fixture
-def enhanced_mock_storage(mock_storage):
-    """Enhanced mock storage with proper cleanup."""
-    yield mock_storage
-    
-    # Reset all mock calls and state
-    mock_storage.reset_mock()
-    
-    # Reset specific method mocks to ensure clean state
-    mock_storage.get_current_ip.reset_mock()
-    mock_storage.save_current_ip.reset_mock()
-    mock_storage.get_ip_history.reset_mock()
-
-
-@pytest.fixture
-def enhanced_mock_ip_service(mock_ip_service):
-    """Enhanced mock IP service with proper cleanup."""
-    yield mock_ip_service
-    
-    # Reset all mock calls and state
-    mock_ip_service.reset_mock()
-    
-    # Reset specific method mocks
-    mock_ip_service.get_current_ip.reset_mock()
-    mock_ip_service.get_cache_info.reset_mock()
-    mock_ip_service.invalidate_cache.reset_mock()
-    mock_ip_service.refresh_stale_cache_entries.reset_mock()
-
-
-@pytest.fixture
-def enhanced_mock_cache(mock_cache):
-    """Enhanced mock cache with proper cleanup."""
-    yield mock_cache
-    
-    # Reset all mock calls and state
-    mock_cache.reset_mock()
-    
-    # Reset cache to empty state
-    mock_cache.get.return_value = None
-    mock_cache.get_status.return_value = {
-        "memory_entries": 0,
-        "hit_rate": 0.0,
-        "operations": {"hits": 0, "misses": 0, "sets": 0},
-    }
-
-
-@pytest.fixture
-def enhanced_mock_message_queue(mock_message_queue):
-    """Enhanced mock message queue with proper cleanup."""
-    yield mock_message_queue
-    
-    # Reset all mock calls and state
-    mock_message_queue.reset_mock()
-    
-    # Reset queue to empty state
-    mock_message_queue.get_status.return_value = {
-        "queued_messages": 0,
-        "processing": False,
-        "total_processed": 0,
-        "total_failed": 0,
-    }
-    mock_message_queue.clear_queue.return_value = 0
-
-
-@pytest.fixture
-def enhanced_mock_service_health(mock_service_health):
-    """Enhanced mock service health with proper cleanup."""
-    yield mock_service_health
-    
-    # Reset all mock calls and state
-    mock_service_health.reset_mock()
-    
-    # Reset to healthy state
-    mock_service_health.get_status.return_value = {
-        "level": "NORMAL", 
-        "score": 100, 
-        "issues": []
-    }
-
-
-@pytest.fixture
-def enhanced_mock_circuit_breaker(mock_circuit_breaker):
-    """Enhanced mock circuit breaker with proper cleanup."""
-    yield mock_circuit_breaker
-    
-    # Reset all mock calls and state
-    mock_circuit_breaker.reset_mock()
-    
-    # Reset to closed state
-    mock_circuit_breaker.is_open = False
-    mock_circuit_breaker.get_status.return_value = {
-        "state": "CLOSED", 
-        "failure_count": 0, 
-        "success_count": 0
-    }
-
-
-@pytest.fixture
-def enhanced_mock_rate_limiter(mock_rate_limiter):
-    """Enhanced mock rate limiter with proper cleanup."""
-    yield mock_rate_limiter
-    
-    # Reset all mock calls and state
-    mock_rate_limiter.reset_mock()
-    
-    # Reset to non-limited state
-    mock_rate_limiter.is_limited.return_value = (False, 0)
-    mock_rate_limiter.get_status.return_value = {
-        "is_limited": False,
-        "remaining_calls": 10,
-        "period": 300,
-        "max_calls": 10,
-    }
+# Enhanced mock cleanup fixtures removed - use session-scoped fixtures with reset_global_state autouse fixture instead

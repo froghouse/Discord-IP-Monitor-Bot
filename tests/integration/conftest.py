@@ -50,7 +50,7 @@ async def setup_test_environment():
         del os.environ["TESTING_MODE"]
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def integration_test_config():
     """Configuration optimized for integration testing."""
     return {
@@ -143,7 +143,7 @@ def pytest_collection_modifyitems(config, items):
 
 
 # Custom timeout handling for integration tests
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="function")
 def timeout_handler():
     """Handle test timeouts gracefully."""
     import signal
@@ -163,7 +163,7 @@ def timeout_handler():
 
 
 # Performance monitoring for tests
-@pytest.fixture
+@pytest.fixture(scope="function")
 def performance_monitor():
     """Monitor test performance and resource usage."""
     import time
@@ -219,7 +219,7 @@ class IntegrationTestHelpers:
         assert True  # Placeholder for actual recovery time checking
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def test_helpers():
     """Provide test helper methods."""
     return IntegrationTestHelpers()
@@ -320,7 +320,7 @@ async def _cancel_remaining_tasks():
         pass
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def isolated_test_config(integration_test_config):
     """Create isolated test configuration with unique temporary files."""
     import tempfile
