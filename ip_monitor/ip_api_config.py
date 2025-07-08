@@ -2,12 +2,13 @@
 Configuration and management for custom IP detection APIs.
 """
 
-import json
-import logging
-import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
+import json
+import logging
+import os
+import time
 from typing import Any
 from urllib.parse import urlparse
 
@@ -60,6 +61,52 @@ class IPAPIEndpoint:
         except Exception as e:
             raise ValueError(f"Invalid URL: {e}")
 
+        # Security validation: Only allow HTTP/HTTPS protocols
+        if parsed.scheme.lower() not in ["http", "https"]:
+            raise ValueError(
+                f"Only HTTP and HTTPS protocols are allowed, got: {parsed.scheme}"
+            )
+
+        # Check if we're in testing mode
+        testing_mode = os.getenv("TESTING_MODE", "false").lower() == "true"
+
+        # Security validation: Block localhost and private IP ranges (except in testing mode)
+        hostname = parsed.netloc.split(":")[0].lower()  # Remove port if present
+
+        if not testing_mode:
+            if hostname in ["localhost", "127.0.0.1", "::1"]:
+                raise ValueError("Localhost URLs are not allowed for security reasons")
+
+            # Block private IP ranges (basic check)
+            if (
+                hostname.startswith("192.168.")
+                or hostname.startswith("10.")
+                or hostname.startswith("172.16.")
+                or hostname.startswith("172.17.")
+                or hostname.startswith("172.18.")
+                or hostname.startswith("172.19.")
+                or hostname.startswith("172.20.")
+                or hostname.startswith("172.21.")
+                or hostname.startswith("172.22.")
+                or hostname.startswith("172.23.")
+                or hostname.startswith("172.24.")
+                or hostname.startswith("172.25.")
+                or hostname.startswith("172.26.")
+                or hostname.startswith("172.27.")
+                or hostname.startswith("172.28.")
+                or hostname.startswith("172.29.")
+                or hostname.startswith("172.30.")
+                or hostname.startswith("172.31.")
+            ):
+                raise ValueError(
+                    "Private IP addresses are not allowed for security reasons"
+                )
+        # Even in testing mode, block suspicious ports
+        elif parsed.port and parsed.port in [22, 23, 25, 53, 135, 139, 445, 993, 995]:
+            raise ValueError(
+                f"Port {parsed.port} is not allowed for security reasons"
+            )
+
         # Validate JSON field requirement
         if self.response_format == ResponseFormat.JSON and not self.json_field:
             raise ValueError("json_field is required for JSON format")
@@ -108,7 +155,10 @@ class IPAPIEndpoint:
             score += time_bonus
 
         # Recent failure penalty
-        if self.last_failure and (datetime.now() - self.last_failure).total_seconds() < 300:  # 5 minutes
+        if (
+            self.last_failure
+            and (datetime.now() - self.last_failure).total_seconds() < 300
+        ):  # 5 minutes
             score -= 15
 
         return max(0, score)
@@ -117,33 +167,33 @@ class IPAPIEndpoint:
         """Convert to dictionary for JSON serialization."""
         data = asdict(self)
         data["response_format"] = self.response_format.value
-        
+
         # Convert datetime objects to ISO format strings
         if self.last_success:
             data["last_success"] = self.last_success.isoformat()
         if self.last_failure:
             data["last_failure"] = self.last_failure.isoformat()
-            
+
         return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "IPAPIEndpoint":
         """Create from dictionary after JSON deserialization."""
         data["response_format"] = ResponseFormat(data["response_format"])
-        
+
         # Convert ISO format strings back to datetime objects
         if data.get("last_success"):
             try:
                 data["last_success"] = datetime.fromisoformat(data["last_success"])
             except (ValueError, TypeError):
                 data["last_success"] = None
-                
+
         if data.get("last_failure"):
             try:
                 data["last_failure"] = datetime.fromisoformat(data["last_failure"])
             except (ValueError, TypeError):
                 data["last_failure"] = None
-                
+
         return cls(**data)
 
 
@@ -398,7 +448,7 @@ class IPAPIManager:
         api = self.get_api(api_name_or_id)
         if not api:
             api = self.get_api_by_name(api_name_or_id)
-        
+
         if not api:
             return {
                 "success": False,
