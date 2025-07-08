@@ -97,7 +97,9 @@ class TestBotLifecycleHTTPIntegration:
     @pytest.fixture
     def storage(self, temp_db_path):
         """Create SQLite storage."""
-        return SQLiteIPStorage(temp_db_path, history_size=10)
+        storage = SQLiteIPStorage(temp_db_path, history_size=10)
+        yield storage
+        storage.close()
 
     @pytest.fixture
     async def bot_instance(self, mock_config, mock_discord_client, storage):

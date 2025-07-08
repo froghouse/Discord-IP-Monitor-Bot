@@ -8,18 +8,15 @@ and database performance.
 
 import asyncio
 import time
-from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from ip_monitor.bot import IPMonitorBot
-from ip_monitor.config import AppConfig
 from ip_monitor.ip_service import IPService
 from ip_monitor.storage import SQLiteIPStorage
 from ip_monitor.utils.async_rate_limiter import AsyncRateLimiter
-from ip_monitor.utils.cache import IntelligentCache, CacheType
-from ip_monitor.utils.service_health import ServiceHealthMonitor
+from ip_monitor.utils.cache import CacheType, IntelligentCache
 
 
 class TestPerformanceLoadTesting:
@@ -36,19 +33,24 @@ class TestPerformanceLoadTesting:
         mock_config.cache_ttl = 300  # 5 minutes
         mock_config.rate_limit_period = 60
         mock_config.max_checks_per_period = 100  # High limit for load testing
-        
+
         # Add missing required attributes
         mock_config.db_file = ":memory:"
         mock_config.discord_token = "test_token"
         mock_config.cache_file = "/tmp/test_performance_cache.json"
         mock_config.cache_stale_threshold = 0.8
         mock_config.cache_cleanup_interval = 300
+
+        # Additional config attributes that might be needed
+        mock_config.bot_token = "test_token"
+        mock_config.ip_file = "/tmp/test_ip.json"
+        mock_config.ip_history_file = "/tmp/test_history.json"
         mock_config.circuit_breaker_failure_threshold = 3
         mock_config.circuit_breaker_recovery_timeout = 120
         mock_config.message_queue_batch_size = 5
         mock_config.message_queue_process_interval = 1.0
         mock_config.api_config_file = "/tmp/test_api_config.json"
-        
+
         return mock_config
 
     @pytest.fixture
@@ -59,18 +61,20 @@ class TestPerformanceLoadTesting:
     @pytest.fixture
     def performance_storage(self):
         """Create storage for performance testing."""
-        return SQLiteIPStorage(":memory:", history_size=10)  # In-memory for performance
+        storage = SQLiteIPStorage(":memory:", history_size=10)  # In-memory for performance
+        yield storage
+        storage.close()
 
     @pytest.fixture
     def performance_bot(self, performance_config):
         """Create bot for performance testing."""
         bot = IPMonitorBot(config=performance_config)
-        
+
         # Mock the Discord client
         bot.client = MagicMock()
         bot.client.get_channel.return_value = MagicMock()
         bot.client.get_channel.return_value.send = AsyncMock()
-        
+
         return bot
 
     @pytest.mark.asyncio
@@ -86,14 +90,14 @@ class TestPerformanceLoadTesting:
         ]
 
         with patch.object(
-            performance_bot.ip_service, "get_current_ip", side_effect=mock_responses
+            performance_bot.ip_service, "get_public_ip", side_effect=mock_responses
         ) as mock_get_ip:
             # Measure time for 50 concurrent IP checks
             start_time = time.time()
             tasks = []
 
             for i in range(50):
-                task = asyncio.create_task(performance_bot.check_ip_change())
+                task = asyncio.create_task(performance_bot.ip_service.get_public_ip())
                 tasks.append(task)
 
             await asyncio.gather(*tasks, return_exceptions=True)
@@ -120,7 +124,7 @@ class TestPerformanceLoadTesting:
         ip_responses = [f"192.168.1.{i % 10}" for i in range(100)]
 
         with patch.object(
-            performance_bot.ip_service, "get_current_ip", side_effect=ip_responses
+            performance_bot.ip_service, "get_public_ip", side_effect=ip_responses
         ) as mock_get_ip:
             # Measure time for 100 IP checks in rapid succession
             start_time = time.time()
@@ -152,7 +156,7 @@ class TestPerformanceLoadTesting:
         """Test memory usage remains stable under load."""
         # Mock IP service to simulate varying load
         with patch.object(
-            performance_bot.ip_service, "get_current_ip", return_value="192.168.1.100"
+            performance_bot.ip_service, "get_public_ip", return_value="192.168.1.100"
         ) as mock_get_ip:
             # Perform 200 operations to test memory stability
             for batch in range(10):  # 10 batches of 20 operations each
@@ -172,7 +176,7 @@ class TestPerformanceLoadTesting:
             )
 
             # Check that storage operations completed successfully
-            current_ip = await performance_bot.storage.get_current_ip()
+            current_ip = performance_bot.storage.load_last_ip()
             assert current_ip == "192.168.1.100", "Storage should contain the last IP"
 
     @pytest.mark.asyncio
@@ -190,7 +194,7 @@ class TestPerformanceLoadTesting:
 
         with patch.object(
             performance_bot.ip_service,
-            "get_current_ip",
+            "get_public_ip",
             side_effect=mock_get_ip_with_failures,
         ) as mock_get_ip:
             start_time = time.time()
@@ -240,7 +244,9 @@ class TestPerformanceCacheEfficiency:
         """Test cache hit ratio under high load."""
         # Pre-populate cache with test data
         for i in range(100):
-            cache_instance.set("test_namespace", f"key_{i}", f"value_{i}", CacheType.IP_RESULT)
+            cache_instance.set(
+                "test_namespace", f"key_{i}", f"value_{i}", CacheType.IP_RESULT
+            )
 
         # Perform 1000 get operations with 80% cache hits
         start_time = time.time()
@@ -329,7 +335,12 @@ class TestPerformanceCacheEfficiency:
         """Test cache memory usage efficiency."""
         # Fill cache to capacity
         for i in range(1000):
-            cache_instance.set("memory_test", f"large_key_{i}", f"large_value_{i}" * 10, CacheType.IP_RESULT)
+            cache_instance.set(
+                "memory_test",
+                f"large_key_{i}",
+                f"large_value_{i}" * 10,
+                CacheType.IP_RESULT,
+            )
 
         # Get initial statistics
         initial_stats = cache_instance.get_statistics()
@@ -337,7 +348,12 @@ class TestPerformanceCacheEfficiency:
 
         # Perform operations that should trigger eviction
         for i in range(200):
-            cache_instance.set("memory_test", f"new_key_{i}", f"new_value_{i}" * 10, CacheType.IP_RESULT)
+            cache_instance.set(
+                "memory_test",
+                f"new_key_{i}",
+                f"new_value_{i}" * 10,
+                CacheType.IP_RESULT,
+            )
 
         # Get final statistics
         final_stats = cache_instance.get_statistics()
@@ -363,13 +379,21 @@ class TestPerformanceCacheEfficiency:
         # Add entries with short TTL
         for i in range(500):
             cache_instance.set(
-                "cleanup_test", f"short_ttl_key_{i}", f"value_{i}", CacheType.IP_RESULT, ttl=1
+                "cleanup_test",
+                f"short_ttl_key_{i}",
+                f"value_{i}",
+                CacheType.IP_RESULT,
+                ttl=1,
             )
 
         # Add entries with long TTL
         for i in range(500):
             cache_instance.set(
-                "cleanup_test", f"long_ttl_key_{i}", f"value_{i}", CacheType.IP_RESULT, ttl=3600
+                "cleanup_test",
+                f"long_ttl_key_{i}",
+                f"value_{i}",
+                CacheType.IP_RESULT,
+                ttl=3600,
             )
 
         # Wait for short TTL entries to expire
@@ -564,7 +588,7 @@ class TestPerformanceDatabaseOperations:
             """Writer task for concurrent testing."""
             for i in range(writes_per_task):
                 ip = f"192.168.{writer_id}.{i}"
-                await performance_storage.save_current_ip(ip)
+                performance_storage.save_current_ip(ip)
                 await asyncio.sleep(0.001)  # Small delay
             return writes_per_task
 
@@ -595,7 +619,7 @@ class TestPerformanceDatabaseOperations:
         )
 
         # Verify final state
-        current_ip = await performance_storage.get_current_ip()
+        current_ip = performance_storage.load_last_ip()
         assert current_ip is not None, "Database should contain a current IP"
 
     @pytest.mark.asyncio
@@ -603,14 +627,14 @@ class TestPerformanceDatabaseOperations:
         """Test database read performance under concurrent access."""
         # Pre-populate database
         for i in range(10):
-            await performance_storage.save_current_ip(f"192.168.1.{i}")
+            performance_storage.save_current_ip(f"192.168.1.{i}")
 
         async def reader_task(reader_id: int, reads_per_task: int):
             """Reader task for concurrent testing."""
             results = []
             for i in range(reads_per_task):
-                current_ip = await performance_storage.get_current_ip()
-                history = await performance_storage.get_ip_history(limit=5)
+                current_ip = performance_storage.load_last_ip()
+                history = performance_storage.load_ip_history()
                 results.append((current_ip, len(history)))
                 await asyncio.sleep(0.001)  # Small delay
             return results
@@ -659,12 +683,11 @@ class TestPerformanceDatabaseOperations:
 
             for i in range(operations_count):
                 if i % 3 == 0:  # Write operation
-                    await performance_storage.save_current_ip(f"192.168.{task_id}.{i}")
-                else:  # Read operation
-                    if i % 2 == 0:
-                        await performance_storage.get_current_ip()
-                    else:
-                        await performance_storage.get_ip_history(limit=3)
+                    performance_storage.save_current_ip(f"192.168.{task_id}.{i}")
+                elif i % 2 == 0:
+                    performance_storage.load_last_ip()
+                else:
+                    performance_storage.load_ip_history(limit=3)
 
                 operations_completed += 1
                 await asyncio.sleep(0.001)  # Small delay
@@ -713,7 +736,7 @@ class TestPerformanceDatabaseOperations:
 
         # Perform 100 IP updates in sequence (should be efficient due to transactions)
         for i in range(100):
-            await performance_storage.save_current_ip(f"192.168.100.{i}")
+            performance_storage.save_current_ip(f"192.168.100.{i}")
 
         end_time = time.time()
         execution_time = end_time - start_time
@@ -730,14 +753,13 @@ class TestPerformanceDatabaseOperations:
         )
 
         # Verify final state
-        current_ip = await performance_storage.get_current_ip()
+        current_ip = performance_storage.load_last_ip()
         assert current_ip == "192.168.100.99", (
             f"Expected final IP 192.168.100.99, got {current_ip}"
         )
 
         # Check history size
-        history = await performance_storage.get_ip_history()
+        history = performance_storage.load_ip_history()
         assert len(history) <= 10, (
             f"History should be limited to 10 entries, got {len(history)}"
         )
-

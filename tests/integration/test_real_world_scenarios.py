@@ -151,6 +151,9 @@ class TestRealWorldScenarios:
             # Verify storage integrity
             history = storage.get_ip_history()
             assert isinstance(history, list)
+            
+            # Clean up storage resources
+            storage.close()
 
     async def test_api_service_outage_and_recovery(
         self, http_fixture, production_like_config
@@ -457,6 +460,9 @@ class TestRealWorldScenarios:
             )
             print(f"IP changes detected: {ip_changes}")
             print(f"Active servers used: {active_servers}/6")
+            
+            # Clean up storage resources
+            storage.close()
 
     async def test_disaster_recovery_scenario(
         self, http_fixture, production_like_config, temp_files
@@ -569,3 +575,6 @@ class TestRealWorldScenarios:
             print(f"Primary DC requests: {primary_stats['total_requests']}")
             print(f"DR DC requests: {dr_stats['total_requests']}")
             print(f"Emergency service requests: {emergency_stats['total_requests']}")
+            
+            # Clean up storage resources
+            storage.close()

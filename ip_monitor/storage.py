@@ -48,6 +48,18 @@ class SQLiteIPStorage:
         # SQLiteIPStorage uses context managers for all operations,
         # so there are no persistent connections to close.
         # This method is provided for API compatibility.
+        
+        # Force garbage collection to ensure any lingering connections are cleaned up
+        import gc
+        gc.collect()
+        
+        # Also ensure any lingering database connections are explicitly closed
+        # by attempting to connect and immediately close
+        try:
+            conn = sqlite3.connect(self.db_file)
+            conn.close()
+        except Exception:
+            pass  # Ignore any errors during cleanup
 
     def _init_database(self) -> None:
         """Initialize the SQLite database with required tables."""
@@ -227,8 +239,14 @@ class SQLiteIPStorage:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
 
-                # Get the last IP to check if it changed
-                last_ip = self.load_last_ip()
+                # Get the last IP to check if it changed (using same connection)
+                cursor.execute("""
+                    SELECT ip FROM current_ip 
+                    ORDER BY created_at DESC 
+                    LIMIT 1
+                """)
+                row = cursor.fetchone()
+                last_ip = row[0] if row and self.is_valid_ip(row[0]) else None
 
                 # Update current IP (replace the single record)
                 cursor.execute("DELETE FROM current_ip")
