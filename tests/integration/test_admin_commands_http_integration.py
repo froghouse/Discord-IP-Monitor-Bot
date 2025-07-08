@@ -36,6 +36,22 @@ class TestAdminCommandsHTTPIntegration:
         config.cache_enabled = True
         config.cache_ttl = 300
         config.circuit_breaker_enabled = True
+        config.connection_timeout = 10.0
+        
+        # Mock config validation methods
+        config.validate_config_value = Mock(return_value={
+            "valid": True,
+            "converted_value": 20.0,
+            "error": None
+        })
+        
+        # Mock update_field to actually update the attribute
+        def update_field_side_effect(field, value):
+            setattr(config, field, value)
+        
+        config.update_field = Mock(side_effect=update_field_side_effect)
+        config.get_field_info = Mock(return_value={"restart_required": False})
+        
         return config
 
     @pytest.fixture
