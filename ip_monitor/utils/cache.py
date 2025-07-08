@@ -5,14 +5,14 @@ This module provides a comprehensive caching layer that reduces API calls
 through intelligent TTL management, cache invalidation, and persistence.
 """
 
+from dataclasses import dataclass
+from enum import Enum
 import hashlib
 import json
 import logging
-import time
-from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from threading import Lock
+import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -350,6 +350,10 @@ class IntelligentCache:
                 "hit_rate": hit_rate,
                 "memory_usage_mb": self._estimate_memory_usage(),
             }
+
+    def get_statistics(self) -> dict[str, Any]:
+        """Get cache statistics (alias for get_stats for backward compatibility)."""
+        return self.get_stats()
 
     def _estimate_memory_usage(self) -> float:
         """Estimate memory usage in MB."""

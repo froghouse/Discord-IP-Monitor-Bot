@@ -11,14 +11,12 @@ This module tests all aspects of the cache system including:
 - Cleanup and maintenance
 """
 
-import asyncio
-import concurrent.futures
 import json
+from pathlib import Path
 import tempfile
 import threading
 import time
-from pathlib import Path
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -729,7 +727,7 @@ class TestCachePersistence:
         cache.set("test", "key", "value")
 
         # Mock file operations to raise exception
-        with patch("builtins.open", side_effect=IOError("Permission denied")):
+        with patch("builtins.open", side_effect=OSError("Permission denied")):
             with patch("logging.Logger.error") as mock_error:
                 cache.save()
 

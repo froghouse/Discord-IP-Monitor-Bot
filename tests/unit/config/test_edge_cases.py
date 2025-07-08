@@ -2,10 +2,8 @@
 Unit tests for configuration edge cases and error handling scenarios.
 """
 
-import json
 import os
-from dataclasses import asdict
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import mock_open, patch
 
 import pytest
 
@@ -59,7 +57,7 @@ class TestAppConfigValidationErrorHandling:
         mixed_case_values = ["True", "FALSE", "Yes", "NO", "On", "oFF"]
         expected_results = [True, False, True, False, True, False]
 
-        for value, expected in zip(mixed_case_values, expected_results):
+        for value, expected in zip(mixed_case_values, expected_results, strict=False):
             result = config.validate_config_value("concurrent_api_checks", value)
             assert result["valid"] is True
             assert result["converted_value"] is expected
@@ -311,7 +309,6 @@ class TestAppConfigEdgeCases:
     @pytest.fixture(autouse=True)
     def setup_method(self, env_cleanup):
         """Use the env_cleanup fixture automatically for all tests."""
-        pass
 
     @patch("ip_monitor.config.load_dotenv")
     def test_load_from_env_with_type_conversion_errors(self, mock_load_dotenv):

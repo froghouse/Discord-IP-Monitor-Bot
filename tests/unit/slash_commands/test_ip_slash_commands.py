@@ -2,12 +2,11 @@
 Tests for IP slash commands functionality.
 """
 
-from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
-import pytest
 from discord.ext import commands
+import pytest
 
 from ip_monitor.slash_commands.ip_slash_commands import IPSlashCommands
 

@@ -5,7 +5,6 @@ Tests for IPMonitorBot lifecycle management (run, cleanup, stop).
 from unittest.mock import AsyncMock, Mock, patch
 
 import discord
-import pytest
 
 from ip_monitor.bot import IPMonitorBot
 
@@ -326,7 +325,9 @@ class TestBotLifecycle:
         # Setup mocks
         mock_intents.default.return_value = mock_intents
         # Create mock client without http attribute for "without http session" test
-        mock_client = Mock(spec=['event', 'close', 'user', 'latency'])  # Specify allowed attributes
+        mock_client = Mock(
+            spec=["event", "close", "user", "latency"]
+        )  # Specify allowed attributes
         mock_client.event = Mock()  # client.event() is synchronous
         mock_client.close = AsyncMock()  # client.close() is awaited
         mock_bot_class.return_value = mock_client
@@ -422,11 +423,15 @@ class TestBotLifecycle:
         mock_ip_service_class.return_value = mock_ip_service
 
         mock_check_ip_task = AsyncMock()
-        mock_check_ip_task.is_running = Mock(return_value=True)  # is_running() is synchronous
+        mock_check_ip_task.is_running = Mock(
+            return_value=True
+        )  # is_running() is synchronous
         mock_check_ip_task.cancel = Mock()  # cancel() is synchronous
 
         mock_cache_cleanup_task = AsyncMock()
-        mock_cache_cleanup_task.is_running = Mock(return_value=True)  # is_running() is synchronous
+        mock_cache_cleanup_task.is_running = Mock(
+            return_value=True
+        )  # is_running() is synchronous
         mock_cache_cleanup_task.cancel = Mock()  # cancel() is synchronous
 
         mock_message_queue.stop_processing = AsyncMock()
@@ -487,7 +492,9 @@ class TestBotLifecycle:
 
         mock_task = AsyncMock()
         mock_task.is_running = Mock(return_value=True)  # is_running() is synchronous
-        mock_task.cancel = Mock(side_effect=Exception("Task cancel failed"))  # cancel() is synchronous
+        mock_task.cancel = Mock(
+            side_effect=Exception("Task cancel failed")
+        )  # cancel() is synchronous
 
         mock_message_queue.stop_processing = AsyncMock(
             side_effect=Exception("Queue stop failed")

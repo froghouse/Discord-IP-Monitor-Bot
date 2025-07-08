@@ -11,15 +11,14 @@ This module tests the end-to-end IP monitoring process including:
 import asyncio
 import logging
 import os
-import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+import tempfile
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from ip_monitor.bot import IPMonitorBot
 from ip_monitor.config import AppConfig
-from ip_monitor.ip_service import IPService
 from ip_monitor.storage import SQLiteIPStorage
 from ip_monitor.utils.cache import get_cache
 from ip_monitor.utils.service_health import service_health

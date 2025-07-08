@@ -10,7 +10,6 @@ This module tests the main application entry point, including:
 """
 
 import asyncio
-import logging
 import sys
 from unittest.mock import AsyncMock, Mock, patch
 

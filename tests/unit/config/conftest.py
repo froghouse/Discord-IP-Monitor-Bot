@@ -3,7 +3,6 @@ Shared fixtures and utilities for configuration tests.
 """
 
 import os
-from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
@@ -115,7 +114,6 @@ def minimal_env_config():
     """Set up minimal environment configuration for tests."""
     os.environ["DISCORD_BOT_TOKEN"] = "test_token_123"
     os.environ["CHANNEL_ID"] = "123456789"
-    yield
     # Cleanup handled by env_cleanup fixture
 
 
@@ -163,7 +161,6 @@ def comprehensive_env_config():
     for key, value in env_vars.items():
         os.environ[key] = value
 
-    yield
     # Cleanup handled by env_cleanup fixture
 
 

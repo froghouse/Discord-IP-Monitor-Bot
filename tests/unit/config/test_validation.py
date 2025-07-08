@@ -4,8 +4,6 @@ Unit tests for configuration validation functionality.
 
 import pytest
 
-from ip_monitor.config import AppConfig
-
 
 class TestAppConfigValidation:
     """Test configuration validation functionality."""

@@ -381,7 +381,7 @@ class TestMessagePersistence:
         # Verify queue file exists and is valid
         assert os.path.exists(queue.queue_file)
 
-        with open(queue.queue_file, "r") as f:
+        with open(queue.queue_file) as f:
             data = json.load(f)
 
         assert "queue" in data

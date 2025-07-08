@@ -5,8 +5,8 @@ Tests for admin slash commands functionality.
 from unittest.mock import AsyncMock, MagicMock
 
 import discord
-import pytest
 from discord.ext import commands
+import pytest
 
 from ip_monitor.slash_commands.admin_slash_commands import AdminSlashCommands
 

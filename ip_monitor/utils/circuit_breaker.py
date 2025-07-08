@@ -3,10 +3,10 @@ Circuit breaker implementation for IP API calls.
 """
 
 import asyncio
-import logging
-import time
 from collections.abc import Awaitable, Callable
 from enum import Enum
+import logging
+import time
 from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)

@@ -7,7 +7,6 @@ functionality used in the IP Monitor Bot.
 
 import threading
 import time
-from unittest.mock import patch
 
 import pytest
 

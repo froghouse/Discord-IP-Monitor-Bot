@@ -3,8 +3,8 @@ IP-related commands for the IP Monitor Bot.
 """
 
 import asyncio
-import logging
 from datetime import datetime
+import logging
 
 import discord
 

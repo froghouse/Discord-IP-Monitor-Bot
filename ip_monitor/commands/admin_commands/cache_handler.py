@@ -2,8 +2,8 @@
 Cache handler for admin commands.
 """
 
-import logging
 from collections.abc import Callable, Coroutine
+import logging
 from typing import Any
 
 import discord
@@ -41,10 +41,11 @@ class CacheHandler(BaseHandler):
             config: Application configuration
         """
         super().__init__(client, ip_service, storage, stop_callback, config)
-        
+
         # Initialize cache reference for testing and direct access
         try:
             from ip_monitor.utils.cache import get_cache
+
             self.cache = get_cache()
         except ImportError:
             # Cache module may not be available in all environments
@@ -135,9 +136,11 @@ class CacheHandler(BaseHandler):
         """
         try:
             # Check if we have a direct cache reference and it has the expected interface
-            if (self.cache is not None and 
-                hasattr(self.cache, 'get_status') and 
-                callable(getattr(self.cache, 'get_status'))):
+            if (
+                self.cache is not None
+                and hasattr(self.cache, "get_status")
+                and callable(self.cache.get_status)
+            ):
                 # This is a mocked cache for testing
                 cache_status = self.cache.get_status()
                 cache_info = {
@@ -145,20 +148,26 @@ class CacheHandler(BaseHandler):
                     "cache_ttl": 300,  # Default for testing
                     "stale_threshold": 0.8,
                     "stale_entries_count": 0,
-                    "stats": cache_status
+                    "stats": cache_status,
                 }
                 # Ensure stats has required keys for test compatibility
                 if "memory_entries" not in cache_status:
-                    cache_status["memory_entries"] = cache_status.get("operations", {}).get("sets", 0)
+                    cache_status["memory_entries"] = cache_status.get(
+                        "operations", {}
+                    ).get("sets", 0)
                 if "hit_rate" not in cache_status:
                     hits = cache_status.get("operations", {}).get("hits", 0)
                     misses = cache_status.get("operations", {}).get("misses", 0)
                     total = hits + misses
                     cache_status["hit_rate"] = hits / total if total > 0 else 0
                 if "hits" not in cache_status:
-                    cache_status["hits"] = cache_status.get("operations", {}).get("hits", 0)
+                    cache_status["hits"] = cache_status.get("operations", {}).get(
+                        "hits", 0
+                    )
                 if "misses" not in cache_status:
-                    cache_status["misses"] = cache_status.get("operations", {}).get("misses", 0)
+                    cache_status["misses"] = cache_status.get("operations", {}).get(
+                        "misses", 0
+                    )
                 # Add default values for other expected keys
                 cache_status.setdefault("evictions", 0)
                 cache_status.setdefault("invalidations", 0)

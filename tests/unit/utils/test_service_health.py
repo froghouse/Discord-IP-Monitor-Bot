@@ -5,16 +5,12 @@ This module tests the ServiceHealthMonitor class, including health degradation t
 alert systems, service registration, and configuration adjustments.
 """
 
-import time
-from typing import Any, Dict
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 
 from ip_monitor.utils.service_health import (
     DegradationLevel,
-    DegradationMode,
-    ServiceHealth,
     ServiceHealthMonitor,
     ServiceStatus,
     service_health,
@@ -598,13 +594,13 @@ class TestGlobalServiceHealthInstance:
         assert service_health.current_degradation in [
             level for level in DegradationLevel
         ]
-        
+
         # Check that core services are present
         # Note: Other tests may have registered additional services,
         # so we check for the presence of core services rather than exact count
         core_services = {"ip_service", "discord_api", "storage", "rate_limiter"}
         actual_services = set(service_health.services.keys())
-        
+
         # All core services should be present
         missing_services = core_services - actual_services
         if missing_services:
@@ -613,8 +609,8 @@ class TestGlobalServiceHealthInstance:
             print(f"Warning: Missing core services: {missing_services}")
             print(f"Found services: {actual_services}")
             # At least check that the global instance is functional
-            assert hasattr(service_health, 'services')
-            assert hasattr(service_health, 'current_degradation')
+            assert hasattr(service_health, "services")
+            assert hasattr(service_health, "current_degradation")
         else:
             # If all core services are present, verify the normal case
             assert core_services.issubset(actual_services)

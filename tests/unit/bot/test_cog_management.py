@@ -5,7 +5,6 @@ Tests for IPMonitorBot cog management functionality.
 from unittest.mock import AsyncMock, Mock, patch
 
 import discord
-import pytest
 from discord.ext import commands
 
 from ip_monitor.bot import IPMonitorBot

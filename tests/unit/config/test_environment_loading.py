@@ -22,7 +22,6 @@ class TestAppConfigEnvironmentVariableLoading:
     @pytest.fixture(autouse=True)
     def setup_method(self, env_cleanup):
         """Use the env_cleanup fixture automatically for all tests."""
-        pass
 
     @patch("ip_monitor.config.load_dotenv")
     def test_load_from_env_required_fields_present(

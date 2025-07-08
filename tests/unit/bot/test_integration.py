@@ -4,8 +4,6 @@ Tests for IPMonitorBot integration points and configuration propagation.
 
 from unittest.mock import AsyncMock, Mock, patch
 
-import pytest
-
 from ip_monitor.bot import IPMonitorBot
 
 
@@ -163,7 +161,7 @@ class TestTaskIntegration:
 
     async def test_no_task_cleanup_integration(self, mock_bot_instance):
         """Test cleanup works when no task exists."""
-        from unittest.mock import patch, AsyncMock
+        from unittest.mock import AsyncMock, patch
 
         # Setup
         mock_bot_instance.check_ip_task = None

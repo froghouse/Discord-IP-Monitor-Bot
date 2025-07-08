@@ -5,7 +5,6 @@ Tests for IPMonitorBot Discord event handlers.
 from unittest.mock import AsyncMock, Mock, patch
 
 import discord
-import pytest
 
 from ip_monitor.bot import IPMonitorBot
 
@@ -62,7 +61,9 @@ class TestOnReadyEventHandler:
         mock_discord_rate_limiter_class.return_value = mock_discord_rate_limiter
 
         mock_message_queue.set_discord_client = AsyncMock()
-        mock_message_queue.start_processing = Mock()  # start_processing() is synchronous
+        mock_message_queue.start_processing = (
+            Mock()
+        )  # start_processing() is synchronous
 
         # Initialize bot
         bot = IPMonitorBot(mock_bot_config)

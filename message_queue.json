@@ -1,0 +1,11 @@
+{
+  "queue": [],
+  "stats": {
+    "total_queued": 0,
+    "total_delivered": 0,
+    "total_failed": 0,
+    "total_expired": 0,
+    "total_deduplicated": 0
+  },
+  "timestamp": 1752001989.3673003
+}

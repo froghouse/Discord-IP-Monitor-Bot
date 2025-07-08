@@ -8,12 +8,12 @@ This module provides utilities for generating realistic test data for:
 - Performance test datasets
 """
 
-import random
-import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import random
 from typing import Any
 from unittest.mock import AsyncMock, Mock
+import uuid
 
 
 @dataclass

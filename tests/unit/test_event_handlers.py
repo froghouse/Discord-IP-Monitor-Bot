@@ -6,11 +6,9 @@ including on_ready, on_message, on_disconnect, on_resumed, and related
 event handling functionality.
 """
 
-import asyncio
 from unittest.mock import AsyncMock, Mock, patch
 
 import discord
-import pytest
 
 from ip_monitor.bot import IPMonitorBot
 

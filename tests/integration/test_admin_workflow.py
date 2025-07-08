@@ -9,17 +9,15 @@ This module tests the complete admin command processing including:
 """
 
 import os
-import tempfile
 from pathlib import Path
+import tempfile
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
-from ip_monitor.bot import IPMonitorBot
 from ip_monitor.commands.admin_commands import AdminCommandRouter
 from ip_monitor.config import AppConfig
 from ip_monitor.ip_api_config import IPAPIManager
-from ip_monitor.utils.cache import get_global_cache
 from ip_monitor.utils.service_health import service_health
 
 

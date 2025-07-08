@@ -2,9 +2,9 @@
 API handler for admin commands.
 """
 
+from collections.abc import Callable, Coroutine
 import logging
 import time
-from collections.abc import Callable, Coroutine
 from typing import Any
 
 import discord

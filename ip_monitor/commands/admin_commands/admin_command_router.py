@@ -2,8 +2,8 @@
 Admin command router for the IP Monitor Bot.
 """
 
-import logging
 from collections.abc import Callable, Coroutine
+import logging
 from typing import Any
 
 import discord

@@ -5,8 +5,8 @@ Comprehensive tests for the IPMonitorBot class.
 from unittest.mock import AsyncMock, Mock, patch
 
 import discord
-import pytest
 from discord.ext import commands
+import pytest
 
 from ip_monitor.bot import IPMonitorBot
 from ip_monitor.config import AppConfig
@@ -72,11 +72,13 @@ class TestIPMonitorBot:
         client = AsyncMock(spec=commands.Bot)
         client.user = Mock()
         client.user.id = 123456789
-        
+
         # Synchronous methods that should not be AsyncMock
         client.event = Mock()  # event() is synchronous - decorator registration
-        client.get_channel = Mock(return_value=AsyncMock())  # get_channel() is synchronous
-        
+        client.get_channel = Mock(
+            return_value=AsyncMock()
+        )  # get_channel() is synchronous
+
         # Async methods that should remain AsyncMock
         client.close = AsyncMock()
         client.start = AsyncMock()
@@ -184,13 +186,15 @@ class TestIPMonitorBot:
         # Setup mocks
         mock_intents.default.return_value = mock_intents
         mock_client = AsyncMock()
-        
+
         # Fix specific synchronous methods that should not be AsyncMock
         mock_client.event = Mock()  # event() is synchronous - decorator registration
-        mock_client.get_channel = Mock(return_value=AsyncMock())  # get_channel() is synchronous
+        mock_client.get_channel = Mock(
+            return_value=AsyncMock()
+        )  # get_channel() is synchronous
         mock_client.user = Mock()
         mock_client.user.id = 123456789
-        
+
         mock_bot_class.return_value = mock_client
 
         # Initialize bot

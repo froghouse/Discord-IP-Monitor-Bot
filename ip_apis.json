@@ -10,10 +10,10 @@
       "timeout": 10.0,
       "enabled": true,
       "priority": 1,
-      "success_count": 0,
+      "success_count": 190,
       "failure_count": 0,
-      "avg_response_time": 0.0,
-      "last_success": null,
+      "avg_response_time": 0.16557581166929805,
+      "last_success": "2025-07-08T20:54:37.569785",
       "last_failure": null
     },
     "ipify_text": {
@@ -26,10 +26,10 @@
       "timeout": 10.0,
       "enabled": true,
       "priority": 2,
-      "success_count": 0,
+      "success_count": 190,
       "failure_count": 0,
-      "avg_response_time": 0.0,
-      "last_success": null,
+      "avg_response_time": 0.13280050471193727,
+      "last_success": "2025-07-08T20:54:37.548525",
       "last_failure": null
     },
     "ifconfig_me": {
@@ -42,10 +42,10 @@
       "timeout": 10.0,
       "enabled": true,
       "priority": 3,
-      "success_count": 0,
+      "success_count": 190,
       "failure_count": 0,
-      "avg_response_time": 0.0,
-      "last_success": null,
+      "avg_response_time": 0.1441284308715968,
+      "last_success": "2025-07-08T20:54:37.570613",
       "last_failure": null
     },
     "icanhazip": {
@@ -58,10 +58,10 @@
       "timeout": 10.0,
       "enabled": true,
       "priority": 4,
-      "success_count": 0,
+      "success_count": 190,
       "failure_count": 0,
-      "avg_response_time": 0.0,
-      "last_success": null,
+      "avg_response_time": 0.022683291399716747,
+      "last_success": "2025-07-08T20:54:37.447923",
       "last_failure": null
     },
     "aws_checkip": {
@@ -74,12 +74,12 @@
       "timeout": 10.0,
       "enabled": true,
       "priority": 5,
-      "success_count": 0,
+      "success_count": 190,
       "failure_count": 0,
-      "avg_response_time": 0.0,
-      "last_success": null,
+      "avg_response_time": 0.11386836429862125,
+      "last_success": "2025-07-08T20:54:37.529196",
       "last_failure": null
     }
   },
-  "saved_at": 1751552642.1019223
+  "saved_at": 1752000877.570819
 }

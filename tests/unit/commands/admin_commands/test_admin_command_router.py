@@ -583,7 +583,7 @@ class TestAdminCommandRouterHelpSystem:
 
             mock_send.assert_called_once()
             args = mock_send.call_args[0]
-            assert "❌ Test error" == args[1]
+            assert args[1] == "❌ Test error"
 
     async def test_send_unknown_command(self, router):
         """Test sending unknown command message."""

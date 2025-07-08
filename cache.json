@@ -1,27 +1,13 @@
 {
-  "entries": [
-    {
-      "key": "global:current_ip",
-      "value": "203.0.113.1",
-      "created_at": 1751792241.8207765,
-      "last_accessed": 1751792241.8207765,
-      "access_count": 1,
-      "ttl": 300,
-      "cache_type": "ip_result",
-      "metadata": {
-        "source": "concurrent",
-        "timestamp": 1751792241.820768
-      }
-    }
-  ],
+  "entries": [],
   "stats": {
     "hits": 0,
     "misses": 0,
     "evictions": 0,
     "invalidations": 0,
     "refreshes": 0,
-    "saves": 52,
-    "loads": 25
+    "saves": 202,
+    "loads": 115
   },
-  "saved_at": 1751792242.0463293
+  "saved_at": 1752001974.1020281
 }

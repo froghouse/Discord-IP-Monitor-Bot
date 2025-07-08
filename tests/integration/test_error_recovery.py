@@ -11,9 +11,9 @@ failure conditions including:
 
 import asyncio
 import os
-import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+import tempfile
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -46,7 +46,7 @@ class TestNetworkFailureRecovery:
         bot = bot_with_network_mocking
 
         # Mock timeout errors
-        timeout_error = asyncio.TimeoutError("Request timeout")
+        timeout_error = TimeoutError("Request timeout")
 
         with patch.object(bot.ip_service, "get_public_ip") as mock_get_ip:
             # First call fails with timeout
@@ -56,7 +56,7 @@ class TestNetworkFailureRecovery:
             try:
                 await bot.ip_service.get_public_ip()
                 pytest.fail("Should have raised timeout error")
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Record the failure
                 service_health.record_failure(
                     "ip_service", "Timeout error", "api_check"

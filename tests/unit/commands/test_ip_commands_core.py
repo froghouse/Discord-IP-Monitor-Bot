@@ -5,8 +5,6 @@ This module provides test coverage for the core functionality of the IP monitori
 bot's user commands, including initialization, manual IP checks, and basic operations.
 """
 
-import asyncio
-from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest

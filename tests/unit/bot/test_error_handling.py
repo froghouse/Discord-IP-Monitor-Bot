@@ -4,8 +4,6 @@ Tests for IPMonitorBot error handling and resilience.
 
 from unittest.mock import AsyncMock, Mock, patch
 
-import pytest
-
 from ip_monitor.bot import IPMonitorBot
 
 

@@ -3,10 +3,10 @@ Discord API rate limiting with exponential backoff implementation.
 """
 
 import asyncio
+from collections.abc import Awaitable, Callable
 import logging
 import secrets
 import time
-from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
 
 import discord

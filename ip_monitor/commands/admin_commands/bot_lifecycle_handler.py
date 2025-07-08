@@ -2,8 +2,8 @@
 Bot lifecycle handler for admin commands.
 """
 
-import logging
 from collections.abc import Callable, Coroutine
+import logging
 from typing import Any
 
 import discord

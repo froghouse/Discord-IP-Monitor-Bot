@@ -4,8 +4,6 @@ Tests for IPMonitorBot slash command setup and integration.
 
 from unittest.mock import AsyncMock, Mock, patch
 
-import pytest
-
 from ip_monitor.bot import IPMonitorBot
 
 

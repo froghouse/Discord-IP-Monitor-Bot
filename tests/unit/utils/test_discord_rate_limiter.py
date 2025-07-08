@@ -24,7 +24,7 @@ class TestDiscordRateLimiter:
         return DiscordRateLimiter(
             max_retries=3,
             base_delay=0.1,  # Reduced from 1.0 to 0.1 for faster testing
-            max_delay=1.0,   # Reduced from 30.0 to 1.0 for faster testing
+            max_delay=1.0,  # Reduced from 30.0 to 1.0 for faster testing
             backoff_factor=2.0,
             jitter=True,
         )
@@ -35,7 +35,7 @@ class TestDiscordRateLimiter:
         return DiscordRateLimiter(
             max_retries=2,
             base_delay=0.1,  # Reduced from 2.0 to 0.1 for faster testing
-            max_delay=0.5,   # Reduced from 10.0 to 0.5 for faster testing
+            max_delay=0.5,  # Reduced from 10.0 to 0.5 for faster testing
             backoff_factor=2.0,
             jitter=False,
         )

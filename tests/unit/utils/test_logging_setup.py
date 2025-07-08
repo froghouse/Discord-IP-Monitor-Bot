@@ -12,11 +12,8 @@ This module tests the logging configuration functionality including:
 """
 
 import logging
-import os
-import tempfile
 from logging.handlers import RotatingFileHandler
-from pathlib import Path
-from typing import Any, Dict, List
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest

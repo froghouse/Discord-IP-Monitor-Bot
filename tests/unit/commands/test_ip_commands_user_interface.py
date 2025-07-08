@@ -5,7 +5,6 @@ This module provides test coverage for the user-facing command functionality of 
 monitoring bot, including history retrieval, status display, and help information.
 """
 
-from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest

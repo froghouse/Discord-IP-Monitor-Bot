@@ -4,8 +4,7 @@ Unit tests for configuration management module.
 
 import json
 import os
-from dataclasses import asdict
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import mock_open, patch
 
 import pytest
 
@@ -758,7 +757,7 @@ class TestAppConfigFilePersistence:
         assert "discord_token" not in saved_data
         assert "cache_info" in saved_data
 
-    @patch("builtins.open", side_effect=IOError("Permission denied"))
+    @patch("builtins.open", side_effect=OSError("Permission denied"))
     @patch("ip_monitor.config.logger")
     def test_save_to_file_failure(self, mock_logger, mock_file, config):
         """Test configuration save failure."""
@@ -797,7 +796,7 @@ class TestAppConfigFilePersistence:
         )  # Base config values preserved
 
     @patch("os.path.exists", return_value=True)
-    @patch("builtins.open", side_effect=IOError("Permission denied"))
+    @patch("builtins.open", side_effect=OSError("Permission denied"))
     @patch("ip_monitor.config.logger")
     def test_load_from_file_failure(self, mock_logger, mock_file, mock_exists, config):
         """Test configuration load failure returns base config."""
@@ -905,7 +904,7 @@ class TestAppConfigValidationErrorHandling:
         mixed_case_values = ["True", "FALSE", "Yes", "NO", "On", "oFF"]
         expected_results = [True, False, True, False, True, False]
 
-        for value, expected in zip(mixed_case_values, expected_results):
+        for value, expected in zip(mixed_case_values, expected_results, strict=False):
             result = config.validate_config_value("concurrent_api_checks", value)
             assert result["valid"] is True
             assert result["converted_value"] is expected

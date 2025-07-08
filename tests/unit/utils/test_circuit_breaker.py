@@ -4,7 +4,7 @@ Unit tests for circuit breaker implementation.
 
 import asyncio
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -46,7 +46,9 @@ class TestCircuitBreaker:
         """Create a mock async function that times out."""
 
         async def timeout_func():
-            await asyncio.sleep(1.0)  # Will timeout with 0.5s timeout (reduced from 20s)
+            await asyncio.sleep(
+                1.0
+            )  # Will timeout with 0.5s timeout (reduced from 20s)
 
         return timeout_func
 

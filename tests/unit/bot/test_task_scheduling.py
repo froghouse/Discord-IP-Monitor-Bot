@@ -7,8 +7,6 @@ focusing on task creation, lifecycle management, error handling, and interval ad
 
 from unittest.mock import AsyncMock, Mock, patch
 
-import pytest
-
 from ip_monitor.bot import IPMonitorBot
 
 
@@ -510,7 +508,9 @@ class TestTaskErrorHandling:
         # Setup
         mock_task = AsyncMock()
         mock_task.is_running.return_value = True
-        mock_task.cancel = Mock(side_effect=Exception("Cancel failed"))  # cancel() is synchronous
+        mock_task.cancel = Mock(
+            side_effect=Exception("Cancel failed")
+        )  # cancel() is synchronous
         mock_bot_instance.check_ip_task = mock_task
 
         # Execute (should not raise exception)

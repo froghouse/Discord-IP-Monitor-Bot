@@ -83,7 +83,11 @@ def mock_config():
     return config
 
 
-# Removed duplicate mock_bot fixture - use mock_discord_client instead
+# Backward compatibility alias - use mock_discord_client for new tests
+@pytest.fixture(scope="session")
+def mock_client(mock_discord_client):
+    """Backward compatibility alias for mock_discord_client."""
+    return mock_discord_client
 
 
 # Unified Discord context fixtures
@@ -217,7 +221,7 @@ def sample_ip_history():
 # Removed duplicate mock_client fixture - use mock_discord_client instead
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def mock_ip_service():
     """Create a mock IP service."""
     service = Mock()
@@ -246,7 +250,7 @@ def mock_ip_service():
     return service
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def mock_storage():
     """Create a mock storage."""
     storage = Mock()

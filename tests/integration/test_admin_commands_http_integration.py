@@ -37,21 +37,19 @@ class TestAdminCommandsHTTPIntegration:
         config.cache_ttl = 300
         config.circuit_breaker_enabled = True
         config.connection_timeout = 10.0
-        
+
         # Mock config validation methods
-        config.validate_config_value = Mock(return_value={
-            "valid": True,
-            "converted_value": 20.0,
-            "error": None
-        })
-        
+        config.validate_config_value = Mock(
+            return_value={"valid": True, "converted_value": 20.0, "error": None}
+        )
+
         # Mock update_field to actually update the attribute
         def update_field_side_effect(field, value):
             setattr(config, field, value)
-        
+
         config.update_field = Mock(side_effect=update_field_side_effect)
         config.get_field_info = Mock(return_value={"restart_required": False})
-        
+
         return config
 
     @pytest.fixture
@@ -121,14 +119,16 @@ class TestAdminCommandsHTTPIntegration:
         api_config.endpoints = {}  # Clear any existing endpoints
         api_config._initialize_default_apis()  # Add just the default ones
 
-        with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
+        with patch(
+            "ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config
+        ):
             # Test adding API
             mock_admin_message.content = (
                 f"!admin api add TestAPI {server.base_url}/json json ip"
             )
 
             result = await admin_router.handle_admin_command(mock_admin_message)
-            
+
             # Verify API was added
             apis = api_config.list_apis()
             test_api = next((api for api in apis if api.name == "TestAPI"), None)
@@ -152,14 +152,16 @@ class TestAdminCommandsHTTPIntegration:
         api_config._initialize_default_apis()  # Add just the default ones
         test_endpoint = IPAPIEndpoint(
             id="testapi",
-            name="TestAPI", 
-            url=f"{server.base_url}/json", 
-            response_format=ResponseFormat.JSON, 
-            json_field="ip"
+            name="TestAPI",
+            url=f"{server.base_url}/json",
+            response_format=ResponseFormat.JSON,
+            json_field="ip",
         )
         api_config.add_api(test_endpoint)
 
-        with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
+        with patch(
+            "ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config
+        ):
             # Test API testing command (use API ID, not name)
             mock_admin_message.content = "!admin api test testapi"
 
@@ -170,7 +172,7 @@ class TestAdminCommandsHTTPIntegration:
 
             # Verify responses were sent (status message + result message)
             assert mock_admin_message.channel.send.call_count == 2
-            
+
             # Check the result message (last call)
             result_message = mock_admin_message.channel.send.call_args[0][0]
             assert "203.0.113.1" in result_message
@@ -191,14 +193,16 @@ class TestAdminCommandsHTTPIntegration:
         api_config._initialize_default_apis()  # Add just the default ones
         failing_endpoint = IPAPIEndpoint(
             id="failingapi",
-            name="FailingAPI", 
-            url=f"{server.base_url}/json", 
-            response_format=ResponseFormat.JSON, 
-            json_field="ip"
+            name="FailingAPI",
+            url=f"{server.base_url}/json",
+            response_format=ResponseFormat.JSON,
+            json_field="ip",
         )
         api_config.add_api(failing_endpoint)
 
-        with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
+        with patch(
+            "ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config
+        ):
             # Test API testing command
             mock_admin_message.content = "!admin api test failingapi"
 
@@ -209,7 +213,7 @@ class TestAdminCommandsHTTPIntegration:
 
             # Verify responses were sent (status message + result message)
             assert mock_admin_message.channel.send.call_count == 2
-            
+
             # Check the result message (last call)
             result_message = mock_admin_message.channel.send.call_args[0][0]
             assert "failed" in result_message.lower()
@@ -231,22 +235,24 @@ class TestAdminCommandsHTTPIntegration:
         api_config._initialize_default_apis()  # Add just the default ones
         fast_endpoint = IPAPIEndpoint(
             id="fastapi",
-            name="FastAPI", 
-            url=f"{fast_server.base_url}/json", 
-            response_format=ResponseFormat.JSON, 
-            json_field="ip"
+            name="FastAPI",
+            url=f"{fast_server.base_url}/json",
+            response_format=ResponseFormat.JSON,
+            json_field="ip",
         )
         slow_endpoint = IPAPIEndpoint(
             id="slowapi",
-            name="SlowAPI", 
-            url=f"{slow_server.base_url}/json", 
-            response_format=ResponseFormat.JSON, 
-            json_field="ip"
+            name="SlowAPI",
+            url=f"{slow_server.base_url}/json",
+            response_format=ResponseFormat.JSON,
+            json_field="ip",
         )
         api_config.add_api(fast_endpoint)
         api_config.add_api(slow_endpoint)
 
-        with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
+        with patch(
+            "ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config
+        ):
             # Test both APIs to generate performance data
             await api_config.test_api("FastAPI")
             await api_config.test_api("SlowAPI")
@@ -277,14 +283,16 @@ class TestAdminCommandsHTTPIntegration:
         api_config = IPAPIManager()
         test_endpoint = IPAPIEndpoint(
             id="testapi",
-            name="TestAPI", 
-            url=f"{server.base_url}/json", 
-            response_format=ResponseFormat.JSON, 
-            json_field="ip"
+            name="TestAPI",
+            url=f"{server.base_url}/json",
+            response_format=ResponseFormat.JSON,
+            json_field="ip",
         )
         api_config.add_api(test_endpoint)
 
-        with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
+        with patch(
+            "ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config
+        ):
             # Generate some performance data
             await api_config.test_api("TestAPI")
 
@@ -362,7 +370,9 @@ class TestAdminCommandsHTTPIntegration:
         api_config.endpoints = {}  # Clear any existing endpoints
         api_config._initialize_default_apis()  # Add just the default ones
 
-        with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
+        with patch(
+            "ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config
+        ):
             # Add all cluster servers as APIs
             server_urls = cluster.get_server_urls()
             initial_api_count = len(api_config.list_apis())  # Account for default APIs
@@ -406,22 +416,24 @@ class TestAdminCommandsHTTPIntegration:
         api_config = IPAPIManager()
         primary_endpoint = IPAPIEndpoint(
             id="primaryapi",
-            name="PrimaryAPI", 
-            url=f"{primary_server.base_url}/json", 
-            response_format=ResponseFormat.JSON, 
-            json_field="ip"
+            name="PrimaryAPI",
+            url=f"{primary_server.base_url}/json",
+            response_format=ResponseFormat.JSON,
+            json_field="ip",
         )
         backup_endpoint = IPAPIEndpoint(
             id="backupapi",
-            name="BackupAPI", 
-            url=f"{backup_server.base_url}/json", 
-            response_format=ResponseFormat.JSON, 
-            json_field="ip"
+            name="BackupAPI",
+            url=f"{backup_server.base_url}/json",
+            response_format=ResponseFormat.JSON,
+            json_field="ip",
         )
         api_config.add_api(primary_endpoint)
         api_config.add_api(backup_endpoint)
 
-        with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
+        with patch(
+            "ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config
+        ):
             # Test primary API (should fail)
             mock_admin_message.content = "!admin api test primaryapi"
 
@@ -458,14 +470,16 @@ class TestAdminCommandsHTTPIntegration:
         api_config._initialize_default_apis()  # Add just the default ones
         monitored_endpoint = IPAPIEndpoint(
             id="monitoredapi",
-            name="MonitoredAPI", 
-            url=f"{server.base_url}/json", 
-            response_format=ResponseFormat.JSON, 
-            json_field="ip"
+            name="MonitoredAPI",
+            url=f"{server.base_url}/json",
+            response_format=ResponseFormat.JSON,
+            json_field="ip",
         )
         api_config.add_api(monitored_endpoint)
 
-        with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
+        with patch(
+            "ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config
+        ):
             # Perform multiple tests to build performance history
             for i in range(5):
                 mock_admin_message.content = "!admin api test monitoredapi"
@@ -508,14 +522,16 @@ class TestAdminCommandsHTTPIntegration:
         api_config._initialize_default_apis()  # Add just the default ones
         rate_limited_endpoint = IPAPIEndpoint(
             id="ratelimitedapi",
-            name="RateLimitedAPI", 
-            url=f"{server.base_url}/rate_limit", 
-            response_format=ResponseFormat.JSON, 
-            json_field="ip"
+            name="RateLimitedAPI",
+            url=f"{server.base_url}/rate_limit",
+            response_format=ResponseFormat.JSON,
+            json_field="ip",
         )
         api_config.add_api(rate_limited_endpoint)
 
-        with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
+        with patch(
+            "ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config
+        ):
             # Test API multiple times to trigger rate limiting
             for i in range(4):
                 mock_admin_message.content = "!admin api test ratelimitedapi"
@@ -545,7 +561,9 @@ class TestAdminCommandsHTTPIntegration:
         api_config.endpoints = {}  # Clear any existing endpoints
         api_config._initialize_default_apis()  # Add just the default ones
 
-        with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
+        with patch(
+            "ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config
+        ):
             # Test adding API with invalid URL
             mock_admin_message.content = "!admin api add InvalidAPI invalid-url json ip"
 
@@ -591,7 +609,9 @@ class TestAdminCommandsHTTPIntegration:
         api_config.endpoints = {}  # Clear any existing endpoints
         api_config._initialize_default_apis()  # Add just the default ones
 
-        with patch("ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config):
+        with patch(
+            "ip_monitor.commands.admin_commands.api_handler.ip_api_manager", api_config
+        ):
             # Step 1: Add APIs
             mock_admin_message.content = (
                 f"!admin api add MainAPI {api_server.base_url}/json json ip"

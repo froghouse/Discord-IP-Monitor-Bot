@@ -33,7 +33,7 @@ class TestAppConfigFilePersistence:
         assert "discord_token" not in saved_data
         assert "cache_info" in saved_data
 
-    @patch("builtins.open", side_effect=IOError("Permission denied"))
+    @patch("builtins.open", side_effect=OSError("Permission denied"))
     @patch("ip_monitor.config.logger")
     def test_save_to_file_failure(self, mock_logger, mock_file, config):
         """Test configuration save failure."""
@@ -72,7 +72,7 @@ class TestAppConfigFilePersistence:
         )  # Base config values preserved
 
     @patch("os.path.exists", return_value=True)
-    @patch("builtins.open", side_effect=IOError("Permission denied"))
+    @patch("builtins.open", side_effect=OSError("Permission denied"))
     @patch("ip_monitor.config.logger")
     def test_load_from_file_failure(self, mock_logger, mock_file, mock_exists, config):
         """Test configuration load failure returns base config."""
