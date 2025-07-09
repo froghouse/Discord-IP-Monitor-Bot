@@ -13,6 +13,15 @@ import sys
 
 import pytest
 
+# Import resource monitoring utilities
+from tests.utils.resource_monitor import (
+    ResourceMonitor,
+    ResourceLimits,
+    ResourceTracker,
+    cleanup_global_resources,
+    get_global_resource_counts
+)
+
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
@@ -48,6 +57,65 @@ async def setup_test_environment():
     # Cleanup after test
     if "TESTING_MODE" in os.environ:
         del os.environ["TESTING_MODE"]
+
+
+@pytest.fixture(autouse=True)
+async def integration_resource_cleanup():
+    """Automatically clean up resources after each integration test."""
+    # Get initial resource counts
+    initial_counts = get_global_resource_counts()
+    
+    yield
+    
+    # Clean up global resources
+    cleanup_global_resources()
+    
+    # Check for resource leaks
+    final_counts = get_global_resource_counts()
+    
+    # Report resource leaks if found
+    for resource_type, initial_count in initial_counts.items():
+        final_count = final_counts.get(resource_type, 0)
+        if final_count > initial_count:
+            leak_count = final_count - initial_count
+            print(f"Warning: {resource_type} leak detected: {leak_count} resources not cleaned up")
+
+
+@pytest.fixture
+def resource_limits():
+    """Provide default resource limits for integration tests."""
+    return ResourceLimits(
+        memory_mb=200.0,  # Higher limit for integration tests
+        open_files=100,
+        threads=30,
+        database_connections=20,
+        http_connections=50,
+        mock_objects=200,
+        async_tasks=100
+    )
+
+
+@pytest.fixture
+async def resource_monitor(resource_limits):
+    """Provide resource monitoring for integration tests."""
+    monitor = ResourceMonitor(resource_limits)
+    
+    # Start monitoring
+    await monitor.start_monitoring(interval=0.1)  # More frequent monitoring
+    
+    yield monitor
+    
+    # Stop monitoring and cleanup
+    await monitor.stop_monitoring()
+    monitor.cleanup_resources()
+
+
+@pytest.fixture
+def resource_tracker():
+    """Provide resource tracking for integration tests."""
+    tracker = ResourceTracker()
+    yield tracker
+    tracker.cleanup_all()
 
 
 @pytest.fixture(scope="session")

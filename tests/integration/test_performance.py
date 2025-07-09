@@ -17,10 +17,92 @@ from ip_monitor.ip_service import IPService
 from ip_monitor.storage import SQLiteIPStorage
 from ip_monitor.utils.async_rate_limiter import AsyncRateLimiter
 from ip_monitor.utils.cache import CacheType, IntelligentCache
+from tests.utils.resource_monitor import resource_context, ResourceLimits
 
 
 class TestPerformanceLoadTesting:
     """Test system performance under load conditions."""
+    
+    @pytest.mark.asyncio
+    async def test_resource_monitoring_under_load(self, performance_bot, resource_monitor):
+        """Test resource monitoring during high load operations."""
+        import itertools
+        
+        # Mock IP service to return consistent results
+        mock_responses = [f"192.168.1.{i}" for i in range(10)]
+        cycling_responses = itertools.cycle(mock_responses)
+        
+        with patch.object(
+            performance_bot.ip_service, "get_public_ip", side_effect=cycling_responses
+        ) as mock_get_ip:
+            # Use resource monitoring context for detailed tracking
+            async with resource_context(resource_monitor, "Load test operation") as ctx:
+                # Perform 100 IP checks to simulate load
+                tasks = []
+                
+                try:
+                    for i in range(100):
+                        task = asyncio.create_task(performance_bot.ip_service.get_public_ip())
+                        tasks.append(task)
+                    
+                    # Execute all tasks with timeout protection
+                    results = await asyncio.wait_for(
+                        asyncio.gather(*tasks, return_exceptions=True),
+                        timeout=30.0
+                    )
+                    
+                    # Check success rate
+                    success_count = sum(
+                        1 for result in results 
+                        if not isinstance(result, Exception)
+                    )
+                    assert success_count >= 95, f"Only {success_count}/100 operations succeeded"
+                    
+                except asyncio.TimeoutError:
+                    # Cancel all remaining tasks
+                    for task in tasks:
+                        if not task.done():
+                            task.cancel()
+                    await asyncio.gather(*tasks, return_exceptions=True)
+                    pytest.fail("Load test timed out after 30 seconds")
+                
+                finally:
+                    # Ensure proper cleanup
+                    for task in tasks:
+                        if not task.done():
+                            task.cancel()
+                            try:
+                                await task
+                            except asyncio.CancelledError:
+                                pass
+            
+            # Get resource usage report
+            usage = ctx.get_resource_usage()
+            
+            # Verify resource usage is within acceptable bounds
+            assert usage['memory_mb'] < 50.0, f"Memory usage too high: {usage['memory_mb']:.1f}MB"
+            assert usage['async_tasks'] <= 100, f"Too many async tasks: {usage['async_tasks']}"
+            
+            # Check for resource violations
+            assert not resource_monitor.has_violations(), (
+                f"Resource violations detected: {resource_monitor.get_violations()}"
+            )
+            
+            # Get comprehensive report
+            report = resource_monitor.get_report()
+            
+            # Log resource statistics for analysis
+            print(f"\nResource usage report:")
+            print(f"Peak memory: {report['peak_usage']['memory_mb']:.1f}MB")
+            print(f"Peak async tasks: {report['peak_usage']['async_tasks']}")
+            print(f"Peak database connections: {report['peak_usage']['database_connections']}")
+            print(f"Resource diff: {report['resource_diff']}")
+            print(f"Total snapshots: {report['snapshot_count']}")
+            
+            # Verify call count
+            assert mock_get_ip.call_count == 100, (
+                f"Expected 100 calls, got {mock_get_ip.call_count}"
+            )
 
     @pytest.fixture
     def performance_config(self, mock_config):
