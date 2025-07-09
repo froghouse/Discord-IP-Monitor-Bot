@@ -2,6 +2,7 @@
 Integration tests for AdminCommandRouter.
 """
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -54,14 +55,20 @@ class TestAdminCommandRouterIntegration:
         """Test handling admin command without permissions."""
         mock_non_admin_message.content = "!admin stop"
 
-        result = await admin_router.handle_admin_command(mock_non_admin_message)
+        result = await asyncio.wait_for(
+            admin_router.handle_admin_command(mock_non_admin_message),
+            timeout=5.0
+        )
         assert result is False
 
     async def test_handle_admin_command_no_args(self, admin_router, mock_admin_message):
         """Test handling admin command with no arguments shows help."""
         mock_admin_message.content = "!admin"
 
-        result = await admin_router.handle_admin_command(mock_admin_message)
+        result = await asyncio.wait_for(
+            admin_router.handle_admin_command(mock_admin_message),
+            timeout=5.0
+        )
         assert result is True
 
     async def test_handle_admin_command_unknown_command(
@@ -70,7 +77,10 @@ class TestAdminCommandRouterIntegration:
         """Test handling unknown admin command."""
         mock_admin_message.content = "!admin unknown"
 
-        result = await admin_router.handle_admin_command(mock_admin_message)
+        result = await asyncio.wait_for(
+            admin_router.handle_admin_command(mock_admin_message),
+            timeout=5.0
+        )
         assert result is False
 
     async def test_handle_admin_command_stop(self, admin_router, mock_admin_message):
@@ -82,7 +92,10 @@ class TestAdminCommandRouterIntegration:
         ) as mock_handle:
             mock_handle.return_value = True
 
-            result = await admin_router.handle_admin_command(mock_admin_message)
+            result = await asyncio.wait_for(
+                admin_router.handle_admin_command(mock_admin_message),
+                timeout=5.0
+            )
             assert result is True
             mock_handle.assert_called_once_with(mock_admin_message, ["stop"])
 
@@ -95,7 +108,10 @@ class TestAdminCommandRouterIntegration:
         ) as mock_handle:
             mock_handle.return_value = True
 
-            result = await admin_router.handle_admin_command(mock_admin_message)
+            result = await asyncio.wait_for(
+                admin_router.handle_admin_command(mock_admin_message),
+                timeout=5.0
+            )
             assert result is True
             mock_handle.assert_called_once_with(mock_admin_message, ["config", "show"])
 
@@ -108,7 +124,10 @@ class TestAdminCommandRouterIntegration:
         ) as mock_handle:
             mock_handle.return_value = True
 
-            result = await admin_router.handle_admin_command(mock_admin_message)
+            result = await asyncio.wait_for(
+                admin_router.handle_admin_command(mock_admin_message),
+                timeout=5.0
+            )
             assert result is True
             mock_handle.assert_called_once_with(mock_admin_message, ["queue", "clear"])
 
@@ -121,7 +140,10 @@ class TestAdminCommandRouterIntegration:
         ) as mock_handle:
             mock_handle.return_value = True
 
-            result = await admin_router.handle_admin_command(mock_admin_message)
+            result = await asyncio.wait_for(
+                admin_router.handle_admin_command(mock_admin_message),
+                timeout=5.0
+            )
             assert result is True
             mock_handle.assert_called_once_with(mock_admin_message, ["api", "list"])
 
@@ -134,7 +156,10 @@ class TestAdminCommandRouterIntegration:
         ) as mock_handle:
             mock_handle.return_value = True
 
-            result = await admin_router.handle_admin_command(mock_admin_message)
+            result = await asyncio.wait_for(
+                admin_router.handle_admin_command(mock_admin_message),
+                timeout=5.0
+            )
             assert result is True
             mock_handle.assert_called_once_with(mock_admin_message, ["cache", "show"])
 
@@ -149,7 +174,10 @@ class TestAdminCommandRouterIntegration:
         ) as mock_handle:
             mock_handle.side_effect = Exception("Handler error")
 
-            result = await admin_router.handle_admin_command(mock_admin_message)
+            result = await asyncio.wait_for(
+                admin_router.handle_admin_command(mock_admin_message),
+                timeout=5.0
+            )
             assert result is False
 
     async def test_handle_stop_command_backward_compatibility(
@@ -161,7 +189,10 @@ class TestAdminCommandRouterIntegration:
         ) as mock_handle:
             mock_handle.return_value = True
 
-            result = await admin_router.handle_stop_command(mock_admin_message)
+            result = await asyncio.wait_for(
+                admin_router.handle_stop_command(mock_admin_message),
+                timeout=5.0
+            )
             assert result is True
             mock_handle.assert_called_once_with(mock_admin_message, ["stop"])
 
@@ -176,7 +207,10 @@ class TestAdminCommandRouterIntegration:
         ) as mock_handle:
             mock_handle.return_value = True
 
-            result = await admin_router.handle_config_command(mock_admin_message)
+            result = await asyncio.wait_for(
+                admin_router.handle_config_command(mock_admin_message),
+                timeout=5.0
+            )
             assert result is True
             mock_handle.assert_called_once_with(mock_admin_message, ["show", "field"])
 
@@ -191,7 +225,10 @@ class TestAdminCommandRouterIntegration:
         ) as mock_handle:
             mock_handle.return_value = True
 
-            result = await admin_router.handle_config_command(mock_admin_message)
+            result = await asyncio.wait_for(
+                admin_router.handle_config_command(mock_admin_message),
+                timeout=5.0
+            )
             assert result is True
             mock_handle.assert_called_once_with(mock_admin_message, ["config"])
 
@@ -206,7 +243,10 @@ class TestAdminCommandRouterIntegration:
         ) as mock_handle:
             mock_handle.return_value = True
 
-            result = await admin_router.handle_queue_command(mock_admin_message)
+            result = await asyncio.wait_for(
+                admin_router.handle_queue_command(mock_admin_message),
+                timeout=5.0
+            )
             assert result is True
             mock_handle.assert_called_once_with(mock_admin_message, ["status"])
 
@@ -221,7 +261,10 @@ class TestAdminCommandRouterIntegration:
         ) as mock_handle:
             mock_handle.return_value = True
 
-            result = await admin_router.handle_api_command(mock_admin_message)
+            result = await asyncio.wait_for(
+                admin_router.handle_api_command(mock_admin_message),
+                timeout=5.0
+            )
             assert result is True
             mock_handle.assert_called_once_with(
                 mock_admin_message, ["test", "endpoint"]
@@ -238,7 +281,10 @@ class TestAdminCommandRouterIntegration:
         ) as mock_handle:
             mock_handle.return_value = True
 
-            result = await admin_router.handle_cache_command(mock_admin_message)
+            result = await asyncio.wait_for(
+                admin_router.handle_cache_command(mock_admin_message),
+                timeout=5.0
+            )
             assert result is True
             mock_handle.assert_called_once_with(
                 mock_admin_message, ["clear", "namespace"]
@@ -340,7 +386,10 @@ class TestAdminCommandRouterIntegration:
             mock_config_handle.return_value = True
 
             # Route the command
-            result = await admin_router.handle_admin_command(mock_admin_message)
+            result = await asyncio.wait_for(
+                admin_router.handle_admin_command(mock_admin_message),
+                timeout=10.0
+            )
 
             # Verify the flow
             assert result is True
@@ -374,7 +423,10 @@ class TestAdminCommandRouterIntegration:
             ) as mock_handle:
                 mock_handle.return_value = True
 
-                result = await admin_router.handle_admin_command(mock_admin_message)
+                result = await asyncio.wait_for(
+                    admin_router.handle_admin_command(mock_admin_message),
+                    timeout=5.0
+                )
                 assert result is True
                 mock_handle.assert_called_once()
 
@@ -388,7 +440,10 @@ class TestAdminCommandRouterIntegration:
         ) as mock_handle:
             mock_handle.side_effect = ValueError("Test error")
 
-            result = await admin_router.handle_admin_command(mock_admin_message)
+            result = await asyncio.wait_for(
+                admin_router.handle_admin_command(mock_admin_message),
+                timeout=5.0
+            )
             assert result is False
 
     def test_handler_initialization_integrity(self, admin_router):

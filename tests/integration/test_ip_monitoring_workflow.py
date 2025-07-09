@@ -57,7 +57,10 @@ class TestIPChangeDetection:
             mock_get_ip.side_effect = ["192.168.1.100", "192.168.1.101"]
 
             # First IP check - should store initial IP
-            first_ip = await bot.ip_service.get_public_ip()
+            first_ip = await asyncio.wait_for(
+                bot.ip_service.get_public_ip(),
+                timeout=30.0
+            )
             bot.storage.save_current_ip(first_ip)
 
             # Verify initial IP stored
@@ -65,7 +68,10 @@ class TestIPChangeDetection:
             assert stored_ip == "192.168.1.100"
 
             # Second IP check - should detect change
-            second_ip = await bot.ip_service.get_public_ip()
+            second_ip = await asyncio.wait_for(
+                bot.ip_service.get_public_ip(),
+                timeout=30.0
+            )
             ip_changed = second_ip != stored_ip
 
             assert ip_changed
@@ -92,7 +98,10 @@ class TestIPChangeDetection:
                     service_health, "record_failure"
                 ) as mock_record_failure:
                     # Simulate successful IP check
-                    ip = await bot.ip_service.get_public_ip()
+                    ip = await asyncio.wait_for(
+                        bot.ip_service.get_public_ip(),
+                        timeout=30.0
+                    )
                     if ip:
                         service_health.record_success("ip_service", "api_check")
                         bot.storage.save_current_ip(ip)
@@ -114,7 +123,10 @@ class TestIPChangeDetection:
         ):
             with patch.object(service_health, "record_failure") as mock_record_failure:
                 try:
-                    await bot.ip_service.get_public_ip()
+                    await asyncio.wait_for(
+                        bot.ip_service.get_public_ip(),
+                        timeout=30.0
+                    )
                 except Exception as e:
                     service_health.record_failure("ip_service", str(e), "api_check")
 
@@ -135,7 +147,10 @@ class TestIPChangeDetection:
         with patch.object(bot.ip_service, "get_public_ip", side_effect=mock_ip_check):
             # Run multiple concurrent IP checks
             tasks = [bot.ip_service.get_public_ip() for _ in range(5)]
-            results = await asyncio.gather(*tasks)
+            results = await asyncio.wait_for(
+                asyncio.gather(*tasks),
+                timeout=15.0
+            )
 
             # All should return the same IP
             assert all(ip == "192.168.1.150" for ip in results)
@@ -156,7 +171,10 @@ class TestIPChangeDetection:
             bot.ip_service, "get_public_ip", return_value="192.168.1.250"
         ):
             # First check - should cache result
-            ip = await bot.ip_service.get_public_ip()
+            ip = await asyncio.wait_for(
+                bot.ip_service.get_public_ip(),
+                timeout=30.0
+            )
 
             # Manually cache the result (simulating what IP service would do)
             cache.set("ip_check", "current_ip", ip, "IP_RESULT")
@@ -176,7 +194,10 @@ class TestIPChangeDetection:
 
         # Test empty IP handling
         with patch.object(bot.ip_service, "get_public_ip", return_value=None):
-            ip = await bot.ip_service.get_public_ip()
+            ip = await asyncio.wait_for(
+                bot.ip_service.get_public_ip(),
+                timeout=30.0
+            )
             assert ip is None
 
             # Should not store empty IP
@@ -189,7 +210,10 @@ class TestIPChangeDetection:
 
         # Test invalid IP format handling
         with patch.object(bot.ip_service, "get_public_ip", return_value="invalid_ip"):
-            ip = await bot.ip_service.get_public_ip()
+            ip = await asyncio.wait_for(
+                bot.ip_service.get_public_ip(),
+                timeout=30.0
+            )
 
             # IP service should handle validation
             # For this test, we assume it returns the value as-is
@@ -248,7 +272,10 @@ class TestDatabasePersistence:
             save_ip_sequence(30, 5),
         ]
 
-        await asyncio.gather(*tasks)
+        await asyncio.wait_for(
+            asyncio.gather(*tasks),
+            timeout=15.0
+        )
 
         # Verify database integrity
         history = storage.load_ip_history()
@@ -340,7 +367,10 @@ class TestNotificationDelivery:
         old_ip = "192.168.1.100"
         new_ip = "192.168.1.101"
 
-        await mock_ip_commands.send_ip_change_notification(mock_channel, old_ip, new_ip)
+        await asyncio.wait_for(
+            mock_ip_commands.send_ip_change_notification(mock_channel, old_ip, new_ip),
+            timeout=10.0
+        )
 
         # Verify notification was attempted
         mock_ip_commands.send_ip_change_notification.assert_called_once_with(
@@ -365,8 +395,11 @@ class TestNotificationDelivery:
             ]
 
             for message in messages:
-                await bot.discord_rate_limiter.send_message_with_backoff(
-                    mock_channel, message
+                await asyncio.wait_for(
+                    bot.discord_rate_limiter.send_message_with_backoff(
+                        mock_channel, message
+                    ),
+                    timeout=10.0
                 )
 
             # Verify all messages were processed with rate limiting
@@ -384,8 +417,11 @@ class TestNotificationDelivery:
 
             # Attempt to send notification
             try:
-                await bot.discord_rate_limiter.send_message_with_backoff(
-                    mock_channel, "Test notification"
+                await asyncio.wait_for(
+                    bot.discord_rate_limiter.send_message_with_backoff(
+                        mock_channel, "Test notification"
+                    ),
+                    timeout=10.0
                 )
             except Exception as e:
                 assert "Discord API Error" in str(e)
@@ -402,10 +438,13 @@ class TestNotificationDelivery:
             mock_queue.add_message = AsyncMock()
 
             # Simulate adding message to queue
-            await mock_queue.add_message(
-                channel_id=bot.config.channel_id,
-                content="IP changed notification",
-                priority="HIGH",
+            await asyncio.wait_for(
+                mock_queue.add_message(
+                    channel_id=bot.config.channel_id,
+                    content="IP changed notification",
+                    priority="HIGH",
+                ),
+                timeout=5.0
             )
 
             # Verify message was queued
@@ -434,8 +473,11 @@ class TestNotificationDelivery:
                 logging.info("Silent monitoring active - notifications suppressed")
             else:
                 # Normal notification flow
-                await bot.discord_rate_limiter.send_message_with_backoff(
-                    mock_channel, "IP change notification"
+                await asyncio.wait_for(
+                    bot.discord_rate_limiter.send_message_with_backoff(
+                        mock_channel, "IP change notification"
+                    ),
+                    timeout=10.0
                 )
 
             # Verify degradation check was performed
@@ -470,8 +512,11 @@ class TestNotificationDelivery:
                 elif case["type"] == "error":
                     message = f"❌ Error: {case['error']}"
 
-                await bot.discord_rate_limiter.send_message_with_backoff(
-                    mock_channel, message
+                await asyncio.wait_for(
+                    bot.discord_rate_limiter.send_message_with_backoff(
+                        mock_channel, message
+                    ),
+                    timeout=10.0
                 )
 
                 # Verify expected content in message

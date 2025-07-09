@@ -54,7 +54,7 @@ class TestNetworkFailureRecovery:
 
             # First attempt should fail
             try:
-                await bot.ip_service.get_public_ip()
+                await asyncio.wait_for(bot.ip_service.get_public_ip(), timeout=30.0)
                 pytest.fail("Should have raised timeout error")
             except TimeoutError:
                 # Record the failure
@@ -63,7 +63,7 @@ class TestNetworkFailureRecovery:
                 )
 
             # Second attempt should succeed (recovery)
-            ip = await bot.ip_service.get_public_ip()
+            ip = await asyncio.wait_for(bot.ip_service.get_public_ip(), timeout=30.0)
             assert ip == "192.168.1.100"
 
             # Record recovery
@@ -86,7 +86,7 @@ class TestNetworkFailureRecovery:
             # First two attempts should fail
             for _ in range(2):
                 try:
-                    await bot.ip_service.get_public_ip()
+                    await asyncio.wait_for(bot.ip_service.get_public_ip(), timeout=30.0)
                     pytest.fail("Should have raised connection error")
                 except ConnectionError:
                     service_health.record_failure(
@@ -94,7 +94,7 @@ class TestNetworkFailureRecovery:
                     )
 
             # Third attempt should succeed
-            ip = await bot.ip_service.get_public_ip()
+            ip = await asyncio.wait_for(bot.ip_service.get_public_ip(), timeout=30.0)
             assert ip == "192.168.1.101"
             service_health.record_success("ip_service", "api_check")
 
@@ -112,8 +112,10 @@ class TestNetworkFailureRecovery:
 
             # Attempt to get IP should be blocked by circuit breaker
             try:
-                await bot.ip_service.circuit_breaker.call(
-                    bot.ip_service._fetch_ip_from_primary_apis
+                await asyncio.wait_for(
+                    bot.ip_service.circuit_breaker.call(
+                        bot.ip_service._fetch_ip_from_primary_apis
+                    ), timeout=15.0
                 )
                 pytest.fail("Should have raised CircuitBreakerError")
             except CircuitBreakerError as e:
@@ -125,8 +127,10 @@ class TestNetworkFailureRecovery:
             mock_cb.call.return_value = "192.168.1.102"
 
             # Recovery attempt should succeed
-            ip = await bot.ip_service.circuit_breaker.call(
-                bot.ip_service._fetch_ip_from_primary_apis
+            ip = await asyncio.wait_for(
+                bot.ip_service.circuit_breaker.call(
+                    bot.ip_service._fetch_ip_from_primary_apis
+                ), timeout=15.0
             )
             assert ip == "192.168.1.102"
 
@@ -148,12 +152,12 @@ class TestNetworkFailureRecovery:
                 # First two attempts fail
                 for _ in range(2):
                     try:
-                        await bot.ip_service.get_public_ip()
+                        await asyncio.wait_for(bot.ip_service.get_public_ip(), timeout=30.0)
                     except Exception:
                         pass
 
                 # Final attempt uses fallback
-                ip = await bot.ip_service.get_public_ip()
+                ip = await asyncio.wait_for(bot.ip_service.get_public_ip(), timeout=30.0)
                 assert ip == "192.168.1.50"
             except Exception as e:
                 # Test that system handles fallback gracefully
@@ -172,7 +176,7 @@ class TestNetworkFailureRecovery:
 
             # Verify system handles network partition
             try:
-                await bot.ip_service.get_public_ip()
+                await asyncio.wait_for(bot.ip_service.get_public_ip(), timeout=30.0)
                 pytest.fail("Should have raised network error")
             except OSError as e:
                 assert "Network is unreachable" in str(e)
@@ -182,7 +186,7 @@ class TestNetworkFailureRecovery:
             mock_get_ip.side_effect = None
             mock_get_ip.return_value = "192.168.1.200"
 
-            ip = await bot.ip_service.get_public_ip()
+            ip = await asyncio.wait_for(bot.ip_service.get_public_ip(), timeout=30.0)
             assert ip == "192.168.1.200"
             service_health.record_success("ip_service", "api_check")
 
@@ -197,7 +201,7 @@ class TestNetworkFailureRecovery:
             mock_get_ip.side_effect = dns_error
 
             try:
-                await bot.ip_service.get_public_ip()
+                await asyncio.wait_for(bot.ip_service.get_public_ip(), timeout=30.0)
                 pytest.fail("Should have raised DNS error")
             except OSError as e:
                 assert "Name resolution failed" in str(e)
@@ -206,7 +210,7 @@ class TestNetworkFailureRecovery:
             mock_get_ip.side_effect = None
             mock_get_ip.return_value = "192.168.1.250"
 
-            ip = await bot.ip_service.get_public_ip()
+            ip = await asyncio.wait_for(bot.ip_service.get_public_ip(), timeout=30.0)
             assert ip == "192.168.1.250"
 
     async def test_partial_api_failure_recovery(self, bot_with_network_mocking):
@@ -225,17 +229,17 @@ class TestNetworkFailureRecovery:
 
             # First two attempts fail, third succeeds
             try:
-                await bot.ip_service.get_public_ip()
+                await asyncio.wait_for(bot.ip_service.get_public_ip(), timeout=30.0)
             except Exception:
                 pass
 
             try:
-                await bot.ip_service.get_public_ip()
+                await asyncio.wait_for(bot.ip_service.get_public_ip(), timeout=30.0)
             except Exception:
                 pass
 
             # Third attempt succeeds
-            ip = await bot.ip_service.get_public_ip()
+            ip = await asyncio.wait_for(bot.ip_service.get_public_ip(), timeout=30.0)
             assert ip == "192.168.1.175"
 
 
@@ -268,12 +272,12 @@ class TestDatabaseErrorRecovery:
 
             # First attempt should fail
             try:
-                storage.load_last_ip()
+                await asyncio.wait_for(asyncio.to_thread(storage.load_last_ip), timeout=10.0)
             except Exception as e:
                 assert "database is locked" in str(e)
 
             # Second attempt should succeed (simulating lock release)
-            result = storage.load_last_ip()
+            result = await asyncio.wait_for(asyncio.to_thread(storage.load_last_ip), timeout=10.0)
             assert result == "192.168.1.100"
 
     async def test_database_corruption_detection(self, storage_with_temp_db):
@@ -288,7 +292,7 @@ class TestDatabaseErrorRecovery:
 
             # Should detect corruption
             try:
-                storage.load_last_ip()
+                await asyncio.wait_for(asyncio.to_thread(storage.load_last_ip), timeout=10.0)
                 pytest.fail("Should have detected corruption")
             except Exception as e:
                 assert "malformed" in str(e)
@@ -307,13 +311,13 @@ class TestDatabaseErrorRecovery:
 
             # Permission error
             try:
-                storage.save_current_ip("192.168.1.100")
+                await asyncio.wait_for(asyncio.to_thread(storage.save_current_ip, "192.168.1.100"), timeout=10.0)
                 pytest.fail("Should have raised permission error")
             except PermissionError:
                 pass
 
             # Recovery after permission fix
-            storage.save_current_ip("192.168.1.100")
+            await asyncio.wait_for(asyncio.to_thread(storage.save_current_ip, "192.168.1.100"), timeout=10.0)
             # Should succeed without exception
 
     async def test_database_connection_pool_exhaustion(self, storage_with_temp_db):
@@ -333,13 +337,13 @@ class TestDatabaseErrorRecovery:
             # Multiple connection failures
             for _ in range(2):
                 try:
-                    storage.load_last_ip()
+                    await asyncio.wait_for(asyncio.to_thread(storage.load_last_ip), timeout=10.0)
                     pytest.fail("Should have failed with pool exhaustion")
                 except Exception as e:
                     assert "too many connections" in str(e)
 
             # Recovery when connections are available
-            ip = storage.load_last_ip()
+            ip = await asyncio.wait_for(asyncio.to_thread(storage.load_last_ip), timeout=10.0)
             assert ip == "192.168.1.125"
 
     async def test_database_disk_space_recovery(self, storage_with_temp_db):
@@ -356,13 +360,13 @@ class TestDatabaseErrorRecovery:
 
             # Disk space error
             try:
-                storage.save_current_ip("192.168.1.150")
+                await asyncio.wait_for(asyncio.to_thread(storage.save_current_ip, "192.168.1.150"), timeout=10.0)
                 pytest.fail("Should have raised disk space error")
             except Exception as e:
                 assert "disk I/O error" in str(e)
 
             # Recovery after disk space freed
-            storage.save_current_ip("192.168.1.150")
+            await asyncio.wait_for(asyncio.to_thread(storage.save_current_ip, "192.168.1.150"), timeout=10.0)
             # Should succeed
 
     async def test_database_transaction_rollback(self, storage_with_temp_db):
@@ -380,13 +384,13 @@ class TestDatabaseErrorRecovery:
             # Transaction should be rolled back on error
             try:
                 # Simulate transaction that fails
-                storage.save_current_ip("invalid_ip_format")
+                await asyncio.wait_for(asyncio.to_thread(storage.save_current_ip, "invalid_ip_format"), timeout=10.0)
             except Exception as e:
                 assert "Constraint violation" in str(e)
 
             # Database should be in consistent state after rollback
             # Verify by attempting a normal operation
-            storage.save_current_ip("192.168.1.175")
+            await asyncio.wait_for(asyncio.to_thread(storage.save_current_ip, "192.168.1.175"), timeout=10.0)
 
 
 class TestDiscordAPIOutageRecovery:
@@ -427,15 +431,19 @@ class TestDiscordAPIOutageRecovery:
 
             # First attempt should fail with rate limit
             try:
-                await bot.discord_rate_limiter.send_message_with_backoff(
-                    mock_client.get_channel(bot.config.channel_id), "Test message"
+                await asyncio.wait_for(
+                    bot.discord_rate_limiter.send_message_with_backoff(
+                        mock_client.get_channel(bot.config.channel_id), "Test message"
+                    ), timeout=10.0
                 )
             except Exception as e:
                 assert "Rate limited" in str(e)
 
             # Second attempt should succeed after backoff
-            await bot.discord_rate_limiter.send_message_with_backoff(
-                mock_client.get_channel(bot.config.channel_id), "Test message"
+            await asyncio.wait_for(
+                bot.discord_rate_limiter.send_message_with_backoff(
+                    mock_client.get_channel(bot.config.channel_id), "Test message"
+                ), timeout=10.0
             )
 
     async def test_discord_api_outage_with_message_queue(
@@ -457,15 +465,19 @@ class TestDiscordAPIOutageRecovery:
 
                 # Should fall back to message queue
                 try:
-                    await bot.discord_rate_limiter.send_message_with_backoff(
-                        mock_client.get_channel(bot.config.channel_id), "Test message"
+                    await asyncio.wait_for(
+                        bot.discord_rate_limiter.send_message_with_backoff(
+                            mock_client.get_channel(bot.config.channel_id), "Test message"
+                        ), timeout=10.0
                     )
                 except Exception:
                     # Fall back to message queue
-                    await message_queue.add_message(
-                        channel_id=bot.config.channel_id,
-                        content="Test message",
-                        priority="NORMAL",
+                    await asyncio.wait_for(
+                        message_queue.add_message(
+                            channel_id=bot.config.channel_id,
+                            content="Test message",
+                            priority="NORMAL",
+                        ), timeout=5.0
                     )
 
                 # Verify message was queued
@@ -516,12 +528,12 @@ class TestDiscordAPIOutageRecovery:
 
                 # First attempt fails
                 try:
-                    await message_queue.process_batch()
+                    await asyncio.wait_for(message_queue.process_batch(), timeout=15.0)
                 except Exception as e:
                     assert "Discord still unavailable" in str(e)
 
                 # Second attempt succeeds (Discord recovered)
-                processed = await message_queue.process_batch()
+                processed = await asyncio.wait_for(message_queue.process_batch(), timeout=15.0)
                 assert processed == 3
 
     async def test_discord_permission_error_recovery(self, bot_with_discord_mocking):
@@ -540,15 +552,19 @@ class TestDiscordAPIOutageRecovery:
 
             # Permission error
             try:
-                await bot.discord_rate_limiter.send_message_with_backoff(
-                    mock_client.get_channel(bot.config.channel_id), "Test message"
+                await asyncio.wait_for(
+                    bot.discord_rate_limiter.send_message_with_backoff(
+                        mock_client.get_channel(bot.config.channel_id), "Test message"
+                    ), timeout=10.0
                 )
             except Exception as e:
                 assert "Missing permissions" in str(e)
 
             # Success after permission fix
-            await bot.discord_rate_limiter.send_message_with_backoff(
-                mock_client.get_channel(bot.config.channel_id), "Test message"
+            await asyncio.wait_for(
+                bot.discord_rate_limiter.send_message_with_backoff(
+                    mock_client.get_channel(bot.config.channel_id), "Test message"
+                ), timeout=10.0
             )
 
     async def test_service_degradation_during_discord_outage(
@@ -605,8 +621,10 @@ class TestDiscordAPIOutageRecovery:
             # Send multiple messages concurrently
             tasks = []
             for i in range(5):
-                task = bot.discord_rate_limiter.send_message_with_backoff(
-                    mock_client.get_channel(bot.config.channel_id), f"Message {i}"
+                task = asyncio.wait_for(
+                    bot.discord_rate_limiter.send_message_with_backoff(
+                        mock_client.get_channel(bot.config.channel_id), f"Message {i}"
+                    ), timeout=15.0
                 )
                 tasks.append(task)
 

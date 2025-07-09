@@ -8,6 +8,7 @@ This module tests the complete admin command processing including:
 - Error handling and validation
 """
 
+import asyncio
 import os
 from pathlib import Path
 import tempfile
@@ -66,13 +67,19 @@ class TestConfigurationChangeWorkflow:
 
         # Test show all configuration
         with patch.object(router.config_handler, "handle_command") as mock_handle:
-            await router.handle_command(mock_message, ["config", "show"])
+            await asyncio.wait_for(
+                router.handle_command(mock_message, ["config", "show"]),
+                timeout=5.0
+            )
             mock_handle.assert_called_once_with(mock_message, ["config", "show"])
 
         # Test show specific field
         with patch.object(router.config_handler, "handle_command") as mock_handle:
-            await router.handle_command(
-                mock_message, ["config", "show", "check_interval"]
+            await asyncio.wait_for(
+                router.handle_command(
+                    mock_message, ["config", "show", "check_interval"]
+                ),
+                timeout=5.0
             )
             mock_handle.assert_called_once_with(
                 mock_message, ["config", "show", "check_interval"]
@@ -89,8 +96,11 @@ class TestConfigurationChangeWorkflow:
 
         # Test valid configuration change
         with patch.object(router.config_handler, "handle_command") as mock_handle:
-            await router.handle_command(
-                mock_message, ["config", "set", "max_retries", "5"]
+            await asyncio.wait_for(
+                router.handle_command(
+                    mock_message, ["config", "set", "max_retries", "5"]
+                ),
+                timeout=5.0
             )
             mock_handle.assert_called_once_with(
                 mock_message, ["config", "set", "max_retries", "5"]
@@ -98,8 +108,11 @@ class TestConfigurationChangeWorkflow:
 
         # Test invalid configuration change
         with patch.object(router.config_handler, "handle_command") as mock_handle:
-            await router.handle_command(
-                mock_message, ["config", "set", "invalid_field", "value"]
+            await asyncio.wait_for(
+                router.handle_command(
+                    mock_message, ["config", "set", "invalid_field", "value"]
+                ),
+                timeout=5.0
             )
             mock_handle.assert_called_once_with(
                 mock_message, ["config", "set", "invalid_field", "value"]
@@ -116,12 +129,18 @@ class TestConfigurationChangeWorkflow:
 
         # Test configuration save
         with patch.object(router.config_handler, "handle_command") as mock_handle:
-            await router.handle_command(mock_message, ["config", "save"])
+            await asyncio.wait_for(
+                router.handle_command(mock_message, ["config", "save"]),
+                timeout=5.0
+            )
             mock_handle.assert_called_once_with(mock_message, ["config", "save"])
 
         # Test configuration reload
         with patch.object(router.config_handler, "handle_command") as mock_handle:
-            await router.handle_command(mock_message, ["config", "reload"])
+            await asyncio.wait_for(
+                router.handle_command(mock_message, ["config", "reload"]),
+                timeout=5.0
+            )
             mock_handle.assert_called_once_with(mock_message, ["config", "reload"])
 
     async def test_config_validation_workflow(self, admin_router_with_config):
@@ -163,8 +182,11 @@ class TestConfigurationChangeWorkflow:
 
         for case in test_cases:
             with patch.object(router.config_handler, "handle_command") as mock_handle:
-                await router.handle_command(
-                    mock_message, ["config", "set", case["field"], case["value"]]
+                await asyncio.wait_for(
+                    router.handle_command(
+                        mock_message, ["config", "set", case["field"], case["value"]]
+                    ),
+                    timeout=5.0
                 )
 
                 # Verify command was processed
@@ -185,8 +207,11 @@ class TestConfigurationChangeWorkflow:
 
         # Test check_interval change (requires restart)
         with patch.object(router.config_handler, "handle_command") as mock_handle:
-            await router.handle_command(
-                mock_message, ["config", "set", "check_interval", "10"]
+            await asyncio.wait_for(
+                router.handle_command(
+                    mock_message, ["config", "set", "check_interval", "10"]
+                ),
+                timeout=5.0
             )
 
             # Verify command was processed
@@ -205,7 +230,10 @@ class TestConfigurationChangeWorkflow:
 
         # Test list all configurable fields
         with patch.object(router.config_handler, "handle_command") as mock_handle:
-            await router.handle_command(mock_message, ["config", "list"])
+            await asyncio.wait_for(
+                router.handle_command(mock_message, ["config", "list"]),
+                timeout=5.0
+            )
             mock_handle.assert_called_once_with(mock_message, ["config", "list"])
 
 
@@ -259,7 +287,10 @@ class TestAPIManagementWorkflow:
 
         # Test list APIs
         with patch.object(router.api_handler, "handle_command") as mock_handle:
-            await router.handle_command(mock_message, ["api", "list"])
+            await asyncio.wait_for(
+                router.handle_command(mock_message, ["api", "list"]),
+                timeout=5.0
+            )
             mock_handle.assert_called_once_with(mock_message, ["api", "list"])
 
     async def test_api_add_workflow(self, admin_router_with_api_manager):
@@ -301,7 +332,10 @@ class TestAPIManagementWorkflow:
                 args.append(api["field"])
 
             with patch.object(router.api_handler, "handle_command") as mock_handle:
-                await router.handle_command(mock_message, args)
+                await asyncio.wait_for(
+                    router.handle_command(mock_message, args),
+                    timeout=5.0
+                )
                 mock_handle.assert_called_once_with(mock_message, args)
 
     async def test_api_remove_workflow(self, admin_router_with_api_manager):
@@ -321,7 +355,10 @@ class TestAPIManagementWorkflow:
 
         for args in test_cases:
             with patch.object(router.api_handler, "handle_command") as mock_handle:
-                await router.handle_command(mock_message, args)
+                await asyncio.wait_for(
+                    router.handle_command(mock_message, args),
+                    timeout=5.0
+                )
                 mock_handle.assert_called_once_with(mock_message, args)
 
     async def test_api_toggle_workflow(self, admin_router_with_api_manager):
@@ -343,7 +380,10 @@ class TestAPIManagementWorkflow:
 
         for args in test_cases:
             with patch.object(router.api_handler, "handle_command") as mock_handle:
-                await router.handle_command(mock_message, args)
+                await asyncio.wait_for(
+                    router.handle_command(mock_message, args),
+                    timeout=5.0
+                )
                 mock_handle.assert_called_once_with(mock_message, args)
 
     async def test_api_test_workflow(self, admin_router_with_api_manager):
@@ -357,12 +397,18 @@ class TestAPIManagementWorkflow:
 
         # Test API testing
         with patch.object(router.api_handler, "handle_command") as mock_handle:
-            await router.handle_command(mock_message, ["api", "test", "1"])
+            await asyncio.wait_for(
+                router.handle_command(mock_message, ["api", "test", "1"]),
+                timeout=10.0
+            )
             mock_handle.assert_called_once_with(mock_message, ["api", "test", "1"])
 
         # Test API statistics
         with patch.object(router.api_handler, "handle_command") as mock_handle:
-            await router.handle_command(mock_message, ["api", "stats"])
+            await asyncio.wait_for(
+                router.handle_command(mock_message, ["api", "stats"]),
+                timeout=5.0
+            )
             mock_handle.assert_called_once_with(mock_message, ["api", "stats"])
 
     async def test_api_error_handling_workflow(self, admin_router_with_api_manager):
@@ -396,7 +442,10 @@ class TestAPIManagementWorkflow:
 
         for case in error_cases:
             with patch.object(router.api_handler, "handle_command") as mock_handle:
-                await router.handle_command(mock_message, case["args"])
+                await asyncio.wait_for(
+                    router.handle_command(mock_message, case["args"]),
+                    timeout=5.0
+                )
                 mock_handle.assert_called_once_with(mock_message, case["args"])
 
 
@@ -445,7 +494,10 @@ class TestSystemDiagnosticsWorkflow:
 
         for args in queue_commands:
             with patch.object(router.queue_handler, "handle_command") as mock_handle:
-                await router.handle_command(mock_message, args)
+                await asyncio.wait_for(
+                    router.handle_command(mock_message, args),
+                    timeout=5.0
+                )
                 mock_handle.assert_called_once_with(mock_message, args)
 
     async def test_cache_management_workflow(self, admin_router_with_diagnostics):
@@ -469,7 +521,10 @@ class TestSystemDiagnosticsWorkflow:
 
         for args in cache_commands:
             with patch.object(router.cache_handler, "handle_command") as mock_handle:
-                await router.handle_command(mock_message, args)
+                await asyncio.wait_for(
+                    router.handle_command(mock_message, args),
+                    timeout=5.0
+                )
                 mock_handle.assert_called_once_with(mock_message, args)
 
     async def test_system_health_monitoring_workflow(
@@ -497,7 +552,10 @@ class TestSystemDiagnosticsWorkflow:
 
             # Test health information retrieval (simulated through config show)
             with patch.object(router.config_handler, "handle_command") as mock_handle:
-                await router.handle_command(mock_message, ["config", "show"])
+                await asyncio.wait_for(
+                    router.handle_command(mock_message, ["config", "show"]),
+                    timeout=5.0
+                )
                 mock_handle.assert_called_once_with(mock_message, ["config", "show"])
 
     async def test_bot_lifecycle_workflow(self, admin_router_with_diagnostics):
@@ -513,7 +571,10 @@ class TestSystemDiagnosticsWorkflow:
         with patch.object(
             router.bot_lifecycle_handler, "handle_command"
         ) as mock_handle:
-            await router.handle_command(mock_message, ["stop"])
+            await asyncio.wait_for(
+                router.handle_command(mock_message, ["stop"]),
+                timeout=5.0
+            )
             mock_handle.assert_called_once_with(mock_message, ["stop"])
 
     async def test_permission_validation_workflow(self, admin_router_with_diagnostics):
@@ -528,7 +589,10 @@ class TestSystemDiagnosticsWorkflow:
         # Should reject non-admin commands
         with patch.object(router, "check_permissions", return_value=False):
             with patch.object(router.config_handler, "handle_command") as mock_handle:
-                await router.handle_command(mock_message_non_admin, ["config", "show"])
+                await asyncio.wait_for(
+                    router.handle_command(mock_message_non_admin, ["config", "show"]),
+                    timeout=5.0
+                )
                 # Command should not reach handler due to permission check
                 mock_handle.assert_not_called()
 
@@ -540,7 +604,10 @@ class TestSystemDiagnosticsWorkflow:
         # Should allow admin commands
         with patch.object(router, "check_permissions", return_value=True):
             with patch.object(router.config_handler, "handle_command") as mock_handle:
-                await router.handle_command(mock_message_admin, ["config", "show"])
+                await asyncio.wait_for(
+                    router.handle_command(mock_message_admin, ["config", "show"]),
+                    timeout=5.0
+                )
                 mock_handle.assert_called_once_with(
                     mock_message_admin, ["config", "show"]
                 )
@@ -562,7 +629,10 @@ class TestSystemDiagnosticsWorkflow:
         ):
             # Should handle exceptions gracefully
             try:
-                await router.handle_command(mock_message, ["config", "show"])
+                await asyncio.wait_for(
+                    router.handle_command(mock_message, ["config", "show"]),
+                    timeout=5.0
+                )
             except Exception:
                 # Exception should be caught and handled by router
                 pass
@@ -592,7 +662,10 @@ class TestSystemDiagnosticsWorkflow:
                 handler, "handle_command", side_effect=Exception(scenario["error"])
             ):
                 try:
-                    await router.handle_command(mock_message, scenario["command"])
+                    await asyncio.wait_for(
+                        router.handle_command(mock_message, scenario["command"]),
+                        timeout=5.0
+                    )
                 except Exception:
                     # Errors should be handled gracefully
                     pass
@@ -610,15 +683,16 @@ class TestSystemDiagnosticsWorkflow:
             mock_messages.append(mock_message)
 
         # Test concurrent command processing
-        import asyncio
-
         async def process_command(message, args):
             """Process a command with the router."""
             with patch.object(router, "check_permissions", return_value=True):
                 with patch.object(
                     router.config_handler, "handle_command"
                 ) as mock_handle:
-                    await router.handle_command(message, args)
+                    await asyncio.wait_for(
+                        router.handle_command(message, args),
+                        timeout=5.0
+                    )
                     return mock_handle.call_count
 
         # Run concurrent commands
@@ -628,7 +702,10 @@ class TestSystemDiagnosticsWorkflow:
             process_command(mock_messages[2], ["config", "show", "check_interval"]),
         ]
 
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        results = await asyncio.wait_for(
+            asyncio.gather(*tasks, return_exceptions=True),
+            timeout=15.0
+        )
 
         # All commands should complete successfully
         for result in results:
