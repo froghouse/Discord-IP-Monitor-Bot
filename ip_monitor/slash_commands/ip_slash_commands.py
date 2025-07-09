@@ -301,6 +301,45 @@ class IPSlashCommands(commands.Cog):
                 pass
 
     @app_commands.command(
+        name="dnd", description="Get D&D Foundry VTT server information"
+    )
+    async def dnd_slash(self, interaction: discord.Interaction) -> None:
+        """
+        Slash command to show D&D Foundry VTT server information.
+        """
+        try:
+            await interaction.response.defer()
+
+            logger.info(f"D&D server info requested by {interaction.user} via slash command")
+
+            # Get the last known IP from storage
+            current_ip = self.storage.load_last_ip()
+            
+            if not current_ip:
+                await interaction.followup.send(
+                    "❌ No IP address information available. Please try again later.",
+                    ephemeral=True,
+                )
+                return
+
+            # Format the D&D server message
+            message = "🎲 Dungeons and Dragons Foundry VTT Server\n\n"
+            message += "Access the server at https://froghouse.se/join\n"
+            message += f"Or at http://{current_ip}/join if the primary URL doesn't work"
+
+            await interaction.followup.send(message)
+
+        except Exception as e:
+            logger.error(f"Error in D&D slash command: {e}")
+            try:
+                await interaction.followup.send(
+                    "❌ An error occurred while retrieving server information.",
+                    ephemeral=True,
+                )
+            except discord.NotFound:
+                pass
+
+    @app_commands.command(
         name="help", description="Display available commands and their usage"
     )
     async def help_slash(self, interaction: discord.Interaction) -> None:
@@ -314,6 +353,7 @@ class IPSlashCommands(commands.Cog):
                 "- `/ip` - Manually check the current IP address\n"
                 "- `/history` - View IP address history\n"
                 "- `/status` - View bot status and configuration\n"
+                "- `/dnd` - Get D&D Foundry VTT server information\n"
                 "- `/help` - Show this help message\n"
                 "\n**Admin Commands:**\n"
                 "- `/config` - Manage bot configuration\n"
