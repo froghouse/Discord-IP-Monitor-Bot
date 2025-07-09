@@ -58,6 +58,8 @@ test = [
     "pytest-mock==3.14.0",
     "pytest-cov==6.0.0",
     "pytest-xdist==3.8.0",
+    "pytest-timeout==2.3.1",
+    "pytest-rerunfailures==14.0",
 ]
 dev = [
     "pre-commit==3.6.0",
