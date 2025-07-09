@@ -93,6 +93,39 @@ class AdminSlashCommands(commands.Cog):
             except discord.InteractionResponded:
                 pass
 
+    @app_commands.command(name="sync", description="Sync slash commands with Discord")
+    async def sync_slash(self, interaction: discord.Interaction) -> None:
+        """
+        Slash command to sync slash commands with Discord (admin only).
+        """
+        try:
+            if not self.check_admin_permissions(interaction):
+                await interaction.response.send_message(
+                    "❌ Administrator permission required", ephemeral=True
+                )
+                return
+
+            await interaction.response.defer(ephemeral=True)
+            
+            logger.info(f"Slash command sync requested by {interaction.user}")
+            
+            # Sync slash commands with Discord
+            synced = await self.bot.tree.sync()
+            
+            await interaction.followup.send(
+                f"✅ Successfully synced {len(synced)} slash commands with Discord",
+                ephemeral=True
+            )
+            
+        except Exception as e:
+            logger.error(f"Error in sync slash command: {e}")
+            try:
+                await interaction.followup.send(
+                    "❌ An error occurred while syncing slash commands.", ephemeral=True
+                )
+            except discord.NotFound:
+                pass
+
     # Config command group
     config_group = app_commands.Group(
         name="config", description="Manage bot configuration"

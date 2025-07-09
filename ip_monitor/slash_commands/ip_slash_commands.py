@@ -310,11 +310,13 @@ class IPSlashCommands(commands.Cog):
         try:
             await interaction.response.defer()
 
-            logger.info(f"D&D server info requested by {interaction.user} via slash command")
+            logger.info(
+                f"D&D server info requested by {interaction.user} via slash command"
+            )
 
             # Get the last known IP from storage
             current_ip = self.storage.load_last_ip()
-            
+
             if not current_ip:
                 await interaction.followup.send(
                     "❌ No IP address information available. Please try again later.",
